@@ -34,7 +34,7 @@ AGENT_SKILLS = [
         name='论文筛选与推荐',
         name_en='Filter and Recommend Papers',
         description=(
-            '接收一个JSON对象作为输入，其中包含 `paper_ids` (ArXiv ID的列表)。'
+            '接收一个JSON对象作为输入，其中包含 `arxiv_ids` (ArXiv ID的列表)。'
             '代理内部会根据这些ID获取完整的论文元数据，并基于预设的内部逻辑进行智能筛选和排序。'
             '最终返回一个JSON格式的列表，其中包含推荐论文的ArXiv ID，列表的顺序即为推荐顺序。'
             '可以额外传入 `max_recommendations` (整数) 来限制推荐数量，若不提供则默认为16。'

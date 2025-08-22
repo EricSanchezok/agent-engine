@@ -25,7 +25,11 @@ logger = AgentLogger(__name__)
 
 class ArXivFetcher:
     async def invoke(self, query_string: str = "", id_list: List[str] = [], max_results: int = 10000) -> List[Paper]:
-        logger.info(f"Fetching papers with query: {query_string}")
+        if query_string == "":
+            logger.info(f"Fetching papers with id_list: {id_list}")
+        else:
+            logger.info(f"Fetching papers with query: {query_string}")
+
         papers = []
         arxiv_client = arxiv.Client(page_size=500, delay_seconds=3)
 

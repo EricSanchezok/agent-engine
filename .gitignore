@@ -335,3 +335,6 @@ vector_store/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+database/
+data/

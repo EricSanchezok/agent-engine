@@ -93,6 +93,7 @@ class ArxivSearchAgent(BaseA2AAgent):
             except Exception as e:
                 logger.error(f"Query building failed: {str(e)}")
                 await self._task_failed(context, event_queue, f"Query builder error: {e}")
+                return
 
             if not categories:
                 query_string = f"{query_string} AND {CATEGORIES_QUERY_STRING}"
@@ -102,6 +103,7 @@ class ArxivSearchAgent(BaseA2AAgent):
             
         else:
             await self._task_failed(context, event_queue, f"Can't find the skill: {skill_id}")
+            return
 
         logger.info(f"Using query string: {query_string}")
         try:
@@ -110,6 +112,7 @@ class ArxivSearchAgent(BaseA2AAgent):
         except Exception as e:
             logger.error(f"Paper fetching failed: {str(e)}")
             await self._task_failed(context, event_queue, f"ArXiv fetcher error: {e}")
+            return
 
         json_content = json.dumps([paper.package() for paper in papers], ensure_ascii=False, indent=4)
         parts = [Part(root=TextPart(text=json_content))]

@@ -13,8 +13,11 @@ from typing import List, Dict, Optional, Tuple, Any
 from pathlib import Path
 import hashlib
 
+from ..agent_logger.agent_logger import AgentLogger
 from ..utils.project_root import get_project_root
 from .embedder import Embedder
+
+logger = AgentLogger(__name__)
 
 
 class Memory:
@@ -105,11 +108,13 @@ class Memory:
         content_id = self._generate_id(content)
         
         # Check if content already exists
-        if self.get_by_content(content) is not None:
+        if self.get_by_content(content)[0] is not None:
+            logger.info(f"Content already exists: {content_id}")
             return
         
         # Compute vector if not provided
         if vector is None:
+            logger.info(f"Computing vector for content: {content_id}")
             # Ensure embedder is fitted with current content for consistent dimensions
             if not self.embedder._fitted:
                 self.embedder.fit([content])
@@ -143,7 +148,7 @@ class Memory:
             rows = cursor.fetchall()
             
             if not rows:
-                return None
+                return None, {}
             
             # Find most similar vector
             vectors = [self._blob_to_vector(row[0]) for row in rows]
@@ -155,7 +160,7 @@ class Memory:
                 metadata = json.loads(rows[idx][2]) if rows[idx][2] else {}
                 return content, metadata
         
-        return None
+        return None, {}
     
     def get_by_content(self, content: str) -> Optional[Tuple[List[float], Dict]]:
         """
@@ -179,7 +184,7 @@ class Memory:
                 metadata = json.loads(row[1]) if row[1] else {}
                 return vector, metadata
         
-        return None
+        return None, {}
     
     def search(self, query: str, top_k: int = 5) -> List[Tuple[str, float, Dict]]:
         """
