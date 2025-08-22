@@ -77,6 +77,25 @@ class LLMClient(ABC):
     ) -> Optional[Union[List[float], List[List[float]]]]:
         """Get embeddings for the given text"""
         pass
+
+    @abstractmethod
+    async def chat(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        **kwargs
+    ) -> Optional[str]:
+        """Chat with the LLM"""
+        pass
+    
+    @abstractmethod
+    async def embedding(
+        self,
+        text: Union[str, List[str]],
+        **kwargs
+    ) -> Optional[Union[List[float], List[List[float]]]]:
+        """Get embeddings for the given text"""
+        pass
     
     def _should_use_temperature(self, model_name: str) -> bool:
         """Check if temperature parameter should be used for the given model"""

@@ -2,12 +2,15 @@ import yaml
 from string import Template
 from typing import Dict, Any
 
+# Internal imports
 from ..agent_logger.agent_logger import AgentLogger
 
 logger = AgentLogger('PromptLoader')
 
 class PromptLoader:
     def __init__(self, file_path: str = None):
+        if not file_path.exists():
+            raise FileNotFoundError(f"Prompt file not found: {file_path}")
         with open(file_path, 'r', encoding='utf-8') as file:
             self.prompt_data = yaml.safe_load(file)
     

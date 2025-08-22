@@ -1,17 +1,27 @@
-from __future__ import annotations  # 支持Python3.8+的前向注解
+from __future__ import annotations
 
 import uvicorn
 from typing import Optional
+import datetime
+import pytz
 
 # A2A framework imports
 from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.events import EventQueue
+from a2a.server.events import EventQueue, event_queue
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.apps import A2AStarletteApplication
 from a2a.types import AgentCard
+from a2a.utils import (
+    new_agent_text_message, new_agent_parts_message, new_artifact,
+    new_data_artifact, new_task, new_text_artifact
+)
+from a2a.types import (
+    Artifact, Message, Role, Task, TaskStatus, TaskState, 
+    FilePart, Part, FileWithBytes, TextPart, MessageSendParams
+)
 
-# Internal common logger
+# Internal imports
 from ..agent_logger.agent_logger import AgentLogger
 
 
@@ -28,25 +38,66 @@ class BaseA2AAgent(AgentExecutor):
         raise NotImplementedError("Subclasses must implement the `execute` method.")
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:  # noqa: D401
-        msg = (
-            f"Cancel operation is not supported by {self.agent_card.name}. "
-            "Override `cancel` if you need this capability."
+        context_id = getattr(context, 'context_id', 'unknown')
+        task_id = getattr(context, 'task_id', 'unknown')
+        self.logger.warning(f"Cancel request received - Context ID: {context_id}, Task ID: {task_id}")
+        error_info = f"Cancel operation is not supported by {self.agent_card.name}. This agent does not implement cancellation functionality."
+        raise Exception(error_info)
+
+    async def _task_failed(self, context: RequestContext, event_queue: EventQueue, error_info: str) -> None:
+        task_id = getattr(context, 'task_id', 'unknown')
+        context_id = getattr(context, 'context_id', 'unknown')
+        user_input = context.get_user_input() if hasattr(context, 'get_user_input') else 'unknown'
+        
+        # Create a more detailed error message with context
+        detailed_error = f"Task Execution Failed\nError: {error_info}\nContext:\n- Task ID: {task_id}\n- User Request: {user_input}\nPlease try again or contact support if the issue persists."
+        
+        self.logger.error(detailed_error)
+        try:
+            response_message = new_agent_text_message(detailed_error)
+            task = Task(
+                id=task_id,
+                contextId=context_id,
+                history=[response_message],
+                status=TaskStatus(
+                    state=TaskState.failed,
+                    timestamp=datetime.datetime.now(pytz.timezone('Asia/Shanghai')).replace(microsecond=0).isoformat()
+                )
+            )
+            await self._put_event(event_queue, task)
+            self.logger.debug("Detailed error response message sent to event queue")
+        except Exception as queue_error:
+            self.logger.error(f"Failed to add error response to event queue: {queue_error}")
+
+    async def _put_event(self, event_queue: EventQueue, task: Task) -> None:
+        try:
+            if hasattr(event_queue, 'enqueue_event') and callable(getattr(event_queue, 'enqueue_event')):
+                await event_queue.enqueue_event(task)
+                self.logger.debug("Event enqueued using enqueue_event method")
+            else:
+                await event_queue.put(task)
+                self.logger.debug("Event put using put method")
+        except Exception as queue_error:
+            error_info = "Failed to add event to event queue. This may indicate a communication issue with the event system."
+            self.logger.error(f"{error_info}: {queue_error}")
+        
+        await self.task_store.save(task)
+
+    async def test_input(self, user_input: str) -> None:
+        self.logger.info(f"Testing input: {user_input}")
+        request = MessageSendParams(
+            message=new_agent_text_message(user_input),
         )
-        self.logger.warning(msg)
-        raise NotImplementedError(msg)
+        context = RequestContext(request=request)
+        event_queue = EventQueue()
+        await self.execute(context, event_queue)
+        event = await event_queue.dequeue_event()
+        self.logger.info(f"Event: \n{event}")
+        await event_queue.close()
 
-    # ------------------------------------------------------------------
-    # 便捷的服务启动封装（实例方法）
-    # ------------------------------------------------------------------
     def run_server(self, *, host: Optional[str] = None, port: Optional[int] = None, log_level: str = "info") -> None:
-        """启动符合 A2A 协议的 Starlette 服务。
-
-        如果 ``host`` 或 ``port`` 未显式提供，则会从 ``self.agent_card.url`` 自动解析。
-        """
-
         from urllib.parse import urlparse
 
-        # 解析 host/port
         if host is None or port is None:
             parsed = urlparse(self.agent_card.url)
             auto_host = parsed.hostname or "0.0.0.0"
@@ -54,13 +105,10 @@ class BaseA2AAgent(AgentExecutor):
             host = host or auto_host
             port = port or auto_port
 
-        server_logger = AgentLogger(f"{self.__class__.__name__}Server")
-
-        server_logger.info(
-            f"Launching {self.__class__.__name__} – Host: {host}, Port: {port}, URL: {self.agent_card.url}"
+        self.logger.info(
+            f"Launching {self.agent_card.name} – Host: {host}, Port: {port}, URL: {self.agent_card.url}"
         )
 
-        # 使用已有 task_store & 自身 executor
         request_handler = DefaultRequestHandler(
             agent_executor=self,
             task_store=self.task_store,
@@ -72,6 +120,3 @@ class BaseA2AAgent(AgentExecutor):
         )
 
         uvicorn.run(app_builder.build(), host=host, port=port, log_level=log_level)
-
-
-__all__ = ["BaseA2AAgent"]

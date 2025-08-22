@@ -108,7 +108,7 @@ class AzureClient(LLMClient):
         self, 
         system_prompt: str, 
         user_prompt: str,
-        model_name: str = 'gpt-4o',
+        model_name: str = 'o3-mini',
         max_tokens: int = 8000,
         temperature: Optional[float] = 0.7,
         **kwargs
