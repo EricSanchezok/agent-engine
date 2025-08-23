@@ -107,14 +107,14 @@ class ArxivSearchAgent(BaseA2AAgent):
 
         logger.info(f"Using query string: {query_string}")
         try:
-            papers: List[Paper] = await self.arxiv_fetcher.invoke(query_string)
+            papers: List[Paper] = await self.arxiv_fetcher.search(query_string)
             logger.info(f"Found {len(papers)} papers")
         except Exception as e:
             logger.error(f"Paper fetching failed: {str(e)}")
             await self._task_failed(context, event_queue, f"ArXiv fetcher error: {e}")
             return
 
-        json_content = json.dumps([paper.package() for paper in papers], ensure_ascii=False, indent=4)
+        json_content = json.dumps([paper.info for paper in papers], ensure_ascii=False, indent=4)
         parts = [Part(root=TextPart(text=json_content))]
 
         artifact = Artifact(

@@ -35,19 +35,19 @@ AGENT_SKILLS = [
         name='获取论文PDF',
         name_en='Fetch Papers as PDF',
         description=(
-            '接收一个JSON对象作为输入，其中包含 `paper_ids` (ArXiv ID的列表)。'
+            '接收一个JSON对象作为输入，其中包含 `arxiv_ids` (ArXiv ID的列表)。'
             '代理会下载列表中每篇论文的PDF文件，并将其内容进行Base64编码。'
             '最终返回一个JSON格式的列表，其中每一项都是对应论文PDF文件的Base64编码字符串。'
         ),
         description_en=(
-            'Receives a JSON object as input, containing `paper_ids` (a list of ArXiv IDs). '
+            'Receives a JSON object as input, containing `arxiv_ids` (a list of ArXiv IDs). '
             'The agent downloads the PDF file for each paper in the list and encodes its content into Base64. '
             'It returns a JSON-formatted list where each item is the Base64 encoded string of the corresponding paper\'s PDF file.'
         ),
         tags=['fetch', 'download', 'pdf', 'base64', '获取', '下载', '文件', 'IO'],
         examples=[
             json.dumps({
-                "paper_ids": [
+                "arxiv_ids": [
                     "2508.12345",
                     "2507.67890"
                 ]

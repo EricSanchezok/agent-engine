@@ -83,7 +83,7 @@ class PaperFilterAgent(BaseA2AAgent):
                 return
 
             try:
-                papers: List[Paper] = await self.arxiv_fetcher.invoke(id_list=arxiv_ids)
+                papers: List[Paper] = await self.arxiv_fetcher.search(id_list=arxiv_ids)
             except Exception as e:
                 await self._task_failed(context, event_queue, f"Can't fetch the papers: {e}")
                 return
@@ -97,13 +97,19 @@ class PaperFilterAgent(BaseA2AAgent):
             
             valid_papers: List[Paper] = []
             valid_vectors: List[List[float]] = []
-            for paper, vector in result:
+            for item in result:
+                # 跳过异常
+                if isinstance(item, Exception):
+                    logger.error(f"Embedding task returned exception: {item}")
+                    continue
+                paper, vector = item  # type: ignore[misc]
                 if vector is not None:
                     valid_papers.append(paper)
                     valid_vectors.append(vector)
             
             if not valid_papers:
                 await self._task_failed(context, event_queue, f"No valid papers found")
+                return
 
             qiji_vectors = list(self.arxiv_qiji_memory.get_all_vectors().values())
 
@@ -158,12 +164,12 @@ class PaperFilterAgent(BaseA2AAgent):
 
         else:
             await self._task_failed(context, event_queue, f"Can't find the skill: {skill_id}")
-
+            return
 
     async def _embed_paper(self, idx, paper: Paper) -> Tuple[Paper, List[float]]:
         async with self.semaphore:
             logger.debug(f"Processing paper {idx} with {paper.id}")
-            summary = paper.summary
+            summary = paper.info.get('summary', '')
             try:
                 vector, _ = self.arxiv_memory.get_by_content(summary)
                 if vector is None:
@@ -249,7 +255,7 @@ async def build_arxiv_qiji_memory():
 
     for paper in papers:
         paper_id = paper.id
-        summary = paper.summary
+        summary = paper.info['summary']
         vector, _ = agent.arxiv_memory.get_by_content(summary)
         if vector is None:
             vector = await agent.llm_client.embedding(summary, model_name='text-embedding-3-large')

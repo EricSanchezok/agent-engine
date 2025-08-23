@@ -11,7 +11,6 @@ set PYTHONPATH=%PROJECT_ROOT%
 :: Check if parameters are provided
 if "%~1"=="" (
     echo Usage: run.bat ^<python_file_path^>
-    echo Example: run.bat test\test.py
     exit /b 1
 )
 

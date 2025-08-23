@@ -40,7 +40,7 @@ AGENT_SKILLS = [
             '可以额外传入 `max_recommendations` (整数) 来限制推荐数量，若不提供则默认为16。'
         ),
         description_en=(
-            'Receives a JSON object as input, containing `paper_ids` (a list of ArXiv IDs). '
+            'Receives a JSON object as input, containing `arxiv_ids` (a list of ArXiv IDs). '
             'The agent will internally fetch the full paper metadata for these IDs and perform intelligent '
             'filtering and ranking based on its preset internal logic. '
             'It returns a JSON-formatted list of recommended ArXiv IDs, and the order of the list represents the recommendation order. '

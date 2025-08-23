@@ -10,3 +10,4 @@ categories = [
 ]
 
 CATEGORIES_QUERY_STRING = f"({' OR '.join([f'cat:{cat}' for cat in categories])})"
+

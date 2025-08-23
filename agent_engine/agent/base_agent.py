@@ -95,6 +95,17 @@ class BaseA2AAgent(AgentExecutor):
         self.logger.info(f"Event: \n{event}")
         await event_queue.close()
 
+    async def test_message(self, message: Message) -> None:
+        request = MessageSendParams(
+            message=message,
+        )
+        context = RequestContext(request=request)
+        event_queue = EventQueue()
+        await self.execute(context, event_queue)
+        event = await event_queue.dequeue_event()
+        self.logger.info(f"Event: \n{event}")
+        await event_queue.close()
+
     def run_server(self, *, host: Optional[str] = None, port: Optional[int] = None, log_level: str = "info") -> None:
         from urllib.parse import urlparse
 
