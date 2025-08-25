@@ -4,6 +4,8 @@ import uvicorn
 from typing import Optional
 import datetime
 import pytz
+from holos_sdk.types import TaskPlan
+from holos_sdk.plant_tracer import PlantTracer
 
 # A2A framework imports
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -30,6 +32,10 @@ class BaseA2AAgent(AgentExecutor):
     def __init__(self, agent_card: AgentCard, task_store: Optional[InMemoryTaskStore] = None):
         self.agent_card: AgentCard = agent_card
         self.task_store: InMemoryTaskStore = task_store if task_store else InMemoryTaskStore()
+        # self.tracer = PlantTracer(
+        #     creator_id=self.agent_card.name,
+        #     base_url=self.agent_card.url
+        # )
 
         self.logger = AgentLogger(self.agent_card.name)
 
