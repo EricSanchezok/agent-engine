@@ -30,28 +30,28 @@ CAPABILITIES = AgentCapabilities(
 )
 
 AGENT_SKILLS = [
-    AgentSkill(
-        id='search_papers_with_query_string',
-        name='ArXiv原生字符串搜索',
-        name_en='Search Papers with ArXiv Query String',
-        description=(
-            '通过ArXiv API支持的原生查询字符串执行高级文献检索。这允许使用布尔运算符（AND, OR, ANDNOT）、'
-            '字段限定符（如 ti: 表示标题, cat: 表示分类）和日期范围（submittedDate:[YYYYMMDD TO YYMMDD]）进行复杂查询。'
-            '此技能适用于需要构建精细、复杂查询逻辑的场景。'
-            '执行成功后，返回一个JSON格式的字符串，其中包含所有检索到的论文元数据（标题、作者、摘要等）的列表。'
-        ),
-        description_en=(
-            'Performs an advanced literature search using a native query string supported by the ArXiv API. '
-            'This allows for complex queries using Boolean operators (AND, OR, ANDNOT), field prefixes '
-            '(e.g., ti: for title, cat: for category), and date ranges (submittedDate:[YYYYMMDD TO YYYYMMDD]). '
-            'This skill is suitable for scenarios requiring the construction of fine-grained, complex query logic. '
-            'Upon successful execution, it returns a JSON-formatted string containing a list of all retrieved paper metadata (title, authors, summary, etc.).'
-        ),
-        tags=['arxiv', 'query string', 'search', 'advanced search', '学术', '论文检索', '高级搜索'],
-        examples=[
-            '(ti:"artificial intelligence" OR cat:cs.AI) AND submittedDate:[20250802 TO 20250803]'
-        ],
-    ),
+    # AgentSkill(
+    #     id='search_papers_with_query_string',
+    #     name='ArXiv原生字符串搜索',
+    #     name_en='Search Papers with ArXiv Query String',
+    #     description=(
+    #         '通过ArXiv API支持的原生查询字符串执行高级文献检索。这允许使用布尔运算符（AND, OR, ANDNOT）、'
+    #         '字段限定符（如 ti: 表示标题, cat: 表示分类）和日期范围（submittedDate:[YYYYMMDD TO YYMMDD]）进行复杂查询。'
+    #         '此技能适用于需要构建精细、复杂查询逻辑的场景。'
+    #         '执行成功后，返回一个JSON格式的字符串，其中包含所有检索到的论文元数据（标题、作者、摘要等）的列表。'
+    #     ),
+    #     description_en=(
+    #         'Performs an advanced literature search using a native query string supported by the ArXiv API. '
+    #         'This allows for complex queries using Boolean operators (AND, OR, ANDNOT), field prefixes '
+    #         '(e.g., ti: for title, cat: for category), and date ranges (submittedDate:[YYYYMMDD TO YYYYMMDD]). '
+    #         'This skill is suitable for scenarios requiring the construction of fine-grained, complex query logic. '
+    #         'Upon successful execution, it returns a JSON-formatted string containing a list of all retrieved paper metadata (title, authors, summary, etc.).'
+    #     ),
+    #     tags=['arxiv', 'query string', 'search', 'advanced search', '学术', '论文检索', '高级搜索'],
+    #     examples=[
+    #         '(ti:"artificial intelligence" OR cat:cs.AI) AND submittedDate:[20250802 TO 20250803]'
+    #     ],
+    # ),
     AgentSkill(
         id='search_papers_with_text',
         name='自然语言论文搜索',
