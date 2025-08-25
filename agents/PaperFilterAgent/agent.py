@@ -242,13 +242,13 @@ async def build_arxiv_qiji_memory():
     with open(output_filename, "w", encoding="utf-8") as f:
         json.dump(final_ids, f, ensure_ascii=False, indent=4)
 
-    papers: List[Paper] = await agent.arxiv_fetcher.invoke(id_list=final_ids)
+    papers: List[Paper] = await agent.arxiv_fetcher.search(id_list=final_ids)
 
     logger.info(f"papers: {len(papers)}")
 
     categories = set()
     for paper in papers:
-        categories.update(paper.categories)
+        categories.update(paper.info['categories'])
     logger.info(categories)
 
     for paper in papers:
@@ -276,4 +276,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(build_arxiv_qiji_memory())
