@@ -28,6 +28,8 @@ from typing import List
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+import time
+import datetime as _dt
 
 # Agent imports -------------------------------------------------------------
 from agents.PaperFilterAgent.agent import PaperFilterAgent  # type: ignore
@@ -204,29 +206,34 @@ def run_for_date(date_str: str):
     # Execute the main pipeline
     asyncio.run(_run_flow_for_date(date_str))
 
-
 def schedule_daily():
     """启动定时任务：每天 09:00 (Asia/Shanghai) 处理前一天数据。"""
     tz = pytz.timezone("Asia/Shanghai")
 
     def _job_wrapper():
+        # 在实际任务中获取时间，而不是在定义时
         yesterday = (_dt.datetime.now(tz) - _dt.timedelta(days=1)).strftime("%Y%m%d")
         run_for_date(yesterday)
 
     scheduler = BackgroundScheduler(timezone=tz)
-    trigger = CronTrigger(hour=9, minute=0)
+    # 每天的9点0分执行
+    trigger = CronTrigger(hour=9, minute=0, second=0) 
     scheduler.add_job(_job_wrapper, trigger, id="signal_frontier_daily")
     scheduler.start()
     logger.info("Daily SignalFrontier pipeline scheduled at 09:00 Asia/Shanghai")
 
-    # 防止脚本退出
+    # 防止主线程退出
     try:
         while True:
-            asyncio.sleep(3600)
+            # 使用 time.sleep() 来阻塞主线程
+            time.sleep(3600)
     except (KeyboardInterrupt, SystemExit):
+        logger.info("Scheduler shutting down...")
         scheduler.shutdown()
+        logger.info("Scheduler has been shut down.")
 
 
 if __name__ == "__main__":
-    _flush_daily_reports("20250820")
+    # _flush_daily_reports("20250820")
     # run_for_date("20250820")
+    schedule_daily()
