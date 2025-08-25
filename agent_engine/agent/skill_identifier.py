@@ -62,8 +62,7 @@ class SkillIdentifier:
 
         system_prompt = self.prompt_loader.get_prompt(
             section='task_purifier',
-            prompt_type='system',
-            skills_desc=skills_desc
+            prompt_type='system'
         )
         user_prompt = self.prompt_loader.get_prompt(
             section='task_purifier',
