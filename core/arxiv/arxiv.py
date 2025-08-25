@@ -29,7 +29,7 @@ class ArXivFetcher:
 
     async def search(self, query_string: str = "", id_list: List[str] = [], max_results: int = 10000) -> List[Paper]:
         if query_string == "":
-            logger.info(f"Fetching papers with id_list: {id_list}")
+            logger.info(f"Fetching papers with {len(id_list)} ids")
         else:
             logger.info(f"Fetching papers with query: {query_string}")
 

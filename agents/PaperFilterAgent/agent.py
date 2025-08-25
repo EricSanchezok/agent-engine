@@ -39,15 +39,58 @@ from agent_engine.memory import Memory
 from agent_engine.utils import get_relative_path_from_current_file, get_current_file_dir
 
 # Core imports
-from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING
+from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING, ArxivIdParser
 from core.utils import DateFormatter
 
 # Local imports
-from agents.PaperFilterAgent.config import AGENT_CARD
+from agents.PaperFilterAgent.config import AGENT_CARD, DEFAULT_MAX_RECOMMENDATIONS
 
 logger = AgentLogger(__name__)
 
 load_dotenv()
+
+def find_arxiv_ids_in_docx(file_path):
+    try:
+        document = docx.Document(file_path)
+        arxiv_ids = []
+        arxiv_pattern = re.compile(r'https?://arxiv\.org/[\w/.-?=&]+')
+
+        for para in document.paragraphs:
+            found_ids = arxiv_pattern.findall(para.text)
+            arxiv_ids.extend(found_ids)
+
+        for table in document.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        found_ids = arxiv_pattern.findall(para.text)
+                        arxiv_ids.extend(found_ids)
+
+        rels = document.part.rels
+        for rel in rels:
+            if rels[rel].reltype.endswith('hyperlink'):
+                link_url = rels[rel]._target
+                if arxiv_pattern.match(link_url):
+                    arxiv_ids.append(link_url)
+                    
+        return list(set(arxiv_ids))
+    except Exception as e:
+        print(f"Process {file_path} error: {e}")
+        return []
+
+def extract_arxiv_ids(urls):
+    id_pattern = re.compile(r"(\d+\.\d+)")
+    
+    found_ids = []
+    for url in urls:
+        match = id_pattern.search(url)
+        if match:
+            arxiv_id = match.group(1)
+            found_ids.append(arxiv_id)
+            
+    unique_ids = list(set(found_ids))
+    
+    return unique_ids
 
 class PaperFilterAgent(BaseA2AAgent):
     def __init__(self):
@@ -60,6 +103,10 @@ class PaperFilterAgent(BaseA2AAgent):
         self.arxiv_fetcher = ArXivFetcher()
         self.date_formatter = DateFormatter()
         self.semaphore = asyncio.Semaphore(32)
+        self.arxiv_id_parser = ArxivIdParser(self.llm_client)
+        
+        # Initialize qiji memory in background
+        asyncio.create_task(self._initialize_qiji_memory())
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         task_id = context.task_id if context.task_id else str(uuid4())
@@ -70,16 +117,12 @@ class PaperFilterAgent(BaseA2AAgent):
         logger.info(f"Skill ID: {skill_id}, Reason: {reason}")
 
         if skill_id == 'filter_and_recommend':
-            try:
-                arxiv_json = json.loads(user_input)
-                arxiv_ids = arxiv_json.get('arxiv_ids', [])
-                max_recommendations = arxiv_json.get('max_recommendations', 16)
-            except Exception as e:
-                await self._task_failed(context, event_queue, f"Can't parse the input: {e}")
-                return
-
+            # Try to parse arxiv_ids from user input
+            arxiv_ids = await self.arxiv_id_parser.extract_arxiv_ids(user_input)
+            max_recommendations = DEFAULT_MAX_RECOMMENDATIONS  # Use configurable default value
+            
             if not arxiv_ids:
-                await self._task_failed(context, event_queue, f"No arxiv ids provided")
+                await self._task_failed(context, event_queue, "No arxiv ids found in the input")
                 return
 
             try:
@@ -178,89 +221,75 @@ class PaperFilterAgent(BaseA2AAgent):
                 logger.error(f"Error embedding paper {idx}: {e}")
                 return paper, None
 
-def find_arxiv_ids_in_docx(file_path):
-    try:
-        document = docx.Document(file_path)
-        arxiv_ids = []
-        arxiv_pattern = re.compile(r'https?://arxiv\.org/[\w/.-?=&]+')
+    async def _initialize_qiji_memory(self):
+        """Initialize qiji memory by processing signals_qiji documents and embedding papers"""
+        try:
+            file_path = Path("database/signals_qiji")
+            if not file_path.exists():
+                logger.info("Signals qiji directory not found, skipping initialization")
+                return
+                
+            file_names = [f"{file_path}/{f.name}" for f in file_path.iterdir() if f.is_file()]
+            if not file_names:
+                logger.info("No files found in signals_qiji directory, skipping initialization")
+                return
+                
+            logger.info(f"Found {len(file_names)} files in signals_qiji directory")
 
-        for para in document.paragraphs:
-            found_ids = arxiv_pattern.findall(para.text)
-            arxiv_ids.extend(found_ids)
+            all_found_ids = []
+            for file in file_names:
+                all_found_ids.extend(find_arxiv_ids_in_docx(file))
 
-        for table in document.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for para in cell.paragraphs:
-                        found_ids = arxiv_pattern.findall(para.text)
-                        arxiv_ids.extend(found_ids)
-
-        rels = document.part.rels
-        for rel in rels:
-            if rels[rel].reltype.endswith('hyperlink'):
-                link_url = rels[rel]._target
-                if arxiv_pattern.match(link_url):
-                    arxiv_ids.append(link_url)
-                    
-        return list(set(arxiv_ids))
-    except Exception as e:
-        print(f"Process {file_path} error: {e}")
-        return []
-
-def extract_arxiv_ids(urls):
-    id_pattern = re.compile(r"(\d+\.\d+)")
-    
-    found_ids = []
-    for url in urls:
-        match = id_pattern.search(url)
-        if match:
-            arxiv_id = match.group(1)
-            found_ids.append(arxiv_id)
+            unique_ids = list(set(all_found_ids))
+            final_ids = extract_arxiv_ids(unique_ids)
             
-    unique_ids = list(set(found_ids))
-    
-    return unique_ids
+            if not final_ids:
+                logger.info("No arXiv IDs found in signals_qiji documents, skipping initialization")
+                return
 
-async def build_arxiv_qiji_memory():
-    agent = PaperFilterAgent()
+            logger.info(f"Found {len(final_ids)} unique arXiv IDs from signals_qiji documents")
 
-    file_path = Path("database/signals_qiji")
-    file_names = [f"{file_path}/{f.name}" for f in file_path.iterdir() if f.is_file()]
-    logger.info(f"file_names: {len(file_names)}")
+            # Save IDs to file
+            output_filename = Path("database/arxiv_qiji/arxiv_qiji_ids.json")
+            output_filename.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_filename, "w", encoding="utf-8") as f:
+                json.dump(final_ids, f, ensure_ascii=False, indent=4)
 
-    all_found_ids = []
-    for file in file_names:
-        all_found_ids.extend(find_arxiv_ids_in_docx(file))
+            # Fetch papers
+            papers: List[Paper] = await self.arxiv_fetcher.search(id_list=final_ids)
+            logger.info(f"Fetched {len(papers)} papers for qiji memory initialization")
 
-    unique_ids = list(set(all_found_ids))
+            if not papers:
+                logger.warning("No papers fetched for qiji memory initialization")
+                return
 
-    final_ids = extract_arxiv_ids(unique_ids)
+            # Log categories
+            categories = set()
+            for paper in papers:
+                categories.update(paper.info['categories'])
+            logger.info(f"Paper categories: {categories}")
 
-    output_filename = Path("database/arxiv_qiji/arxiv_qiji_ids.json")
-    output_filename.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_filename, "w", encoding="utf-8") as f:
-        json.dump(final_ids, f, ensure_ascii=False, indent=4)
-
-    papers: List[Paper] = await agent.arxiv_fetcher.search(id_list=final_ids)
-
-    logger.info(f"papers: {len(papers)}")
-
-    categories = set()
-    for paper in papers:
-        categories.update(paper.info['categories'])
-    logger.info(categories)
-
-    for paper in papers:
-        paper_id = paper.id
-        summary = paper.info['summary']
-        vector, _ = agent.arxiv_memory.get_by_content(summary)
-        if vector is None:
-            vector = await agent.llm_client.embedding(summary, model_name='text-embedding-3-large')
-        agent.arxiv_qiji_memory.add(summary, vector)
-        agent.arxiv_memory.add(summary, vector)
-        logger.info(f"Saved {paper_id}")
-
+            # Use concurrent embedding with self._embed_paper
+            tasks = [self._embed_paper(idx, paper) for idx, paper in enumerate(papers)]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            success_count = 0
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(f"Embedding task returned exception: {result}")
+                else:
+                    paper, vector = result
+                    if vector is not None:
+                        # Additional step: save to qiji memory for papers from signals_qiji
+                        summary = paper.info.get('summary', '')
+                        if summary:
+                            self.arxiv_qiji_memory.add(summary, vector)
+                            success_count += 1
+                    
+            logger.info(f"Successfully initialized qiji memory with {success_count} papers")
+            
+        except Exception as e:
+            logger.error(f"Error during qiji memory initialization: {e}")
 
 async def main():
     ids = [
@@ -270,10 +299,9 @@ async def main():
     ]
     agent = PaperFilterAgent()
     await agent.run_user_input(json.dumps({
-        "arxiv_ids": ids,
-        "max_recommendations": 2
+        "arxiv_ids": ids
     }, ensure_ascii=False, indent=4))
 
 
 if __name__ == "__main__":
-    asyncio.run(build_arxiv_qiji_memory())
+    asyncio.run(main())

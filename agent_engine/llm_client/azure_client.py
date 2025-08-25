@@ -119,13 +119,27 @@ class AzureClient(LLMClient):
             {"role": "user", "content": user_prompt}
         ]
         
-        return await self.call_llm(
+        response = await self.call_llm(
             model_name=model_name,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
             **kwargs
         )
+        
+        # Save monitoring data if response is successful
+        if response is not None:
+            self._save_chat_monitoring(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                response=response,
+                model_name=model_name,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                **kwargs
+            )
+        
+        return response
     
     async def embedding(
         self, 

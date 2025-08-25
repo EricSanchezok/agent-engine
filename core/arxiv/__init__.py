@@ -1,11 +1,13 @@
 from .arxiv import ArXivFetcher
 from .paper_db import Paper, ArxivPaperDB
 from .config import CATEGORIES_QUERY_STRING
+from .arxiv_id_parser import ArxivIdParser
 
 
 __all__ = [
     'ArXivFetcher',
     'Paper',
     'ArxivPaperDB',
-    'CATEGORIES_QUERY_STRING'
+    'CATEGORIES_QUERY_STRING',
+    'ArxivIdParser'
 ]

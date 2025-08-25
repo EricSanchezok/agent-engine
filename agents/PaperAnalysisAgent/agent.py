@@ -49,7 +49,7 @@ from agent_engine.utils import get_relative_path_from_current_file, get_current_
 
 
 # Core imports
-from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING
+from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING, ArxivIdParser
 from core.utils import DateFormatter
 
 # Local imports
@@ -68,6 +68,7 @@ class PaperAnalysisAgent(BaseA2AAgent):
         self.prompt_loader = PromptLoader(get_relative_path_from_current_file('prompts.yaml'))
         self.semaphore = asyncio.Semaphore(32)
         self.paper_fetch_agent = PaperFetchAgent()
+        self.arxiv_id_parser = ArxivIdParser(self.llm_client)
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         task_id = context.task_id if context.task_id else str(uuid4())

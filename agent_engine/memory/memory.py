@@ -109,7 +109,7 @@ class Memory:
         
         # Check if content already exists
         if self.get_by_content(content)[0] is not None:
-            logger.info(f"Content already exists: {content_id}")
+            # logger.info(f"Content already exists: {content_id}")
             return
         
         # Compute vector if not provided

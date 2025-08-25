@@ -45,7 +45,7 @@ from agent_engine.utils import get_relative_path_from_current_file, get_current_
 
 
 # Core imports
-from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING
+from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING, ArxivIdParser
 from core.utils import DateFormatter
 
 # Local imports
@@ -64,6 +64,7 @@ class PaperFetchAgent(BaseA2AAgent):
         self.arxiv_fetcher = ArXivFetcher()
         self.date_formatter = DateFormatter()
         self.semaphore = asyncio.Semaphore(32)
+        self.arxiv_id_parser = ArxivIdParser(self.llm_client)
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         task_id = context.task_id if context.task_id else str(uuid4())
@@ -80,15 +81,11 @@ class PaperFetchAgent(BaseA2AAgent):
                 return _paper
 
         if skill_id == 'fetch_papers_as_pdf':
-            try:
-                arxiv_json = json.loads(user_input)
-                arxiv_ids = arxiv_json.get('arxiv_ids', [])
-            except Exception as e:
-                await self._task_failed(context, event_queue, f"Can't parse the input: {e}")
-                return
-
+            # Try to parse arxiv_ids from user input
+            arxiv_ids = await self.arxiv_id_parser.extract_arxiv_ids(user_input)
+            
             if not arxiv_ids:
-                await self._task_failed(context, event_queue, f"No arxiv ids provided")
+                await self._task_failed(context, event_queue, "No arxiv ids found in the input")
                 return
 
             try:
@@ -188,13 +185,8 @@ class PaperFetchAgent(BaseA2AAgent):
 
 async def main():
     agent = PaperFetchAgent()
-    await agent.run_user_input(json.dumps({
-        "arxiv_ids": [
-            "2508.15697",
-            "2508.15692",
-            "2508.15678"
-        ]
-    }, ensure_ascii=False, indent=4))
+    user_input = '帮我下载2508.15697,2508.15692,2508_15678'
+    await agent.run_user_input(user_input)
 
 
 if __name__ == "__main__":
