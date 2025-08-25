@@ -12,7 +12,10 @@ from agent_engine.prompt import PromptLoader
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.utils import get_relative_path_from_current_file
 
-logger = AgentLogger(__name__)
+# Local imports
+from agents.ArxivSearchAgent.config import LOG_DIR
+
+logger = AgentLogger(__name__, log_dir=LOG_DIR)
 
 load_dotenv()
 

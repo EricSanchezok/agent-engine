@@ -53,10 +53,10 @@ from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING, ArxivIdPars
 from core.utils import DateFormatter
 
 # Local imports
-from agents.PaperAnalysisAgent.config import AGENT_CARD
+from agents.PaperAnalysisAgent.config import AGENT_CARD, LOG_DIR
 from agents.PaperFetchAgent.agent import PaperFetchAgent
 
-logger = AgentLogger(__name__)
+logger = AgentLogger(__name__, log_dir=LOG_DIR)
 
 load_dotenv()
 

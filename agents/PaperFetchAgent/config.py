@@ -5,8 +5,9 @@ import base64
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities, AgentProvider
 
 # AgentEngine imports
-from agent_engine.utils import get_local_ip
+from agent_engine.utils import get_local_ip, get_current_file_dir
 
+LOG_DIR = get_current_file_dir() / 'logs'
 
 AGENT_NAME = 'PaperFetchAgent'
 AGENT_DESCRIPTION = '根据输入的论文 ID 列表，获取并下载这些论文的 PDF 实体文件。该代理专注于处理 I/O 操作。'

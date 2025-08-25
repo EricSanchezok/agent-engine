@@ -45,7 +45,10 @@ from core.utils import DateFormatter
 # Local imports
 from agents.PaperFilterAgent.config import AGENT_CARD, DEFAULT_MAX_RECOMMENDATIONS
 
-logger = AgentLogger(__name__)
+# Local imports
+from agents.PaperFilterAgent.config import LOG_DIR
+
+logger = AgentLogger(__name__, log_dir=LOG_DIR)
 
 load_dotenv()
 

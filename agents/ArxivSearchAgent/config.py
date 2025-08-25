@@ -4,8 +4,9 @@ import json
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities, AgentProvider
 
 # AgentEngine imports
-from agent_engine.utils import get_local_ip
+from agent_engine.utils import get_local_ip, get_current_file_dir
 
+LOG_DIR = get_current_file_dir() / 'logs'
 
 AGENT_NAME = 'ArxivSearchAgent'
 AGENT_DESCRIPTION = '根据结构化查询 (JSON) 或自然语言指令 (Text)，在 Arxiv 数据库上执行文献检索，并返回原始的论文元数据列表。'
