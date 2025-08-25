@@ -50,7 +50,14 @@ skill_identifier:
         "skill_id": "ID",  // 无匹配时保持为空
         "reason": "给用户的20字内的简短理由" // 解释匹配或不匹配的原因
       }
-
+  
+  user_prompt:
+    _type: prompt
+    input_variables: ["user_input"]
+    template: |
+      用户输入: {user_input}
+      
+      请严格按照规则执行，包含决策理由
 
 
 error_feedback:
