@@ -14,11 +14,12 @@ from a2a.server.apps import A2AStarletteApplication
 from a2a.types import AgentCard
 from a2a.utils import (
     new_agent_text_message, new_agent_parts_message, new_artifact,
-    new_data_artifact, new_task, new_text_artifact
+    new_data_artifact, new_task
 )
 from a2a.types import (
     Artifact, Message, Role, Task, TaskStatus, TaskState, 
-    FilePart, Part, FileWithBytes, TextPart, MessageSendParams
+    FilePart, Part, FileWithBytes, TextPart, MessageSendParams,
+    TaskStatusUpdateEvent, TaskArtifactUpdateEvent
 )
 
 # Internal imports
@@ -83,8 +84,8 @@ class BaseA2AAgent(AgentExecutor):
         
         await self.task_store.save(task)
 
-    async def test_input(self, user_input: str) -> None:
-        self.logger.info(f"Testing input: {user_input}")
+    async def run_user_input(self, user_input: str) -> Optional[Task, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent]:
+        self.logger.info(f"Running user input: {user_input}")
         request = MessageSendParams(
             message=new_agent_text_message(user_input),
         )
@@ -92,10 +93,11 @@ class BaseA2AAgent(AgentExecutor):
         event_queue = EventQueue()
         await self.execute(context, event_queue)
         event = await event_queue.dequeue_event()
-        self.logger.info(f"Event: \n{event}")
         await event_queue.close()
+        return event
 
-    async def test_message(self, message: Message) -> None:
+    async def run_message(self, message: Message) -> Optional[Task, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent]:
+        self.logger.info(f"Running message: {message}")
         request = MessageSendParams(
             message=message,
         )
@@ -103,8 +105,8 @@ class BaseA2AAgent(AgentExecutor):
         event_queue = EventQueue()
         await self.execute(context, event_queue)
         event = await event_queue.dequeue_event()
-        self.logger.info(f"Event: \n{event}")
         await event_queue.close()
+        return event
 
     def run_server(self, *, host: Optional[str] = None, port: Optional[int] = None, log_level: str = "info") -> None:
         from urllib.parse import urlparse

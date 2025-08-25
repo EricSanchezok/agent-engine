@@ -92,7 +92,6 @@ def get_papers(start_date: str, end_date: str) -> List[Paper]:
     logger.info(f"Paper data fetching completed, total {len(papers)} papers")
     return papers
 
-
 def filter_papers_by_categories(papers: List[Paper], categories: List[str]) -> List[Paper]:
     """
     根据分类过滤论文
@@ -125,11 +124,11 @@ def filter_papers_by_categories(papers: List[Paper], categories: List[str]) -> L
 # -----------------------------------------------------------------------------
 
 def get_report(paper: Paper) -> str:
-    """Return the report text stored in ``paper.metadata['report']`` (if any)."""
+    """Return daily pipeline report text if ``metadata['report_source']`` is ``'daily'``."""
     if getattr(paper, "metadata", None):
-        return paper.metadata.get("report", "") or ""
+        if paper.metadata.get("report_source") == "daily":
+            return paper.metadata.get("report", "") or ""
     return ""
-
 
 def generate_paper_id(paper: Paper) -> str:
     paper_hash = hashlib.sha256(paper.info.get("title", "").encode("utf-8")).hexdigest()

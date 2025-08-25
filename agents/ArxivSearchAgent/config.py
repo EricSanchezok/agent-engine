@@ -19,7 +19,7 @@ AGENT_HOST = get_local_ip()
 AGENT_PORT = 9900
 AGENT_URL = f'http://{AGENT_HOST}:{AGENT_PORT}/'
 
-INPUT_MODES = ['text/plain', 'application/json'] 
+INPUT_MODES = ['text/plain'] 
 OUTPUT_MODES = ['application/json']
 
 CAPABILITIES = AgentCapabilities(

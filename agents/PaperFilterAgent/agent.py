@@ -125,8 +125,6 @@ class PaperFilterAgent(BaseA2AAgent):
 
             sorted_papers = sorted(papers_with_similarity, key=lambda x: x[1], reverse=True)
 
-            print(sorted_papers)
-
             top_papers = sorted_papers[:max_recommendations]
 
             result_ids = [paper.id.replace('_', '.') for paper, _ in top_papers]
@@ -271,7 +269,7 @@ async def main():
         '2508.15678'
     ]
     agent = PaperFilterAgent()
-    await agent.test_input(json.dumps({
+    await agent.run_user_input(json.dumps({
         "arxiv_ids": ids,
         "max_recommendations": 2
     }, ensure_ascii=False, indent=4))

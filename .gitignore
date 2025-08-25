@@ -236,9 +236,9 @@ $RECYCLE.BIN/
 .cache/
 
 # Test files and directories
-test/
-tests/
-testing/
+# test/
+# tests/
+# testing/
 
 # Log files
 *.log

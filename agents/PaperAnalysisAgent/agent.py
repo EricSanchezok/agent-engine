@@ -53,7 +53,8 @@ from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING
 from core.utils import DateFormatter
 
 # Local imports
-from agents.PaperFetchAgent.config import AGENT_CARD
+from agents.PaperAnalysisAgent.config import AGENT_CARD
+from agents.PaperFetchAgent.agent import PaperFetchAgent
 
 logger = AgentLogger(__name__)
 
@@ -66,77 +67,48 @@ class PaperAnalysisAgent(BaseA2AAgent):
         self.skill_identifier = SkillIdentifier(llm_client=self.llm_client, model_name='o3-mini')
         self.prompt_loader = PromptLoader(get_relative_path_from_current_file('prompts.yaml'))
         self.semaphore = asyncio.Semaphore(32)
-
-    def _pdf_base64_to_text(self, pdf_base64: str | FileWithBytes) -> str:
-        """Decode a PDF provided as base64 (string) or FileWithBytes and return extracted plain text."""
-        # Determine actual base64 string
-        if isinstance(pdf_base64, FileWithBytes):
-            b64_str = pdf_base64.bytes
-        else:
-            b64_str = pdf_base64
-
-        try:
-            pdf_bytes = base64.b64decode(b64_str)
-        except Exception as e:
-            logger.error(f"Base64 decode failed: {e}")
-            return ""
-
-        try:
-            reader = PdfReader(io.BytesIO(pdf_bytes))
-            text_parts = []
-            for page in reader.pages:
-                page_text = page.extract_text() or ""
-                text_parts.append(page_text)
-            return "\n".join(text_parts)
-        except Exception as e:
-            logger.error(f"PDF text extraction failed: {e}")
-            return ""
+        self.paper_fetch_agent = PaperFetchAgent()
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         task_id = context.task_id if context.task_id else str(uuid4())
         context_id = context.context_id if context.context_id else str(uuid4())
         user_input = context.get_user_input()
 
-        message = context.message
-        if message:
-            papers_base64 = []
-            parts = message.parts
-            for part in parts:
-                pdf_base64 = part.root.file
-                papers_base64.append(pdf_base64)
+        skill_id, reason = await self.skill_identifier.invoke(user_input, AGENT_CARD.skills)
+        logger.info(f"Skill ID: {skill_id}, Reason: {reason}")
+
+        papers_base64 = []
+        if skill_id == 'analyze_by_arxiv_ids':
+            event = await self.paper_fetch_agent.run_user_input(user_input)
+            if event:
+                artifact: Artifact = event.artifacts[0]
+                parts = artifact.parts
+                for part in parts:
+                    pdf_base64 = part.root.file
+                    papers_base64.append(pdf_base64)
+            else:
+                await self._task_failed(context, event_queue, f"No event returned")
+                return
+
+        elif skill_id == 'analyze_from_message_files':
+            message = context.message
+            if message:
+                parts = message.parts
+                for part in parts:
+                    pdf_base64 = part.root.file
+                    papers_base64.append(pdf_base64)
+            else:
+                await self._task_failed(context, event_queue, f"No message provided")
+                return
         else:
-            await self._task_failed(context, event_queue, f"No message provided")
+            await self._task_failed(context, event_queue, f"Unknown skill ID: {skill_id}")
             return
 
         if not papers_base64:
             await self._task_failed(context, event_queue, f"No papers base64 provided")
             return
 
-        async def analyze_paper(pdf_b64_or_obj) -> str:
-            async with self.semaphore:
-                system_prompt = self.prompt_loader.get_prompt(
-                    section='paper_parser',
-                    prompt_type='system'
-                )
-                paper_text = self._pdf_base64_to_text(pdf_b64_or_obj)
-                if not paper_text:
-                    logger.error("Empty text extracted from PDF. Skipping analysis.")
-                    return ''
-
-                user_prompt = self.prompt_loader.get_prompt(
-                    section='paper_parser',
-                    prompt_type='user',
-                    paper_full_text=paper_text
-                )
-
-                try:
-                    result = await self.llm_client.chat(system_prompt, user_prompt, model_name='o3')
-                    return result
-                except Exception as e:
-                    logger.error(f"Paper parser failed: {str(e)}")
-                    return ''
-
-        analyze_tasks = [analyze_paper(pdf_base64) for pdf_base64 in papers_base64]
+        analyze_tasks = [self.analyze_paper(pdf_base64) for pdf_base64 in papers_base64]
         analyze_results = await asyncio.gather(*analyze_tasks, return_exceptions=True)
 
         success_results = []
@@ -183,30 +155,98 @@ class PaperAnalysisAgent(BaseA2AAgent):
 
         await self._put_event(event_queue, task)
         logger.info(f"Analysis artifacts sent - {len(success_results)} papers successfully processed")
+    
+    async def draft_report(self, paper_full_text: str) -> str:
+        system_prompt = self.prompt_loader.get_prompt(
+            section='paper_parser',
+            prompt_type='system'
+        )
+        user_prompt = self.prompt_loader.get_prompt(
+            section='paper_parser',
+            prompt_type='user',
+            paper_full_text=paper_full_text
+        )
+        try:
+            result = await self.llm_client.chat(system_prompt, user_prompt, model_name='o3', max_tokens=100000)
+            return result
+        except Exception as e:
+            logger.error(f"Paper parser failed: {str(e)}")
+            return ''
 
+    async def review_paper(self,draft_report: str, paper_full_text: str) -> str:
+        system_prompt = self.prompt_loader.get_prompt(
+            section='paper_reviewer',
+            prompt_type='system'
+        )
+        user_prompt = self.prompt_loader.get_prompt(
+            section='paper_reviewer',
+            prompt_type='user',
+            draft_report=draft_report,
+            paper_full_text=paper_full_text
+        )
+
+        try:
+            result = await self.llm_client.chat(system_prompt, user_prompt, model_name='o3', max_tokens=100000)
+            return result
+        except Exception as e:
+            logger.error(f"Paper review failed: {str(e)}")
+            return ''
+
+    async def analyze_paper(self, pdf_b64_or_obj) -> str:
+        async with self.semaphore:
+            paper_text = self._pdf_base64_to_text(pdf_b64_or_obj)
+            if not paper_text:
+                logger.error("Empty text extracted from PDF. Skipping analysis.")
+                return ''
+
+            draft_report = await self.draft_report(paper_text)
+            if not draft_report:
+                logger.error("Empty draft report generated. Skipping analysis.")
+                return ''
+
+            review_report = await self.review_paper(draft_report, paper_text)
+            if not review_report:
+                logger.error("Empty review report generated. Skipping analysis.")
+                return ''
+
+            return review_report
+
+    def _pdf_base64_to_text(self, pdf_base64: str | FileWithBytes) -> str:
+        """Decode a PDF provided as base64 (string) or FileWithBytes and return extracted plain text."""
+        # Determine actual base64 string
+        if isinstance(pdf_base64, FileWithBytes):
+            b64_str = pdf_base64.bytes
+        else:
+            b64_str = pdf_base64
+
+        try:
+            pdf_bytes = base64.b64decode(b64_str)
+        except Exception as e:
+            logger.error(f"Base64 decode failed: {e}")
+            return ""
+
+        try:
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            text_parts = []
+            for page in reader.pages:
+                page_text = page.extract_text() or ""
+                text_parts.append(page_text)
+            return "\n".join(text_parts)
+        except Exception as e:
+            logger.error(f"PDF text extraction failed: {e}")
+            return ""
 
 async def main():
-    from core.arxiv import ArXivFetcher
-    fetcher = ArXivFetcher()
     ids = [
         '2508_15697',
         '2508.15692',
         '2508.15678'
     ]
-    parts = []
-    for _id in ids:
-        paper: Paper = fetcher.arxiv_paper_db.get(_id)
-        parts.append(Part(root=FilePart(file=FileWithBytes(bytes=paper.pdf_bytes, mime_type="application/pdf", name=f"{_id}.pdf"))))
-    
-    message = Message(
-        role=Role.user,
-        task_id=str(uuid4()),
-        message_id=str(uuid4()),
-        content_id=str(uuid4()),
-        parts=parts
-    )
+    user_input = json.dumps({
+        "arxiv_ids": ids
+    }, indent=4, ensure_ascii=False)
     agent = PaperAnalysisAgent()
-    await agent.test_message(message)
+    await agent.run_user_input(user_input)
 
 
 if __name__ == "__main__":

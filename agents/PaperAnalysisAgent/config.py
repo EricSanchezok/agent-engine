@@ -8,7 +8,7 @@ from agent_engine.utils import get_local_ip
 
 
 AGENT_NAME = 'PaperAnalysisAgent'
-AGENT_DESCRIPTION = '对输入的论文 PDF 文件进行深度分析和内容总结，根据用户要求生成结构化的分析报告。'
+AGENT_DESCRIPTION = '可根据用户提供的 ArXiv 论文 ID 或直接分析消息中附加的 PDF 文件，进行深度内容分析和总结，并生成结构化的解读报告。'
 AGENT_VERSION = '0.1.0'
 PROVIDER = AgentProvider(
     organization='EricSanchez',
@@ -19,7 +19,7 @@ AGENT_HOST = get_local_ip()
 AGENT_PORT = 9903
 AGENT_URL = f'http://{AGENT_HOST}:{AGENT_PORT}/'
 
-INPUT_MODES = ['application/json'] 
+INPUT_MODES = ['text/plain', 'application/json'] 
 OUTPUT_MODES = ['application/json']
 
 CAPABILITIES = AgentCapabilities(
@@ -30,27 +30,48 @@ CAPABILITIES = AgentCapabilities(
 
 AGENT_SKILLS = [
     AgentSkill(
-        id='generate_analysis_report',
-        name='生成论文解读报告',
-        name_en='Generate Paper Analysis Report',
+        id='analyze_by_arxiv_ids',
+        name='通过ArXiv ID解读论文',
+        name_en='Analyze Papers by ArXiv IDs',
         description=(
-            '接收一个JSON对象作为输入，其中包含 `papers_base64` (一个由PDF文件的Base64编码字符串组成的列表)。'
-            '代理会对列表中的每一份PDF进行深度内容分析和总结。'
+            '接收一个包含ArXiv论文ID列表的JSON对象，专门用于解读ArXiv平台上的论文。'
+            '代理会根据ID自动获取对应的论文并进行深度分析和总结。'
             '最终返回一个JSON格式的列表，其中每一项都是对应论文的Markdown格式解读报告。'
         ),
         description_en=(
-            'Receives a JSON object as input, containing `papers_base64` (a list of Base64 encoded strings from PDF files). '
-            'The agent performs an in-depth content analysis and summarization for each PDF in the list. '
+            'Receives a JSON object containing a list of ArXiv paper IDs, specialized for analyzing papers from the ArXiv platform. '
+            'The agent automatically fetches the corresponding papers based on the IDs and performs an in-depth analysis and summarization. '
             'It returns a JSON-formatted list where each item is the analysis report in Markdown format for the corresponding paper.'
         ),
-        tags=['analysis', 'summary', 'markdown', 'pdf', '解读', '总结', '报告', 'NLP'],
+        tags=['analysis', 'summary', 'markdown', 'pdf', 'arxiv', '解读', '总结', '报告', 'NLP', '论文'],
         examples=[
             json.dumps({
-                "papers_base64": [
-                    "JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFIvTGF...",
-                    "JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFIvTGF..."
+                "arxiv_ids": [
+                    "2402.19473",
+                    "2305.10601"
                 ]
             }, indent=4, ensure_ascii=False)
+        ],
+    ),
+    AgentSkill(
+        id='analyze_from_message_files',
+        name='解读附件中的论文PDF',
+        name_en='Analyze Paper PDFs from Message Attachments',
+        description=(
+            '此技能用于解读直接附加在A2A消息filepart中的论文PDF文件。'
+            '用户需要在消息中附加一个或多个论文PDF，并发送一条简单的文本指令。'
+            '代理会读取附件中的所有论文文件，进行深度内容分析和总结，并返回一个JSON格式的列表，其中每一项都是对应论文的Markdown格式解读报告。'
+        ),
+        description_en=(
+            'This skill analyzes paper PDF files attached directly in the filepart of an A2A message. '
+            'The user needs to attach one or more paper PDFs to the message and send a simple text instruction. '
+            'The agent will read all attached paper files, perform an in-depth content analysis and summarization, and return a JSON-formatted list where each item is the analysis report in Markdown format for the corresponding paper.'
+        ),
+        tags=['analysis', 'summary', 'markdown', 'pdf', 'file', 'attachment', '解读', '总结', '报告', 'NLP', '论文'],
+        examples=[
+            '帮我分析一下附件里的这几篇论文',
+            'Summarize the attached papers',
+            '对这几个论文文件进行内容总结和分析'
         ],
     )
 ]

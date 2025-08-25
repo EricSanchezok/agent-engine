@@ -15,20 +15,22 @@
 
 from __future__ import annotations
 
+# ---------------------------------------------------------------------------
+# Standard library imports
+# ---------------------------------------------------------------------------
+
 import asyncio
 import datetime as _dt
-import hashlib
 import logging
-from typing import List, Tuple
+from typing import List
 
+# Third-party imports
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 # Agent imports -------------------------------------------------------------
-from agents.ArxivSearchAgent.agent import ArxivSearchAgent  # type: ignore
 from agents.PaperFilterAgent.agent import PaperFilterAgent  # type: ignore
-from agents.PaperFetchAgent.agent import PaperFetchAgent  # type: ignore
 from agents.PaperAnalysisAgent.agent import PaperAnalysisAgent  # type: ignore
 
 # Core imports --------------------------------------------------------------
@@ -62,9 +64,45 @@ def _extract_ids(papers: List[Paper]) -> List[str]:
     return [p.id.replace("_", ".") for p in papers]
 
 # ---------------------------------------------------------------------------
-# 主流程
+# Database helpers
 # ---------------------------------------------------------------------------
 
+
+def _flush_daily_reports(date_str: str) -> None:
+    """Update `report_source` from *daily* to *agent* for all papers of the day.
+
+    This function scans the database for papers whose timestamp matches
+    ``date_str`` and whose ``metadata['report_source']`` is ``"daily"``. When
+    such a paper is found, the value is replaced with ``"agent"`` and the row
+    is overwritten. The business logic of the pipeline is **not** affected –
+    this is merely a data-consistency pre-processing step.
+
+    Parameters
+    ----------
+    date_str : str
+        The target date in ``YYYYMMDD`` format.
+    """
+
+    db = ArxivPaperDB("database/arxiv_paper_db.sqlite")
+    papers = db.get_by_date(date_str)
+
+    updated = 0
+    for paper in papers:
+        if paper.metadata.get("report_source") == "daily":
+            paper.metadata["report_source"] = "agent"
+            db.add(paper, overwrite=True)
+            updated += 1
+
+    if updated:
+        logger.info(
+            f"Updated report_source to 'agent' for {updated} papers on {date_str}"
+        )
+    else:
+        logger.info("No papers required report_source update.")
+
+# ---------------------------------------------------------------------------
+# 主流程
+# ---------------------------------------------------------------------------
 async def _run_flow_for_date(date_str: str):
     """异步执行完整流程。"""
     logger.info(f"===== Start SignalFrontier pipeline for {date_str} =====")
@@ -96,110 +134,49 @@ async def _run_flow_for_date(date_str: str):
 
     logger.info(f"PaperFilterAgent 留下 {len(filter_ids)} 篇论文")
 
-    # 3. 下载 --------------------------------------------------------------
-    logger.info("调用 PaperFetchAgent 下载 PDF…")
-    fetch_agent = PaperFetchAgent()
-    papers_with_pdf: List[Paper] = await _invoke_fetch_agent(fetch_agent, filter_ids)
-    logger.info(f"成功下载 {len(papers_with_pdf)} 篇论文 PDF")
-
-    if not papers_with_pdf:
-        logger.warning("下载后无有效 PDF，流程结束")
-        return
-
-    # 4. 解析 --------------------------------------------------------------
+    # 3. 解析 --------------------------------------------------------------
     logger.info("调用 PaperAnalysisAgent 生成报告…")
     analysis_agent = PaperAnalysisAgent()
-    await _invoke_analysis_agent(analysis_agent, papers_with_pdf)
+
+    analysis_input = {"arxiv_ids": filter_ids}
+    await _invoke_analysis_agent(analysis_agent, analysis_input)
 
     logger.info("===== Pipeline finished =====")
 
-# ---------------------------------------------------------------------------
-# 内部调用封装（利用 Agent 内部 API，但绕过 A2A 框架）
-# ---------------------------------------------------------------------------
-
 async def _invoke_filter_agent(agent: PaperFilterAgent, payload: dict) -> List[str]:
-    """利用 PaperFilterAgent 逻辑返回筛选 id 列表。"""
+    """利用 PaperFilterAgent 逻辑返回筛选 id 列表。
+    现在直接使用 BaseA2AAgent 提供的 `run_user_input` 高阶封装，
+    避免重复构造 EventQueue / RequestContext 等底层细节。
+    """
     import json
-    from a2a.server.events import EventQueue  # type: ignore
-    from a2a.server.agent_execution import RequestContext  # type: ignore
-    from a2a.utils import new_agent_text_message  # type: ignore
-    from a2a.types import MessageSendParams  # type: ignore
-    import uuid
 
-    queue = EventQueue()
-    msg = new_agent_text_message(json.dumps(payload, ensure_ascii=False))
-    context = RequestContext(request=MessageSendParams(message=msg))
-    await agent.execute(context, queue)
+    # 直接调用高级 API
+    event = await agent.run_user_input(json.dumps(payload, ensure_ascii=False))
 
-    event = await queue.dequeue_event()
-    if not event:
+    if not event or not event.artifacts:
         return []
-    # The dequeued object is already a Task instance in the current a2a version,
-    # hence we no longer need to access the deprecated ``event.task`` attribute.
-    task = event
-    if not task.artifacts:
-        return []
-    text_json = task.artifacts[0].parts[0].root.text  # type: ignore
+
+    # artifacts[0] 中应包含单个文本 part，内容为 JSON 数组字符串
     try:
+        text_json = event.artifacts[0].parts[0].root.text  # type: ignore
         ids = json.loads(text_json)
-        return ids
+        return ids if isinstance(ids, list) else []
     except Exception:
         return []
 
 
-async def _invoke_fetch_agent(agent: PaperFetchAgent, ids: List[str]) -> List[Paper]:
-    """利用 PaperFetchAgent 下载，并返回包含 pdf_bytes 的 Paper 列表。"""
+async def _invoke_analysis_agent(agent: PaperAnalysisAgent, payload: dict):
     import json
-    from a2a.server.events import EventQueue  # type: ignore
-    from a2a.server.agent_execution import RequestContext  # type: ignore
-    from a2a.utils import new_agent_text_message  # type: ignore
-    from a2a.types import MessageSendParams  # type: ignore
-    import uuid
 
-    queue = EventQueue()
-    msg = new_agent_text_message(json.dumps({"arxiv_ids": ids}, ensure_ascii=False))
-    context = RequestContext(request=MessageSendParams(message=msg))
-    await agent.execute(context, queue)
-
-    # 与 ArXivFetcher 使用相同的数据库文件保持一致
-    db = ArxivPaperDB("database/arxiv_paper_db.sqlite")
-    papers = [db.get(pid) for pid in ids]
-    return [p for p in papers if p and p.pdf_bytes]
-
-
-async def _invoke_analysis_agent(agent: PaperAnalysisAgent, papers: List[Paper]):
-    """利用 PaperAnalysisAgent 为每篇论文生成报告并保存到数据库（metadata['report']）。"""
-    from a2a.server.events import EventQueue  # type: ignore
-    from a2a.server.agent_execution import RequestContext  # type: ignore
-    from a2a.types import FilePart, Part, FileWithBytes, Message, Role, MessageSendParams  # type: ignore
-    import uuid
-
-    queue = EventQueue()
-
-    parts = [
-        Part(root=FilePart(file=FileWithBytes(name=f"{p.id}.pdf", mime_type="application/pdf", bytes=p.pdf_bytes)))  # type: ignore
-        for p in papers
-    ]
-    user_message = Message(
-        role=Role.user,
-        task_id=str(uuid.uuid4()),
-        message_id=str(uuid.uuid4()),
-        content_id=str(uuid.uuid4()),
-        parts=parts,
-    )
-    context = RequestContext(request=MessageSendParams(message=user_message))
-
-    await agent.execute(context, queue)
+    event = await agent.run_user_input(json.dumps(payload, ensure_ascii=False))
 
     # 解析返回结果并写入数据库的 metadata['report']
-    event = await queue.dequeue_event()
     if not event or not event.artifacts:
         logger.warning("PaperAnalysisAgent 没有返回任何 artifacts，跳过报告写入")
         return
 
-    # 获取文本列表（一个 part 对应一篇论文的报告）
-    parts = event.artifacts[0].parts
-    reports = [p.root.text for p in parts]  # type: ignore
+    result_parts = event.artifacts[0].parts
+    reports = [p.root.text for p in result_parts]  # type: ignore
 
     if not reports:
         logger.warning("PaperAnalysisAgent 返回的报告为空，跳过写入")
@@ -207,9 +184,12 @@ async def _invoke_analysis_agent(agent: PaperAnalysisAgent, papers: List[Paper])
 
     # 将报告写入对应 Paper.metadata['report'] 并保存到数据库
     db = ArxivPaperDB("database/arxiv_paper_db.sqlite")
-    for paper, report in zip(papers, reports):
+    ids = payload["arxiv_ids"]
+    for id, report in zip(ids, reports):
         if report:
+            paper = db.get(id)
             paper.metadata["report"] = report
+            paper.metadata["report_source"] = "daily"
             db.add(paper, overwrite=True)
 
 # ---------------------------------------------------------------------------
@@ -218,6 +198,10 @@ async def _invoke_analysis_agent(agent: PaperAnalysisAgent, papers: List[Paper])
 
 def run_for_date(date_str: str):
     """同步接口：对指定日期 (YYYYMMDD) 执行完整流程。"""
+    # Ensure data consistency before pipeline starts
+    _flush_daily_reports(date_str)
+
+    # Execute the main pipeline
     asyncio.run(_run_flow_for_date(date_str))
 
 
@@ -244,4 +228,5 @@ def schedule_daily():
 
 
 if __name__ == "__main__":
-    run_for_date("20250821")
+    _flush_daily_reports("20250820")
+    # run_for_date("20250820")

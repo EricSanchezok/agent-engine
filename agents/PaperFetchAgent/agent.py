@@ -188,7 +188,7 @@ class PaperFetchAgent(BaseA2AAgent):
 
 async def main():
     agent = PaperFetchAgent()
-    await agent.test_input(json.dumps({
+    await agent.run_user_input(json.dumps({
         "arxiv_ids": [
             "2508.15697",
             "2508.15692",
