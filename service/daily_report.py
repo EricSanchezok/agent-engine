@@ -235,5 +235,5 @@ def schedule_daily():
 
 if __name__ == "__main__":
     # _flush_daily_reports("20250820")
-    # run_for_date("20250820")
-    schedule_daily()
+    run_for_date("20250820")
+    # schedule_daily()
