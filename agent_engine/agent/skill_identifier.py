@@ -59,6 +59,28 @@ class SkillIdentifier:
         if not skills_desc:
             logger.error("No skills description found")
             return "", "No skills description found"
+
+        system_prompt = self.prompt_loader.get_prompt(
+            section='task_purifier',
+            prompt_type='system',
+            skills_desc=skills_desc
+        )
+        user_prompt = self.prompt_loader.get_prompt(
+            section='task_purifier',
+            prompt_type='user',
+            user_input=user_input
+        )
+        try:
+            result = await self.llm_client.chat(system_prompt, user_prompt, model_name=self.model_name)
+            result = json.loads(result)
+            core_task = result.get("core_task", "")
+        except Exception as e:
+            logger.error(f"Task purifier error: {e}")
+            return "", "Task purifier error"
+
+        if not core_task:
+            logger.error("No core task found")
+            return "", "No core task found"
         
         system_prompt = self.prompt_loader.get_prompt(
             section='skill_identifier',
@@ -68,7 +90,7 @@ class SkillIdentifier:
         user_prompt = self.prompt_loader.get_prompt(
             section='skill_identifier',
             prompt_type='user',
-            user_input=user_input
+            user_input=core_task
         )
         try:
             result = await self.llm_client.chat(system_prompt, user_prompt, model_name=self.model_name)

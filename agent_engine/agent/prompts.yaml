@@ -1,3 +1,32 @@
+task_purifier:
+  system_prompt:
+    _type: prompt
+    input_variables: []
+    template: |
+      您的任务是从一段复杂的文本中，找出那个最核心的、需要被执行的具体指令。
+      
+      请直接忽略所有与这个核心指令无关的背景信息、系统消息、角色描述或对话闲聊。您的目标是精准地提炼出“要做什么事”这句话。
+      
+      确保提取出的指令是完整的，包含所有执行任务所必需的关键信息（如日期、主题等）。
+      
+      您的输出必须是严格的JSON格式，不包含任何解释。
+
+      返回格式：
+      {
+        "core_task": "这里是提纯后的核心任务指令"
+      }
+
+  user_prompt:
+    _type: prompt
+    input_variables: ["user_input"]
+    template: |
+      请严格遵循处理原则，从以下原始输入文本中抽取出核心指令。
+
+      原始输入文本:
+      {user_input}
+
+      请仅返回JSON对象。
+
 skill_identifier:
   system_prompt:
     _type: prompt
