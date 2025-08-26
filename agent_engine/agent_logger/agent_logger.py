@@ -128,7 +128,9 @@ class AgentLogger:
     
     def _update_link_file(self):
         """Create/update the link file to point to the current log file"""
-        link_file = self.log_dir / "agent_logger_000_link.log"
+        # 使用 logger name 创建唯一的 link 文件名
+        safe_name = self.name.replace('.', '_').replace('/', '_').replace('\\', '_')
+        link_file = self.log_dir / f"{safe_name}_link.log"
         
         # Remove existing link if it exists
         if link_file.exists():
@@ -137,6 +139,7 @@ class AgentLogger:
         # Create a text file with the current log filename and content
         try:
             with open(link_file, 'w', encoding='utf-8') as f:
+                f.write(f"Logger: {self.name}\n")
                 f.write(f"Current log file: {self.log_filename}\n")
                 f.write(f"Created at: {datetime.now().isoformat()}\n")
                 f.write(f"Full path: {self.log_filepath}\n")
@@ -152,28 +155,33 @@ class AgentLogger:
         except Exception as e:
             # Fallback: create a simple text file
             with open(link_file, 'w', encoding='utf-8') as f:
+                f.write(f"Logger: {self.name}\n")
                 f.write(f"Current log file: {self.log_filename}\n")
                 f.write(f"Created at: {datetime.now().isoformat()}\n")
                 f.write(f"Error: {str(e)}\n")
     
     def _clear_old_link_file(self):
         """Clear the old link file content when reinitializing"""
-        link_file = self.log_dir / "agent_logger_000_link.log"
+        # 使用 logger name 创建唯一的 link 文件名
+        safe_name = self.name.replace('.', '_').replace('/', '_').replace('\\', '_')
+        link_file = self.log_dir / f"{safe_name}_link.log"
+        
         if link_file.exists():
             try:
                 # Clear the content but keep the file
                 with open(link_file, 'w', encoding='utf-8') as f:
+                    f.write(f"Logger: {self.name}\n")
                     f.write("Log file cleared. Waiting for new content...\n")
             except Exception as e:
                 # If we can't clear it, just remove it
                 link_file.unlink()
-    
+
     def _check_file_size(self):
         """Check if current log file exceeds size limit and rotate if necessary"""
         if self.log_filepath.exists() and self.log_filepath.stat().st_size > self.max_file_size:
             # Create new log file
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            new_log_filename = f"agent_loggerger_{timestamp}.log"
+            new_log_filename = f"agent_logger_{timestamp}.log"
             new_log_filepath = self.log_dir / new_log_filename
             
             # Update logger with new file
