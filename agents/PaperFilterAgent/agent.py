@@ -200,6 +200,7 @@ class PaperFilterAgent(BaseA2AAgent):
                 history=[message],
                 status=TaskStatus(
                     state=TaskState.completed,
+                    message=message,
                     timestamp=datetime.datetime.now(pytz.timezone('Asia/Shanghai')).replace(microsecond=0).isoformat(),
                 ),
             )
