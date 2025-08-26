@@ -13,7 +13,7 @@ AGENT_DESCRIPTION = '接收一个论文元数据列表，并根据更高级的�
 AGENT_VERSION = '0.1.0'
 
 # Default configuration for paper filtering
-DEFAULT_MAX_RECOMMENDATIONS = 16
+DEFAULT_MAX_RECOMMENDATIONS = 8
 PROVIDER = AgentProvider(
     organization='EricSanchez',
     url='https://github.com/EricSanchezok'

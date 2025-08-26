@@ -18,7 +18,7 @@ from core.utils import get_weekday, get_last_week_range
 # Local imports
 from agents.ArxivSearchAgent.config import LOG_DIR
 
-logger = AgentLogger(__name__, log_dir=LOG_DIR)
+logger = AgentLogger(__name__)
 
 load_dotenv()
 

@@ -56,7 +56,7 @@ from core.utils import DateFormatter
 from agents.PaperAnalysisAgent.config import AGENT_CARD, LOG_DIR
 from agents.PaperFetchAgent.agent import PaperFetchAgent
 
-logger = AgentLogger(__name__, log_dir=LOG_DIR)
+logger = AgentLogger(__name__)
 
 load_dotenv()
 

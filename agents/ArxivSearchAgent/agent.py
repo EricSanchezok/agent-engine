@@ -40,7 +40,7 @@ from agents.ArxivSearchAgent.config import AGENT_CARD, LOG_DIR
 from agents.ArxivSearchAgent.category_navigator import ArXivCategoryNavigator
 from agents.ArxivSearchAgent.query_parser import ArXivQueryParser
 
-logger = AgentLogger(__name__, log_dir=LOG_DIR)
+logger = AgentLogger(__name__)
 
 class ArxivSearchAgent(BaseA2AAgent):
     def __init__(self):

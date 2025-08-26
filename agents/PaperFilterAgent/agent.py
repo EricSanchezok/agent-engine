@@ -48,7 +48,7 @@ from agents.PaperFilterAgent.config import AGENT_CARD, DEFAULT_MAX_RECOMMENDATIO
 # Local imports
 from agents.PaperFilterAgent.config import LOG_DIR
 
-logger = AgentLogger(__name__, log_dir=LOG_DIR)
+logger = AgentLogger(__name__)
 
 load_dotenv()
 
@@ -109,7 +109,7 @@ class PaperFilterAgent(BaseA2AAgent):
         self.arxiv_id_parser = ArxivIdParser(self.llm_client)
         
         # Initialize qiji memory in background
-        asyncio.create_task(self._initialize_qiji_memory())
+        # asyncio.create_task(self._initialize_qiji_memory())
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         task_id = context.task_id if context.task_id else str(uuid4())

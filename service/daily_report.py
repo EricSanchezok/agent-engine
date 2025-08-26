@@ -106,7 +106,10 @@ def _flush_daily_reports(date_str: str) -> None:
 # 主流程
 # ---------------------------------------------------------------------------
 async def _run_flow_for_date(date_str: str):
-    """异步执行完整流程。"""
+    """
+    异步执行完整流程的核心逻辑。
+    如果发生任何预料之外的错误，这个函数会抛出异常。
+    """
     logger.info(f"===== Start SignalFrontier pipeline for {date_str} =====")
 
     # 1. 检索 --------------------------------------------------------------
@@ -118,8 +121,8 @@ async def _run_flow_for_date(date_str: str):
     logger.info(f"ArxivSearchAgent 返回 {len(papers)} 篇论文")
 
     if not papers:
-        logger.warning("检索结果为空，流程结束")
-        return
+        # 如果没有检索到论文，则抛出异常以触发重试
+        raise ValueError("检索结果为空，触发重试")
 
     arxiv_ids = _extract_ids(papers)
 
@@ -131,8 +134,8 @@ async def _run_flow_for_date(date_str: str):
     filter_ids: List[str] = await _invoke_filter_agent(filter_agent, filter_input)
 
     if not filter_ids:
-        logger.warning("过滤后无论文，流程结束")
-        return
+        # 如果过滤后没有论文，同样抛出异常以触发重试
+        raise ValueError("过滤后无论文，触发重试")
 
     logger.info(f"PaperFilterAgent 留下 {len(filter_ids)} 篇论文")
 
@@ -143,7 +146,34 @@ async def _run_flow_for_date(date_str: str):
     analysis_input = {"arxiv_ids": filter_ids}
     await _invoke_analysis_agent(analysis_agent, analysis_input)
 
-    logger.info("===== Pipeline finished =====")
+    logger.info(f"===== Pipeline for {date_str} finished successfully =====")
+
+
+async def run_flow_for_date_with_retry(date_str: str, max_retries: int = 5):
+    """
+    带有重试逻辑的包装函数。
+    它会调用 _run_flow_for_date，并在失败时重试。
+
+    :param date_str: 执行流程的日期字符串。
+    :param max_retries: 最大重试次数。
+    """
+    for attempt in range(max_retries):
+        try:
+            # 尝试执行核心流程
+            await _run_flow_for_date(date_str)
+            # 如果成功，就跳出循环
+            return
+        except Exception as e:
+            # 捕获所有可能的异常
+            logger.error(f"流程执行失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                # 如果不是最后一次尝试，就等待一段时间再重试
+                wait_time = 2 ** attempt  # 指数退避策略，等待 1, 2, 4, 8 秒...
+                logger.info(f"将在 {wait_time} 秒后重试...")
+                await asyncio.sleep(wait_time * 30)
+            else:
+                # 如果所有重试都失败了，记录最终的失败信息
+                logger.critical(f"流程在 {max_retries} 次尝试后彻底失败。")
 
 async def _invoke_filter_agent(agent: PaperFilterAgent, payload: dict) -> List[str]:
     """利用 PaperFilterAgent 逻辑返回筛选 id 列表。
@@ -204,7 +234,7 @@ def run_for_date(date_str: str):
     _flush_daily_reports(date_str)
 
     # Execute the main pipeline
-    asyncio.run(_run_flow_for_date(date_str))
+    asyncio.run(run_flow_for_date_with_retry(date_str))
 
 def schedule_daily():
     """启动定时任务：每天 09:00 (Asia/Shanghai) 处理前一天数据。"""
@@ -217,10 +247,10 @@ def schedule_daily():
 
     scheduler = BackgroundScheduler(timezone=tz)
     # 每天的9点0分执行
-    trigger = CronTrigger(hour=9, minute=0, second=0) 
+    trigger = CronTrigger(hour=9, minute=5, second=0) 
     scheduler.add_job(_job_wrapper, trigger, id="signal_frontier_daily")
     scheduler.start()
-    logger.info("Daily SignalFrontier pipeline scheduled at 09:00 Asia/Shanghai")
+    logger.info("Daily SignalFrontier pipeline scheduled at 09:05 Asia/Shanghai")
 
     # 防止主线程退出
     try:
@@ -235,5 +265,5 @@ def schedule_daily():
 
 if __name__ == "__main__":
     # _flush_daily_reports("20250820")
-    run_for_date("20250820")
-    # schedule_daily()
+    # run_for_date("20250825")
+    schedule_daily()

@@ -15,7 +15,7 @@ from agent_engine.utils import get_relative_path_from_current_file
 # Local imports
 from agents.ArxivSearchAgent.config import LOG_DIR
 
-logger = AgentLogger(__name__, log_dir=LOG_DIR)
+logger = AgentLogger(__name__)
 
 load_dotenv()
 
