@@ -54,6 +54,25 @@ AGENT_SKILLS = [
                 ]
             }, indent=4, ensure_ascii=False)
         ],
+    ),
+    AgentSkill(
+        id='extract_and_fetch_pdfs',
+        name='从文本中提取ID并获取PDF',
+        name_en='Extract IDs and Fetch Papers as PDF from Text',
+        description=(
+            '接收一段包含一个或多个ArXiv论文ID的自然语言文本。'
+            '代理会自动从文本中提取所有有效的ArXiv ID，下载对应论文的PDF文件，并将其内容进行Base64编码。'
+            '最终返回一个JSON格式的列表，其中每一项都是对应论文PDF文件的Base64编码字符串。'
+        ),
+        description_en=(
+            'Receives a natural language text string containing one or more ArXiv paper IDs. '
+            'The agent automatically extracts all valid ArXiv IDs from the text, downloads the PDF file for each paper, and encodes its content into Base64. '
+            'It returns a JSON-formatted list where each item is the Base64 encoded string of the corresponding paper\'s PDF file.'
+        ),
+        tags=['fetch', 'download', 'pdf', 'base64', '获取', '下载', '文件', 'IO', 'extract', '提取', 'NLP'],
+        examples=[
+            "你好，能帮我下载一下 2508.12345 和 2507.67890 这两篇论文的PDF文件吗？"
+        ],
     )
 ]
 

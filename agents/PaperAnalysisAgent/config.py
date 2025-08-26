@@ -55,6 +55,27 @@ AGENT_SKILLS = [
         ],
     ),
     AgentSkill(
+        id='extract_and_analyze_arxiv_ids',
+        name='从文本中提取并解读ArXiv论文',
+        name_en='Extract and Analyze ArXiv Papers from Text',
+        description=(
+            '接收一段包含一个或多个ArXiv论文ID的文本。'
+            '代理会自动从文本中提取所有有效的ArXiv ID，获取对应的论文并进行深度分析和总结。'
+            '最终返回一个JSON格式的列表，其中每一项都是对应论文的Markdown格式解读报告。'
+            '这个工具非常适合当您在一段话中提及多篇论文时使用。'
+        ),
+        description_en=(
+            'Receives a text string containing one or more ArXiv paper IDs. '
+            'The agent automatically extracts all valid ArXiv IDs from the text, fetches the corresponding papers, and performs an in-depth analysis and summarization. '
+            'It returns a JSON-formatted list where each item is the analysis report in Markdown format for the corresponding paper. '
+            'This tool is ideal for when you mention multiple papers within a block of text.'
+        ),
+        tags=['analysis', 'summary', 'markdown', 'pdf', 'arxiv', '解读', '总结', '报告', 'NLP', '论文', 'extract', '提取'],
+        examples=[
+            "你好，请帮我深入分析一下这几篇重要的AI论文：2402.19473 (关于Jamba模型) 和 2305.10601，谢谢！"
+        ],
+    ),
+    AgentSkill(
         id='analyze_from_message_files',
         name='解读附件中的论文PDF',
         name_en='Analyze Paper PDFs from Message Attachments',

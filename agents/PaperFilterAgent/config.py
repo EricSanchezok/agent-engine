@@ -60,7 +60,30 @@ AGENT_SKILLS = [
                 ]
             }, indent=4, ensure_ascii=False)
         ],
+    ),
+    AgentSkill(
+        id='extract_filter_and_recommend',
+        name='从文本中提取ID并筛选推荐论文',
+        name_en='Extract, Filter, and Recommend Papers from Text',
+        description=(
+            '接收一段包含一个或多个ArXiv论文ID的自然语言文本。'
+            '代理会自动从文本中提取所有有效的ArXiv ID，获取论文元数据，并基于内部的智能逻辑进行筛选和排序。'
+            '最终返回一个JSON格式的列表，其中包含最值得推荐的论文ArXiv ID，列表的顺序即为推荐顺序。'
+            f'最多推荐{DEFAULT_MAX_RECOMMENDATIONS}篇论文。'
+        ),
+        description_en=(
+            'Receives a natural language text string containing one or more ArXiv paper IDs. '
+            'The agent automatically extracts all valid ArXiv IDs from the text, fetches paper metadata, and performs '
+            'intelligent filtering and ranking based on its internal logic. '
+            'It returns a JSON-formatted list of the most recommended ArXiv IDs, where the order of the list represents the recommendation priority. '
+            f'A maximum of {DEFAULT_MAX_RECOMMENDATIONS} papers will be recommended.'
+        ),
+        tags=['filter', 'recommend', 'ranking', '筛选', '推荐', '排序', '智能分析', 'extract', '提取', 'NLP'],
+        examples=[
+            "这里有一堆我最近看到的论文，帮我看看哪些最值得读：2508.12345、2507.67890，还有一篇是2506.11223。"
+        ],
     )
+
 ]
 
 AGENT_CARD = AgentCard(

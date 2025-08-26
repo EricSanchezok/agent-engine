@@ -47,10 +47,11 @@ class SkillsDescGenerator:
         return prompt
 
 class SkillIdentifier:
-    def __init__(self, llm_client: LLMClient, model_name: str = "o3-mini"):
+    def __init__(self, llm_client: LLMClient, model_name: str = "o3-mini", max_tokens = 32000):
         self.prompt_loader = PromptLoader(get_relative_path_from_current_file('prompts.yaml'))
         self.llm_client = llm_client
         self.model_name = model_name
+        self.max_tokens = max_tokens
         self.skills_desc_generator = SkillsDescGenerator()
         
     async def invoke(self, user_input: str, skills: List[AgentSkill]) -> Tuple[str, str]:
@@ -92,7 +93,7 @@ class SkillIdentifier:
             user_input=user_input
         )
         try:
-            result = await self.llm_client.chat(system_prompt, user_prompt, model_name=self.model_name)
+            result = await self.llm_client.chat(system_prompt, user_prompt, model_name=self.model_name, max_tokens=self.max_tokens)
             result = json.loads(result)
             return result.get("skill_id", ""), result.get("reason", "")
         except Exception as e:

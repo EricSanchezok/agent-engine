@@ -67,7 +67,8 @@ class BaseA2AAgent(AgentExecutor):
                 contextId=context_id,
                 history=[response_message],
                 status=TaskStatus(
-                    state=TaskState.failed,
+                    state=TaskState.completed,
+                    message=response_message,
                     timestamp=datetime.datetime.now(pytz.timezone('Asia/Shanghai')).replace(microsecond=0).isoformat()
                 )
             )
@@ -90,7 +91,7 @@ class BaseA2AAgent(AgentExecutor):
         
         await self.task_store.save(task)
 
-    async def run_user_input(self, user_input: str) -> Optional[Task, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent]:
+    async def run_user_input(self, user_input: str) -> Optional[Task, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent]: # noqa: D401
         self.logger.info(f"Running user input: {user_input}")
         request = MessageSendParams(
             message=new_agent_text_message(user_input),
@@ -102,7 +103,7 @@ class BaseA2AAgent(AgentExecutor):
         await event_queue.close()
         return event
 
-    async def run_message(self, message: Message) -> Optional[Task, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent]:
+    async def run_message(self, message: Message) -> Optional[Task, Message, TaskStatusUpdateEvent, TaskArtifactUpdateEvent]: # noqa: D401
         self.logger.info(f"Running message: {message}")
         request = MessageSendParams(
             message=message,
