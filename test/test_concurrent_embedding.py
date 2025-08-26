@@ -3,7 +3,7 @@ import time
 import os
 from typing import List
 from dotenv import load_dotenv
-from .azure_client import AzureClient
+from agent_engine.llm_client import AzureClient
 
 # Load environment variables
 load_dotenv()
