@@ -80,7 +80,7 @@ class PaperFetchAgent(BaseA2AAgent):
                 _paper = await self.arxiv_fetcher.download(paper, session)
                 return _paper
 
-        if skill_id == 'fetch_papers_as_pdf':
+        if skill_id == 'fetch_papers_as_pdf' or 'extract_and_fetch_pdfs':
             # Try to parse arxiv_ids from user input
             arxiv_ids = await self.arxiv_id_parser.extract_arxiv_ids(user_input)
             

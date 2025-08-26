@@ -79,7 +79,7 @@ class PaperAnalysisAgent(BaseA2AAgent):
         logger.info(f"Skill ID: {skill_id}, Reason: {reason}")
 
         papers_base64 = []
-        if skill_id == 'analyze_by_arxiv_ids':
+        if skill_id == 'analyze_by_arxiv_ids' or 'extract_and_analyze_arxiv_ids':
             event = await self.paper_fetch_agent.run_user_input(user_input)
             if event:
                 artifact: Artifact = event.artifacts[0]

@@ -119,7 +119,7 @@ class PaperFilterAgent(BaseA2AAgent):
         skill_id, reason = await self.skill_identifier.invoke(user_input, AGENT_CARD.skills)
         logger.info(f"Skill ID: {skill_id}, Reason: {reason}")
 
-        if skill_id == 'filter_and_recommend':
+        if skill_id == 'filter_and_recommend' or 'extract_filter_and_recommend':
             # Try to parse arxiv_ids from user input
             arxiv_ids = await self.arxiv_id_parser.extract_arxiv_ids(user_input)
             max_recommendations = DEFAULT_MAX_RECOMMENDATIONS  # Use configurable default value
