@@ -247,16 +247,16 @@ def schedule_daily():
 
     scheduler = BackgroundScheduler(timezone=tz)
     # 每天的9点0分执行
-    trigger = CronTrigger(hour=9, minute=5, second=0) 
+    trigger = CronTrigger(hour=9, minute=30, second=0) 
     scheduler.add_job(_job_wrapper, trigger, id="signal_frontier_daily")
     scheduler.start()
-    logger.info("Daily SignalFrontier pipeline scheduled at 09:05 Asia/Shanghai")
+    logger.info("Daily SignalFrontier pipeline scheduled at 09:30 Asia/Shanghai")
 
     # 防止主线程退出
     try:
         while True:
             # 使用 time.sleep() 来阻塞主线程
-            time.sleep(3600)
+            time.sleep(60)
     except (KeyboardInterrupt, SystemExit):
         logger.info("Scheduler shutting down...")
         scheduler.shutdown()
@@ -265,5 +265,5 @@ def schedule_daily():
 
 if __name__ == "__main__":
     # _flush_daily_reports("20250820")
-    run_for_date("20250826")
-    # schedule_daily()
+    # run_for_date("20250826")
+    schedule_daily()
