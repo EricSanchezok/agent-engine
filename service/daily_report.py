@@ -246,7 +246,6 @@ def schedule_daily():
         run_for_date(yesterday)
 
     scheduler = BackgroundScheduler(timezone=tz)
-    # 每天的9点0分执行
     trigger = CronTrigger(hour=9, minute=30, second=0) 
     scheduler.add_job(_job_wrapper, trigger, id="signal_frontier_daily")
     scheduler.start()
