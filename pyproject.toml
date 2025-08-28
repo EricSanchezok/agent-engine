@@ -24,19 +24,11 @@ dependencies = [
     "sentence-transformers>=2.5.0",
     "uv>=0.8.12",
     "uvicorn>=0.35.0",
-]
-
-[project.optional-dependencies]
-project = [
     "arxiv>=2.2.0",
     "docling>=2.45.0",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.5",
     "pypdf2>=3.0.1",
-]
-
-# 开发依赖
-dev = [
 ]
 
 [build-system]
