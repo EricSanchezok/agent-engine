@@ -46,6 +46,8 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
+db = ArxivPaperDB("database/arxiv_paper_db.sqlite")
+
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
@@ -84,8 +86,6 @@ def _flush_daily_reports(date_str: str) -> None:
     date_str : str
         The target date in ``YYYYMMDD`` format.
     """
-
-    db = ArxivPaperDB("database/arxiv_paper_db.sqlite")
     papers = db.get_by_date(date_str)
 
     updated = 0
@@ -215,7 +215,6 @@ async def _invoke_analysis_agent(agent: PaperAnalysisAgent, payload: dict):
         raise ValueError("PaperAnalysisAgent 返回的报告为空，跳过写入")
 
     # 将报告写入对应 Paper.metadata['report'] 并保存到数据库
-    db = ArxivPaperDB("database/arxiv_paper_db.sqlite")
     ids = payload["arxiv_ids"]
     for id, report in zip(ids, reports):
         if report:

@@ -49,15 +49,15 @@ class ArXivFetcher:
                 logger.warning(f"PDF too small ({len(pdf_bytes)} bytes), likely incomplete")
                 return False
             
-            # Check PDF header signature (%PDF-)
-            if not pdf_bytes.startswith(b'%PDF-'):
-                logger.warning("Invalid PDF header signature")
-                return False
+            # # Check PDF header signature (%PDF-)
+            # if not pdf_bytes.startswith(b'%PDF-'):
+            #     logger.warning("Invalid PDF header signature")
+            #     return False
             
-            # Check for EOF marker (%%EOF)
-            if b'%%EOF' not in pdf_bytes:
-                logger.warning("PDF EOF marker not found, likely incomplete download")
-                return False
+            # # Check for EOF marker (%%EOF)
+            # if b'%%EOF' not in pdf_bytes:
+            #     logger.warning("PDF EOF marker not found, likely incomplete download")
+            #     return False
             
             # Try to read PDF with PyPDF2 to validate structure
             try:
