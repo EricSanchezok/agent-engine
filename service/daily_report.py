@@ -170,9 +170,9 @@ async def run_flow_for_date_with_retry(date_str: str, max_retries: int = 5):
             logger.error(f"流程执行失败 (尝试 {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 # 如果不是最后一次尝试，就等待一段时间再重试
-                wait_time = 2 ** attempt  # 指数退避策略，等待 1, 2, 4, 8 秒...
+                wait_time = 2 ** attempt * 30  # 指数退避策略
                 logger.info(f"将在 {wait_time} 秒后重试...")
-                await asyncio.sleep(wait_time * 30)
+                await asyncio.sleep(wait_time)
             else:
                 # 如果所有重试都失败了，记录最终的失败信息
                 logger.critical(f"流程在 {max_retries} 次尝试后彻底失败。")
@@ -237,7 +237,7 @@ def run_for_date(date_str: str):
     asyncio.run(run_flow_for_date_with_retry(date_str))
 
 def schedule_daily():
-    """启动定时任务：每天 09:00 (Asia/Shanghai) 处理前一天数据。"""
+    """启动定时任务：每天 10:05 (Asia/Shanghai) 处理前一天数据。"""
     tz = pytz.timezone("Asia/Shanghai")
 
     def _job_wrapper():
@@ -246,10 +246,10 @@ def schedule_daily():
         run_for_date(yesterday)
 
     scheduler = BackgroundScheduler(timezone=tz)
-    trigger = CronTrigger(hour=9, minute=30, second=0) 
+    trigger = CronTrigger(hour=10, minute=5, second=0) 
     scheduler.add_job(_job_wrapper, trigger, id="signal_frontier_daily")
     scheduler.start()
-    logger.info("Daily SignalFrontier pipeline scheduled at 09:30 Asia/Shanghai")
+    logger.info("Daily SignalFrontier pipeline scheduled at 10:05 Asia/Shanghai")
 
     # 防止主线程退出
     try:
