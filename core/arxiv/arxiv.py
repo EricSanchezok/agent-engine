@@ -121,15 +121,9 @@ class ArXivFetcher:
     async def download(self, paper: Paper, session: aiohttp.ClientSession) -> Paper:
         # Check if paper exists in database and validate PDF integrity
         cached = self.arxiv_paper_db.get(paper.id)
-        if cached and cached.pdf_bytes:
-            # Validate the cached PDF before skipping download
-            if self._validate_pdf_integrity(cached.pdf_bytes):
-                logger.info(f"Paper {paper.id} already downloaded and validated in DB, skip downloading")
-                return cached
-            else:
-                logger.warning(f"Paper {paper.id} exists in DB but PDF is corrupted/incomplete, will re-download")
-                # Remove corrupted entry from database
-                self.arxiv_paper_db.delete(paper.id)
+        if cached and self._validate_pdf_integrity(cached.pdf_bytes):
+            logger.info(f"Paper {paper.id} already downloaded and validated in DB, skip downloading")
+            return cached
 
         max_retries = 3
         base_retry_delay = 5  # seconds
