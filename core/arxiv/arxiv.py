@@ -1,5 +1,5 @@
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import re
 import arxiv
 import os
@@ -14,6 +14,9 @@ import ssl, certifi
 import socket
 import datetime
 import random
+import logging
+import base64
+import io
 
 # AgentEngine imports
 from agent_engine.agent_logger import AgentLogger
@@ -24,8 +27,59 @@ from .paper_db import Paper, ArxivPaperDB
 logger = AgentLogger(__name__)
 
 class ArXivFetcher:
-    def __init__(self):
-        self.arxiv_paper_db = ArxivPaperDB('database/arxiv_paper_db.sqlite')
+    def __init__(self, db_path: Optional[str] = None):
+        self.arxiv_paper_db = ArxivPaperDB(db_path)
+
+    def _validate_pdf_integrity(self, pdf_base64: str) -> bool:
+        """
+        Validate if the cached PDF is complete and readable.
+        
+        Args:
+            pdf_base64: Base64 encoded PDF content
+            
+        Returns:
+            bool: True if PDF is valid and complete, False otherwise
+        """
+        try:
+            # Decode base64 to bytes
+            pdf_bytes = base64.b64decode(pdf_base64)
+            
+            # Check if PDF has minimum size (PDF header is at least 8 bytes)
+            if len(pdf_bytes) < 8:
+                logger.warning(f"PDF too small ({len(pdf_bytes)} bytes), likely incomplete")
+                return False
+            
+            # Check PDF header signature (%PDF-)
+            if not pdf_bytes.startswith(b'%PDF-'):
+                logger.warning("Invalid PDF header signature")
+                return False
+            
+            # Check for EOF marker (%%EOF)
+            if b'%%EOF' not in pdf_bytes:
+                logger.warning("PDF EOF marker not found, likely incomplete download")
+                return False
+            
+            # Try to read PDF with PyPDF2 to validate structure
+            try:
+                from PyPDF2 import PdfReader
+                reader = PdfReader(io.BytesIO(pdf_bytes))
+                num_pages = len(reader.pages)
+                if num_pages == 0:
+                    logger.warning("PDF has 0 pages, likely corrupted")
+                    return False
+                logger.info(f"PDF validation successful: {num_pages} pages, {len(pdf_bytes)} bytes")
+                return True
+            except ImportError:
+                # If PyPDF2 is not available, just check basic structure
+                logger.info("PyPDF2 not available, using basic PDF validation")
+                return True
+            except Exception as e:
+                logger.warning(f"PDF validation failed with PyPDF2: {e}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"PDF validation error: {e}")
+            return False
 
     async def search(self, query_string: str = "", id_list: List[str] = [], max_results: int = 10000) -> List[Paper]:
         if query_string == "":
@@ -65,11 +119,17 @@ class ArXivFetcher:
             return []
         
     async def download(self, paper: Paper, session: aiohttp.ClientSession) -> Paper:
-        # 若数据库中已经存在并且 pdf 已下载，则直接返回
+        # Check if paper exists in database and validate PDF integrity
         cached = self.arxiv_paper_db.get(paper.id)
         if cached and cached.pdf_bytes:
-            logger.info(f"Paper {paper.id} already downloaded in DB, skip downloading")
-            return cached
+            # Validate the cached PDF before skipping download
+            if self._validate_pdf_integrity(cached.pdf_bytes):
+                logger.info(f"Paper {paper.id} already downloaded and validated in DB, skip downloading")
+                return cached
+            else:
+                logger.warning(f"Paper {paper.id} exists in DB but PDF is corrupted/incomplete, will re-download")
+                # Remove corrupted entry from database
+                self.arxiv_paper_db.delete(paper.id)
 
         max_retries = 3
         base_retry_delay = 5  # seconds
@@ -95,11 +155,15 @@ class ArXivFetcher:
                             raise aiohttp.ClientError(
                                 f"Download incomplete. Expected {total_size} bytes, got {total_bytes}")
 
-                        paper_size_mb = float(total_bytes) / (1024 * 1024)
+                        # Validate downloaded PDF before saving
+                        pdf_base64 = base64.b64encode(bytes(pdf_buffer)).decode("ascii")
+                        if not self._validate_pdf_integrity(pdf_base64):
+                            raise aiohttp.ClientError("Downloaded PDF failed integrity validation")
 
-                        import base64
-                        paper.pdf_bytes = base64.b64encode(bytes(pdf_buffer)).decode("ascii")
-                        # 保存至数据库
+                        paper.pdf_bytes = pdf_base64
+                        paper_size_mb = float(total_bytes) / (1024 * 1024)
+                        
+                        # Save to database only after validation
                         self.arxiv_paper_db.add(paper, overwrite=True)
                         logger.info(
                             f"✅ Successfully downloaded and stored paper {paper.id}. Size: {paper_size_mb:.2f} MB"
@@ -117,7 +181,7 @@ class ArXivFetcher:
                     await asyncio.sleep(wait_time)
 
         finally:
-            # 清空缓冲区以释放内存
+            # Clear buffer to free memory
             pdf_buffer.clear()
 
         return paper
