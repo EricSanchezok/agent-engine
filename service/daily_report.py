@@ -125,6 +125,7 @@ async def _run_flow_for_date(date_str: str):
         raise ValueError("检索结果为空，触发重试")
 
     arxiv_ids = _extract_ids(papers)
+    await asyncio.sleep(10)
 
     # 2. 过滤 --------------------------------------------------------------
     logger.info("调用 PaperFilterAgent 进行向量过滤…")
@@ -138,7 +139,8 @@ async def _run_flow_for_date(date_str: str):
         raise ValueError("过滤后无论文，触发重试")
 
     logger.info(f"PaperFilterAgent 留下 {len(filter_ids)} 篇论文")
-
+    await asyncio.sleep(10)
+    
     # 3. 解析 --------------------------------------------------------------
     logger.info("调用 PaperAnalysisAgent 生成报告…")
     analysis_agent = PaperAnalysisAgent()
@@ -204,15 +206,13 @@ async def _invoke_analysis_agent(agent: PaperAnalysisAgent, payload: dict):
 
     # 解析返回结果并写入数据库的 metadata['report']
     if not event or not event.artifacts:
-        logger.warning("PaperAnalysisAgent 没有返回任何 artifacts，跳过报告写入")
-        return
+        raise ValueError("PaperAnalysisAgent 没有返回任何 artifacts，跳过报告写入")
 
     result_parts = event.artifacts[0].parts
     reports = [p.root.text for p in result_parts]  # type: ignore
 
     if not reports:
-        logger.warning("PaperAnalysisAgent 返回的报告为空，跳过写入")
-        return
+        raise ValueError("PaperAnalysisAgent 返回的报告为空，跳过写入")
 
     # 将报告写入对应 Paper.metadata['report'] 并保存到数据库
     db = ArxivPaperDB("database/arxiv_paper_db.sqlite")
