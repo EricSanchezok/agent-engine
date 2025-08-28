@@ -68,7 +68,7 @@ class ArXivFetcher:
             # Try to read PDF with PyPDF2 to validate structure
             try:
                 from PyPDF2 import PdfReader
-                reader = PdfReader(io.BytesIO(pdf_bytes))
+                reader = PdfReader(io.BytesIO(pdf_bytes), strict=False)
                 num_pages = len(reader.pages)
                 if num_pages == 0:
                     logger.warning("PDF has 0 pages, likely corrupted")
