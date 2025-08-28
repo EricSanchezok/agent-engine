@@ -70,8 +70,6 @@ def _extract_ids(papers: List[Paper]) -> List[str]:
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
-
-
 def _flush_daily_reports(date_str: str) -> None:
     """Update `report_source` from *daily* to *agent* for all papers of the day.
 
@@ -226,7 +224,6 @@ async def _invoke_analysis_agent(agent: PaperAnalysisAgent, payload: dict):
 # ---------------------------------------------------------------------------
 # API
 # ---------------------------------------------------------------------------
-
 def run_for_date(date_str: str):
     """同步接口：对指定日期 (YYYYMMDD) 执行完整流程。"""
     # Ensure data consistency before pipeline starts

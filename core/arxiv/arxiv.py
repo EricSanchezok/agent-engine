@@ -28,6 +28,12 @@ logger = AgentLogger(__name__)
 
 class ArXivFetcher:
     def __init__(self, db_path: Optional[str] = None):
+        # 如果没有指定数据库路径，使用项目根目录下的标准数据库路径
+        if db_path is None:
+            from pathlib import Path
+            project_root = Path(__file__).parent.parent.parent
+            db_path = str(project_root / "database" / "arxiv_paper_db.sqlite")
+        
         self.arxiv_paper_db = ArxivPaperDB(db_path)
 
     def _validate_pdf_integrity(self, pdf_base64: str) -> bool:

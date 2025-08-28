@@ -248,6 +248,7 @@ class ArxivPaperDB:
 
     def get(self, paper_id: str) -> Optional[Paper]:
         cid = _clean_arxiv_id(paper_id)
+        logger.info(f"Getting paper {cid} from database")
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
