@@ -19,7 +19,7 @@ from typing import List, Dict, Any
 import requests
 
 SERVER_URL = "http://localhost:6000/papers/fetch"
-DEFAULT_DAY = "20250826"  # 修改为你想查询的日期
+DEFAULT_DAY = "20250828"  # 修改为你想查询的日期
 OUTPUT_PATH = "database/daily_papers.json"
 OUTPUT_DIR = "database/daily_papers"
 
