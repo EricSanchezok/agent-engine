@@ -1,0 +1,1463 @@
+{
+    "code": 0,
+    "message": "操作成功",
+    "data": {
+        "items": [
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A Gaia AI assistant agent for Gaia task.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Gaia Task Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "Holos Development Team",
+                    "url": "https://github.com/holos-team/gaia-task-agent"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Gaia AI assistant base OWL that can respond to Gaia-like task",
+                        "examples": [
+                            "Ask questions and get responses"
+                        ],
+                        "id": "gaia_task_assistant",
+                        "inputModes": null,
+                        "name": "Gaia Task Assistant",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "gaia",
+                            "assistant",
+                            "chat",
+                            "llm",
+                            "owl"
+                        ]
+                    },
+                    {
+                        "description": "Can receive and acknowledge file uploads, displaying file metadata including name, type, and size",
+                        "examples": [
+                            "Upload files and get file information",
+                            "View file metadata (name, type, size)",
+                            "Process uploaded documents"
+                        ],
+                        "id": "file_processing",
+                        "inputModes": null,
+                        "name": "File Processing",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "file",
+                            "upload",
+                            "metadata",
+                            "processing"
+                        ]
+                    },
+                    {
+                        "description": "Create and manage long-running tasks with progress tracking, artifact generation, and cancellation support",
+                        "examples": [
+                            "Create tasks with /task command",
+                            "Monitor task progress in real-time",
+                            "Generate markdown, HTML, and image artifacts",
+                            "Cancel running tasks",
+                            "Track multi-step task execution"
+                        ],
+                        "id": "task_management",
+                        "inputModes": null,
+                        "name": "Task Management",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "task",
+                            "management",
+                            "progress",
+                            "artifacts",
+                            "async"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://localhost:10005/",
+                "version": "1.0.0",
+                "id": "a5LJ_5gBIR0L7JeZpdKJ",
+                "created_at": "2025-08-31T11:01:01.957789Z",
+                "updated_at": "2025-08-31T11:01:01.957789Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "An intelligent routing agent that orchestrates and coordinates multiple specialized agents to provide comprehensive solutions. This agent analyzes user requests, determines the best agent(s) to handle each task, and manages multi-agent workflows to deliver unified responses.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Routing Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Intelligently routes user requests to the most appropriate specialized agents and orchestrates multi-agent workflows",
+                        "examples": [
+                            "Route my request to the best available agent",
+                            "Coordinate multiple agents to complete a complex task",
+                            "Analyze and distribute tasks across specialized agents",
+                            "Orchestrate a multi-step workflow using different agents",
+                            "Find the right agent for my specific needs"
+                        ],
+                        "id": "task_routing",
+                        "inputModes": null,
+                        "name": "Task Routing & Orchestration",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "routing",
+                            "orchestration",
+                            "multi-agent",
+                            "workflow",
+                            "coordination"
+                        ]
+                    },
+                    {
+                        "description": "Manages and coordinates interactions between multiple specialized agents to provide comprehensive solutions",
+                        "examples": [
+                            "Coordinate data analysis and creative writing agents",
+                            "Manage complex workflows across multiple agents",
+                            "Integrate results from different specialized agents",
+                            "Handle sequential and parallel agent tasks",
+                            "Provide unified responses from multiple agent outputs"
+                        ],
+                        "id": "agent_coordination",
+                        "inputModes": null,
+                        "name": "Agent Coordination & Management",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "coordination",
+                            "management",
+                            "multi-agent",
+                            "integration",
+                            "workflow"
+                        ]
+                    },
+                    {
+                        "description": "Analyzes user requests using advanced AI to determine optimal agent routing and task distribution strategies",
+                        "examples": [
+                            "Analyze complex requests and break them into subtasks",
+                            "Determine the best agent combination for multi-faceted requests",
+                            "Optimize task distribution based on agent capabilities",
+                            "Route requests based on current agent availability",
+                            "Provide fallback routing when preferred agents are unavailable"
+                        ],
+                        "id": "intelligent_routing",
+                        "inputModes": null,
+                        "name": "Intelligent Request Analysis & Routing",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "intelligent",
+                            "analysis",
+                            "routing",
+                            "ai",
+                            "optimization"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.244.20.48:10002/",
+                "version": "1.0.0",
+                "id": "apK2_pgBIR0L7JeZXNI3",
+                "created_at": "2025-08-31T06:00:20.790291Z",
+                "updated_at": "2025-08-31T06:00:20.790291Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "串联各个agent的任务流程，实现端到端的学术信号处理",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "SignalApplication",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "执行完整的学术信号处理任务：采集→解读→推荐→报告生成",
+                        "examples": [
+                            "告诉我2025年7月8日的人工智能进展",
+                            "查询2025年7月7日的机器学习论文",
+                            "分析2025年7月6日的深度学习发展"
+                        ],
+                        "id": "signal_task",
+                        "inputModes": null,
+                        "name": "信号任务",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "task",
+                            "signal",
+                            "academic",
+                            "research",
+                            "pipeline",
+                            "任务",
+                            "信号",
+                            "学术",
+                            "研究"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": false,
+                "url": "http://10.245.130.134:11015",
+                "version": "1.0.0",
+                "id": "aZLk_ZgBIR0L7JeZHNJC",
+                "created_at": "2025-08-31T02:10:41.857407Z",
+                "updated_at": "2025-08-31T02:10:41.857407Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A simple test agent for development and testing purposes. This agent provides basic functionality for testing the A2A framework and agent communication protocols.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Simple Test Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "Holos Development Team",
+                    "url": "https://github.com/holos-team/simple-test-agent"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Basic conversational AI assistant that can respond to text queries and provide helpful information using LLM capabilities",
+                        "examples": [
+                            "Ask questions and get helpful responses",
+                            "Have a conversation about any topic",
+                            "Get assistance with general queries",
+                            "Receive clear and concise explanations"
+                        ],
+                        "id": "conversational_assistant",
+                        "inputModes": null,
+                        "name": "Conversational Assistant",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "conversation",
+                            "assistant",
+                            "chat",
+                            "llm",
+                            "text"
+                        ]
+                    },
+                    {
+                        "description": "Can receive and acknowledge file uploads, displaying file metadata including name, type, and size",
+                        "examples": [
+                            "Upload files and get file information",
+                            "View file metadata (name, type, size)",
+                            "Process uploaded documents"
+                        ],
+                        "id": "file_processing",
+                        "inputModes": null,
+                        "name": "File Processing",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "file",
+                            "upload",
+                            "metadata",
+                            "processing"
+                        ]
+                    },
+                    {
+                        "description": "Create and manage long-running tasks with progress tracking, artifact generation, and cancellation support",
+                        "examples": [
+                            "Create tasks with /task command",
+                            "Monitor task progress in real-time",
+                            "Generate markdown, HTML, and image artifacts",
+                            "Cancel running tasks",
+                            "Track multi-step task execution"
+                        ],
+                        "id": "task_management",
+                        "inputModes": null,
+                        "name": "Task Management",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "task",
+                            "management",
+                            "progress",
+                            "artifacts",
+                            "async"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.245.130.134:10001",
+                "version": "1.0.0",
+                "id": "Z5L5-ZgBIR0L7JeZMtLP",
+                "created_at": "2025-08-30T07:55:15.021303Z",
+                "updated_at": "2025-08-30T07:55:15.021303Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "An intelligent agent that optimizes AI prompts for better performance, supporting both user and system prompt optimization as well as iterative refinement",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Prompt Optimizer Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Optimize user prompts to improve AI response quality and effectiveness",
+                        "examples": [
+                            "Optimize this user prompt: \"Write a story\"",
+                            "Make this prompt better: \"Explain machine learning\"",
+                            "Improve prompt: \"Help me code\""
+                        ],
+                        "id": "optimize_user_prompt",
+                        "inputModes": null,
+                        "name": "Optimize User Prompt",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "prompt optimization",
+                            "user prompt",
+                            "AI enhancement"
+                        ]
+                    },
+                    {
+                        "description": "Optimize system prompts for better AI behavior and consistency",
+                        "examples": [
+                            "Optimize system prompt: \"You are a helpful assistant\"",
+                            "Improve this system instruction: \"Act as an expert\"",
+                            "Enhance system prompt: \"Be professional and accurate\""
+                        ],
+                        "id": "optimize_system_prompt",
+                        "inputModes": null,
+                        "name": "Optimize System Prompt",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "prompt optimization",
+                            "system prompt",
+                            "AI behavior"
+                        ]
+                    },
+                    {
+                        "description": "Perform iterative improvements on already optimized prompts based on specific feedback",
+                        "examples": [
+                            "Refine the optimized prompt to be more specific",
+                            "Iterate on the prompt to include more context",
+                            "Improve the prompt based on user feedback"
+                        ],
+                        "id": "iterate_prompt",
+                        "inputModes": null,
+                        "name": "Iterative Prompt Optimization",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "prompt optimization",
+                            "iteration",
+                            "refinement"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": null,
+                "url": "http://35.243.101.101:9001/",
+                "version": "1.0.0",
+                "id": "ZJKD8JgBIR0L7JeZRtLU",
+                "created_at": "2025-08-28T11:49:51.956206Z",
+                "updated_at": "2025-08-28T11:49:51.956206Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "专业的Mermaid图表生成助手，支持多种图表类型的创建和渲染",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Mermaid图表生成代理",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "生成各种类型的Mermaid图表，包括流程图、时序图、类图等",
+                        "examples": [
+                            "请帮我生成一个简单的流程图",
+                            "创建一个用户登录流程的时序图",
+                            "生成一个项目架构的类图",
+                            "将这段Mermaid代码转换为SVG图片",
+                            "验证这个Mermaid语法是否正确"
+                        ],
+                        "id": "mermaid_diagram_generation",
+                        "inputModes": null,
+                        "name": "Mermaid图表生成",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "mermaid",
+                            "diagrams",
+                            "flowchart",
+                            "sequence",
+                            "visualization"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": null,
+                "url": "http://35.243.101.101:10008/",
+                "version": "1.0.0",
+                "id": "Y5J18JgBIR0L7JeZuNKo",
+                "created_at": "2025-08-28T11:35:03.591763Z",
+                "updated_at": "2025-08-28T11:35:03.591763Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": false
+                },
+                "defaultInputModes": [
+                    "application/json"
+                ],
+                "defaultOutputModes": [
+                    "application/json"
+                ],
+                "description": "接收一个论文元数据列表，并根据更高级的语义标准或用户特定指令进行智能筛选、排序和推荐，最终输出一个精简的论文 ID 列表。",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "PaperFilterAgent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "EricSanchez",
+                    "url": "https://github.com/EricSanchezok"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "接收一个JSON对象作为输入，其中包含 `arxiv_ids` (ArXiv ID的列表)。代理内部会根据这些ID获取完整的论文元数据，并基于预设的内部逻辑进行智能筛选和排序。最终返回一个JSON格式的列表，其中包含推荐论文的ArXiv ID，列表的顺序即为推荐顺序。最多推荐8篇论文。",
+                        "examples": [
+                            "{\n    \"arxiv_ids\": [\n        \"2508.12345\",\n        \"2507.67890\",\n        \"2506.11223\"\n    ]\n}"
+                        ],
+                        "id": "filter_and_recommend",
+                        "inputModes": null,
+                        "name": "论文筛选与推荐",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "filter",
+                            "recommend",
+                            "ranking",
+                            "筛选",
+                            "推荐",
+                            "排序",
+                            "智能分析"
+                        ]
+                    },
+                    {
+                        "description": "接收一段包含一个或多个ArXiv论文ID的自然语言文本。代理会自动从文本中提取所有有效的ArXiv ID，获取论文元数据，并基于内部的智能逻辑进行筛选和排序。最终返回一个JSON格式的列表，其中包含最值得推荐的论文ArXiv ID，列表的顺序即为推荐顺序。最多推荐8篇论文。",
+                        "examples": [
+                            "这里有一堆我最近看到的论文，帮我看看哪些最值得读：2508.12345、2507.67890，还有一篇是2506.11223。"
+                        ],
+                        "id": "extract_filter_and_recommend",
+                        "inputModes": null,
+                        "name": "从文本中提取ID并筛选推荐论文",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "filter",
+                            "recommend",
+                            "ranking",
+                            "筛选",
+                            "推荐",
+                            "排序",
+                            "智能分析",
+                            "extract",
+                            "提取",
+                            "NLP"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": null,
+                "url": "http://10.244.9.104:9901/",
+                "version": "0.1.0",
+                "id": "XZKd65gBIR0L7JeZgNIt",
+                "created_at": "2025-08-27T13:00:24.490072Z",
+                "updated_at": "2025-08-27T13:00:24.490072Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": false
+                },
+                "defaultInputModes": [
+                    "text/plain",
+                    "application/json"
+                ],
+                "defaultOutputModes": [
+                    "application/json"
+                ],
+                "description": "可根据用户提供的 ArXiv 论文 ID 或直接分析消息中附加的 PDF 文件，进行深度内容分析和总结，并生成结构化的解读报告。",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "PaperAnalysisAgent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "EricSanchez",
+                    "url": "https://github.com/EricSanchezok"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "接收一个包含ArXiv论文ID列表的JSON对象，专门用于解读ArXiv平台上的论文。代理会根据ID自动获取对应的论文并进行深度分析和总结。最终返回一个JSON格式的列表，其中每一项都是对应论文的Markdown格式解读报告。",
+                        "examples": [
+                            "{\n    \"arxiv_ids\": [\n        \"2402.19473\",\n        \"2305.10601\"\n    ]\n}"
+                        ],
+                        "id": "analyze_by_arxiv_ids",
+                        "inputModes": null,
+                        "name": "通过ArXiv ID解读论文",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "analysis",
+                            "summary",
+                            "markdown",
+                            "pdf",
+                            "arxiv",
+                            "解读",
+                            "总结",
+                            "报告",
+                            "NLP",
+                            "论文"
+                        ]
+                    },
+                    {
+                        "description": "接收一段包含一个或多个ArXiv论文ID的文本。代理会自动从文本中提取所有有效的ArXiv ID，获取对应的论文并进行深度分析和总结。最终返回一个JSON格式的列表，其中每一项都是对应论文的Markdown格式解读报告。这个工具非常适合当您在一段话中提及多篇论文时使用。",
+                        "examples": [
+                            "你好，请帮我深入分析一下这几篇重要的AI论文：2402.19473 (关于Jamba模型) 和 2305.10601，谢谢！"
+                        ],
+                        "id": "extract_and_analyze_arxiv_ids",
+                        "inputModes": null,
+                        "name": "从文本中提取并解读ArXiv论文",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "analysis",
+                            "summary",
+                            "markdown",
+                            "pdf",
+                            "arxiv",
+                            "解读",
+                            "总结",
+                            "报告",
+                            "NLP",
+                            "论文",
+                            "extract",
+                            "提取"
+                        ]
+                    },
+                    {
+                        "description": "此技能用于解读直接附加在A2A消息filepart中的论文PDF文件。用户需要在消息中附加一个或多个论文PDF，并发送一条简单的文本指令。代理会读取附件中的所有论文文件，进行深度内容分析和总结，并返回一个JSON格式的列表，其中每一项都是对应论文的Markdown格式解读报告。",
+                        "examples": [
+                            "帮我分析一下附件里的这几篇论文",
+                            "Summarize the attached papers",
+                            "对这几个论文文件进行内容总结和分析"
+                        ],
+                        "id": "analyze_from_message_files",
+                        "inputModes": null,
+                        "name": "解读附件中的论文PDF",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "analysis",
+                            "summary",
+                            "markdown",
+                            "pdf",
+                            "file",
+                            "attachment",
+                            "解读",
+                            "总结",
+                            "报告",
+                            "NLP",
+                            "论文"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": null,
+                "url": "http://10.244.9.104:9903/",
+                "version": "0.1.0",
+                "id": "XJKb65gBIR0L7JeZONKE",
+                "created_at": "2025-08-27T12:57:55.073499Z",
+                "updated_at": "2025-08-27T12:57:55.073499Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": false
+                },
+                "defaultInputModes": [
+                    "application/json"
+                ],
+                "defaultOutputModes": [
+                    "application/json"
+                ],
+                "description": "根据输入的论文 ID 列表，获取并下载这些论文的 PDF 实体文件。该代理专注于处理 I/O 操作。",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "PaperFetchAgent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "EricSanchez",
+                    "url": "https://github.com/EricSanchezok"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "接收一个JSON对象作为输入，其中包含 `arxiv_ids` (ArXiv ID的列表)。代理会下载列表中每篇论文的PDF文件，并将其内容进行Base64编码。最终返回一个JSON格式的列表，其中每一项都是对应论文PDF文件的Base64编码字符串。",
+                        "examples": [
+                            "{\n    \"arxiv_ids\": [\n        \"2508.12345\",\n        \"2507.67890\"\n    ]\n}"
+                        ],
+                        "id": "fetch_papers_as_pdf",
+                        "inputModes": null,
+                        "name": "获取论文PDF",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "fetch",
+                            "download",
+                            "pdf",
+                            "base64",
+                            "获取",
+                            "下载",
+                            "文件",
+                            "IO"
+                        ]
+                    },
+                    {
+                        "description": "接收一段包含一个或多个ArXiv论文ID的自然语言文本。代理会自动从文本中提取所有有效的ArXiv ID，下载对应论文的PDF文件，并将其内容进行Base64编码。最终返回一个JSON格式的列表，其中每一项都是对应论文PDF文件的Base64编码字符串。",
+                        "examples": [
+                            "你好，能帮我下载一下 2508.12345 和 2507.67890 这两篇论文的PDF文件吗？"
+                        ],
+                        "id": "extract_and_fetch_pdfs",
+                        "inputModes": null,
+                        "name": "从文本中提取ID并获取PDF",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "fetch",
+                            "download",
+                            "pdf",
+                            "base64",
+                            "获取",
+                            "下载",
+                            "文件",
+                            "IO",
+                            "extract",
+                            "提取",
+                            "NLP"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": null,
+                "url": "http://10.244.9.104:9902/",
+                "version": "0.1.0",
+                "id": "W5Kb65gBIR0L7JeZIdIw",
+                "created_at": "2025-08-27T12:57:49.101524Z",
+                "updated_at": "2025-08-27T12:57:49.101524Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": false
+                },
+                "defaultInputModes": [
+                    "text/plain"
+                ],
+                "defaultOutputModes": [
+                    "application/json"
+                ],
+                "description": "根据结构化查询 (JSON) 或自然语言指令 (Text)，在 Arxiv 数据库上执行文献检索，并返回原始的论文元数据列表。",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "ArxivSearchAgent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "EricSanchez",
+                    "url": "https://github.com/EricSanchezok"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "接收一句自然语言指令（如 \"昨天的人工智能论文\"），在内部利用自然语言处理技术将其解析为一个结构化的JSON查询对象，然后执行搜索。此技能非常适合直接与终端用户交互或处理非结构化文本输入的场景。执行成功后，返回一个JSON格式的字符串，其中包含所有检索到的论文元数据（标题、作者、摘要等）的列表。",
+                        "examples": [
+                            "昨天人工智能领域的论文",
+                            "find me recent papers on multi-agent systems",
+                            "查找2025年8月关于多智能体系统的论文"
+                        ],
+                        "id": "search_papers_with_text",
+                        "inputModes": null,
+                        "name": "自然语言论文搜索",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "arxiv",
+                            "text",
+                            "nlp",
+                            "natural language",
+                            "学术",
+                            "论文检索",
+                            "模糊搜索"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": null,
+                "url": "http://10.244.9.104:9900/",
+                "version": "0.1.1",
+                "id": "WpKY65gBIR0L7JeZPdKB",
+                "created_at": "2025-08-27T12:54:39.742532Z",
+                "updated_at": "2025-08-27T12:54:39.742532Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "专业的科研论文分析助手，能够从大量学术论文中提取具体的科研想法和研究方向",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Research Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Analyze research papers and extract potential research ideas and directions",
+                        "examples": [
+                            "请分析这些机器学习论文并提取研究想法",
+                            "从这些计算机视觉论文中找出可能的研究方向",
+                            "分析自然语言处理领域的最新论文，提取科研灵感"
+                        ],
+                        "id": "research_paper_analysis",
+                        "inputModes": null,
+                        "name": "Research Paper Analysis",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "research",
+                            "paper analysis",
+                            "scientific ideas",
+                            "literature review"
+                        ]
+                    },
+                    {
+                        "description": "Identify research gaps and unexplored areas from academic literature",
+                        "examples": [
+                            "识别深度学习领域的研究空白",
+                            "找出人工智能伦理方面缺少的工作",
+                            "发现跨学科研究的潜在机会"
+                        ],
+                        "id": "research_gap_identification",
+                        "inputModes": null,
+                        "name": "Research Gap Identification",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "research gaps",
+                            "unexplored areas",
+                            "scientific opportunities"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.245.131.167:10000/",
+                "version": "1.0.0",
+                "id": "WZJ565gBIR0L7JeZJtIb",
+                "created_at": "2025-08-27T12:20:42.136975Z",
+                "updated_at": "2025-08-27T12:20:42.136975Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A specialized AI agent for searching academic papers using the A2A protocol.\n\nA2A MESSAGE FORMAT:\nThe agent accepts messages following the A2A (Agent-to-Agent) protocol structure:\n{\n  \"message\": {\n    \"role\": \"user\",\n    \"parts\": [\n      {\"kind\": \"text\", \"text\": \"your search query here\"}\n    ]\n  }\n}\n\nINPUT:\n- TEXT MESSAGES (kind: \"text\"): Natural language search queries for academic papers\n  Examples:\n  - \"Find papers about transformer attention mechanisms\"\n  - \"Search for recent papers on reinforcement learning\"\n  - \"Papers on quantum computing\"\n  - \"找一些关于GAN的论文\"\n\nOUTPUT:\n- Paper search results: Formatted list with:\n  * Paper title\n  * Authors and year\n  * Source (arXiv or Semantic Scholar)\n  * Abstract (truncated if too long)\n  * URL and PDF links (when available)\n\nFEATURES:\n- Searches multiple academic databases (arXiv and Semantic Scholar)\n- Returns up to 5 most relevant papers per search\n- Supports queries in multiple languages\n- Provides direct links to papers and PDFs when available\n\nTECHNICAL DETAILS:\n- Protocol: A2A JSON-RPC 2.0\n- Streaming: Supports real-time response streaming\n- Simple stateless operation - each search is independent",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Paper Search Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Search for academic papers from arXiv and Semantic Scholar based on natural language queries. Returns a numbered list of results (up to 5 papers) with titles, authors, abstracts, and links.",
+                        "examples": [
+                            "Find papers about transformer attention mechanisms",
+                            "Search for recent papers on reinforcement learning",
+                            "找一些关于GAN的论文",
+                            "Papers on quantum computing",
+                            "Latest research on neural networks"
+                        ],
+                        "id": "search_papers",
+                        "inputModes": null,
+                        "name": "Search Academic Papers",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "search",
+                            "academic",
+                            "arxiv",
+                            "semantic-scholar",
+                            "papers"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": false,
+                "url": "http://10.245.131.167:9999/",
+                "version": "1.0.0",
+                "id": "WJJ565gBIR0L7JeZCNKL",
+                "created_at": "2025-08-27T12:20:34.569013Z",
+                "updated_at": "2025-08-27T12:20:34.569013Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text",
+                    "file"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A specialized AI agent for academic paper review and search using the A2A protocol.\n\nA2A MESSAGE FORMAT:\nThe agent accepts messages following the A2A (Agent-to-Agent) protocol structure:\n{\n  \"message\": {\n    \"role\": \"user\",\n    \"parts\": [\n      {\"kind\": \"text\", \"text\": \"your query here\"} // for text input\n      // OR\n      {\"kind\": \"file\", \"file\": {\"name\": \"paper.pdf\", \"bytes\": \"base64_encoded_data\"}} // for PDF input\n    ]\n  }\n}\n\nINPUT TYPES:\n1. TEXT MESSAGES (kind: \"text\"):\n   - Direct URL review: \"Please review this paper: https://arxiv.org/abs/1706.03762\"\n\n2. FILE MESSAGES (kind: \"file\"):\n   - PDF files with academic papers\n   - File must include: name (ending in .pdf) and base64-encoded bytes\n   - Automatic text extraction and comprehensive analysis\n\nOUTPUT FORMAT:\nAll responses are sent as text messages through the A2A event stream:\n- Paper search results: Numbered list with title, authors, year, abstract, and selection prompt\n- Review reports: Structured markdown with:\n  * Paper metadata (title, authors, year, source)\n  * Scores (1-10): Methodology, Novelty, Clarity, Significance\n  * Detailed analysis: Summary, Strengths, Weaknesses, Questions\n- Review template: Scoring criteria and guidelines\n- Status updates and error messages\n\nWORKFLOW CONTEXT:\nThe agent maintains context across messages for multi-step workflows:\n1. Search → Returns numbered results → Awaits selection\n2. Selection → Downloads/processes paper → Returns comprehensive review\n3. Direct PDF/URL → Immediate review generation\n\nTECHNICAL DETAILS:\n- Protocol: A2A JSON-RPC 2.0\n- Streaming: Supports real-time response streaming\n- Context: Maintains task state using context_id for conversation continuity",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Reviewer Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Review an academic paper provided as a PDF file. Performs comprehensive analysis with structured scoring (1-10) for methodology, novelty, clarity, and significance. Automatically extracts text, metadata, and generates detailed review report.",
+                        "examples": [
+                            "Review this paper on transformer architectures",
+                            "Analyze this PDF paper",
+                            "Evaluate this research paper",
+                            "[Upload PDF file for review]"
+                        ],
+                        "id": "review_pdf_paper",
+                        "inputModes": null,
+                        "name": "Review PDF Paper",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "review",
+                            "academic",
+                            "pdf",
+                            "analysis",
+                            "scoring"
+                        ]
+                    },
+                    {
+                        "description": "Review a paper directly from its URL (supports arXiv and other academic paper URLs). Automatically downloads the PDF, caches it locally, and generates comprehensive review with scoring and detailed analysis.",
+                        "examples": [
+                            "https://arxiv.org/abs/1706.03762",
+                            "Review this paper: https://arxiv.org/pdf/2005.14165.pdf",
+                            "Analyze the paper at https://arxiv.org/abs/2010.11929"
+                        ],
+                        "id": "review_paper_url",
+                        "inputModes": null,
+                        "name": "Review Paper from URL",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "review",
+                            "url",
+                            "arxiv",
+                            "download",
+                            "analysis"
+                        ]
+                    },
+                    {
+                        "description": "Handle greetings and provide information about the agent's capabilities. Explains available functions and how to use them effectively.",
+                        "examples": [
+                            "Hello",
+                            "你好",
+                            "What can you do?",
+                            "How does this work?"
+                        ],
+                        "id": "greeting_and_help",
+                        "inputModes": null,
+                        "name": "Greeting and Help",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "greeting",
+                            "help",
+                            "introduction",
+                            "capabilities"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": false,
+                "url": "http://10.245.131.167:9998/",
+                "version": "1.0.0",
+                "id": "V5J465gBIR0L7JeZ7tIN",
+                "created_at": "2025-08-27T12:20:27.786636Z",
+                "updated_at": "2025-08-27T12:20:27.786636Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A simple test agent for development and testing purposes. This agent provides basic functionality for testing the A2A framework and agent communication protocols.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Simple Test Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "Holos Development Team",
+                    "url": "https://github.com/holos-team/simple-test-agent"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Basic conversational AI assistant that can respond to text queries and provide helpful information using LLM capabilities",
+                        "examples": [
+                            "Ask questions and get helpful responses",
+                            "Have a conversation about any topic",
+                            "Get assistance with general queries",
+                            "Receive clear and concise explanations"
+                        ],
+                        "id": "conversational_assistant",
+                        "inputModes": null,
+                        "name": "Conversational Assistant",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "conversation",
+                            "assistant",
+                            "chat",
+                            "llm",
+                            "text"
+                        ]
+                    },
+                    {
+                        "description": "Can receive and acknowledge file uploads, displaying file metadata including name, type, and size",
+                        "examples": [
+                            "Upload files and get file information",
+                            "View file metadata (name, type, size)",
+                            "Process uploaded documents"
+                        ],
+                        "id": "file_processing",
+                        "inputModes": null,
+                        "name": "File Processing",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "file",
+                            "upload",
+                            "metadata",
+                            "processing"
+                        ]
+                    },
+                    {
+                        "description": "Create and manage long-running tasks with progress tracking, artifact generation, and cancellation support",
+                        "examples": [
+                            "Create tasks with /task command",
+                            "Monitor task progress in real-time",
+                            "Generate markdown, HTML, and image artifacts",
+                            "Cancel running tasks",
+                            "Track multi-step task execution"
+                        ],
+                        "id": "task_management",
+                        "inputModes": null,
+                        "name": "Task Management",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "task",
+                            "management",
+                            "progress",
+                            "artifacts",
+                            "async"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.245.132.142:10001",
+                "version": "1.0.0",
+                "id": "VZLF6pgBIR0L7JeZstLC",
+                "created_at": "2025-08-27T09:04:41.664364Z",
+                "updated_at": "2025-08-27T09:04:41.664364Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "An agent that can browse the web to answer questions.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Web Sailor Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "An agent that can browse the web to answer questions.",
+                        "examples": [
+                            "What is the weather today?",
+                            "Search for information about a topic"
+                        ],
+                        "id": "web_browsing",
+                        "inputModes": null,
+                        "name": "Web Browsing",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "web",
+                            "browsing",
+                            "search"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.244.3.40:7777/",
+                "version": "1.0.0",
+                "id": "VJK26pgBIR0L7JeZnNIb",
+                "created_at": "2025-08-27T08:48:12.824398Z",
+                "updated_at": "2025-08-27T08:48:12.824398Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A friendly AI assistant that helps users communicate effectively with the multi-agent system. Specializes in organizing user queries, clarifying requirements, and acting as an intermediary between users and the planning system.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "User Assistant",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Friendly AI assistant specialized in helping users communicate effectively with the multi-agent system. Organizes user queries, clarifies requirements, and acts as an intermediary between users and the planning system.",
+                        "examples": [
+                            "Help me organize my request for the planning system",
+                            "I want to create a project but I'm not sure how to ask",
+                            "Can you help me clarify what I need?",
+                            "Assist me in communicating with the multi-agent system",
+                            "Help me structure my request better"
+                        ],
+                        "id": "UserAssistance",
+                        "inputModes": null,
+                        "name": "User Assistance",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "user-assistance",
+                            "communication",
+                            "query-organization",
+                            "clarification",
+                            "intermediary"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.244.3.40:2668/",
+                "version": "1.0.0",
+                "id": "U5J86pgBIR0L7JeZotLR",
+                "created_at": "2025-08-27T07:44:53.455964Z",
+                "updated_at": "2025-08-27T07:44:53.455964Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A specialized AI agent focused on creating comprehensive plans, schedules, and organizing tasks. Expert in project planning, timeline creation, resource allocation, goal setting, and strategic planning to help you achieve your objectives efficiently.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Planning Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Specialized AI assistant for creating comprehensive plans, schedules, and organizing tasks. Expert in project planning, timeline creation, resource allocation, and strategic planning.",
+                        "examples": [
+                            "Create a project plan for launching a new product",
+                            "Help me organize my weekly schedule",
+                            "Break down a complex goal into actionable steps",
+                            "Plan a marketing campaign timeline",
+                            "Create a study plan for exam preparation"
+                        ],
+                        "id": "Planning",
+                        "inputModes": null,
+                        "name": "Planning",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "planning",
+                            "scheduling",
+                            "organization",
+                            "project-management",
+                            "strategy"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.244.3.40:2667/",
+                "version": "1.0.0",
+                "id": "UpJ06pgBIR0L7JeZPdL6",
+                "created_at": "2025-08-27T07:35:43.352077Z",
+                "updated_at": "2025-08-27T07:35:43.352077Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": false
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A versatile agent based on OpenManus, supporting local & MCP tools.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "OpenManus Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "General-purpose conversational AI using LLMs, capable of answering questions, providing explanations, and maintaining multi-turn dialogue context.",
+                        "examples": [
+                            "Ask OpenManus to explain the transformer architecture",
+                            "Have a back-and-forth discussion on project requirements",
+                            "Request definitions, analogies, or summaries of complex topics",
+                            "Clarify ambiguous instructions in a step-by-step manner"
+                        ],
+                        "id": "openmanus.chat",
+                        "inputModes": null,
+                        "name": "Conversational Assistant",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "chat",
+                            "conversation",
+                            "llm",
+                            "text"
+                        ]
+                    },
+                    {
+                        "description": "Run arbitrary Python code snippets in a secure sandbox, return stdout, plots, and errors, and integrate results back into the dialogue.",
+                        "examples": [
+                            "Execute a Python function to calculate Fibonacci numbers",
+                            "Generate and save a matplotlib plot, then retrieve it",
+                            "Debug a snippet with syntax or runtime errors",
+                            "Write and run a small script to process a CSV file"
+                        ],
+                        "id": "openmanus.code_exec",
+                        "inputModes": null,
+                        "name": "Code Execution",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "code",
+                            "python",
+                            "execution",
+                            "sandbox"
+                        ]
+                    },
+                    {
+                        "description": "Control a headless browser (Playwright) to navigate web pages, perform searches, click elements, extract content, and take screenshots.",
+                        "examples": [
+                            "Visit a news site and scrape the top headlines",
+                            "Automate form filling on an internal dashboard",
+                            "Search a keyword on Baidu and extract the first 3 results",
+                            "Capture a screenshot of a dynamic chart on a web page"
+                        ],
+                        "id": "openmanus.browser",
+                        "inputModes": null,
+                        "name": "Browser Automation",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "browser",
+                            "playwright",
+                            "automation",
+                            "scraping"
+                        ]
+                    },
+                    {
+                        "description": "Dynamically connect to remote MCP servers over SSE or stdio, discover and invoke their tools as if they were local, and refresh tool schemas at runtime.",
+                        "examples": [
+                            "Connect to an internal analytics MCP service and run `get_metrics`",
+                            "List available tools from a downstream agent via SSE",
+                            "Invoke a remote `generate_report` tool and integrate its output",
+                            "Handle schema changes of remote tools without restarting"
+                        ],
+                        "id": "openmanus.mcp",
+                        "inputModes": null,
+                        "name": "MCP Tool Integration",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "mcp",
+                            "remote",
+                            "toolchain",
+                            "dynamic"
+                        ]
+                    },
+                    {
+                        "description": "Perform structured text edits such as find-and-replace, templating, and content transformations, leveraging a programmable editor interface.",
+                        "examples": [
+                            "Replace all dates in a document with a new format",
+                            "Apply a custom template to generate boilerplate code",
+                            "Batch-rename variables in a codebase snippet",
+                            "Reformat markdown headings according to style guide"
+                        ],
+                        "id": "openmanus.text_edit",
+                        "inputModes": null,
+                        "name": "Text Editing & Replacement",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "text",
+                            "editing",
+                            "replace",
+                            "templating"
+                        ]
+                    },
+                    {
+                        "description": "Gracefully terminate multi-step processes, clean up resources (browsers, MCP connections), and report final success or failure status.",
+                        "examples": [
+                            "Cancel a long-running browser scrape midway",
+                            "Disconnect from all MCP servers after job completion",
+                            "Handle exceptions by terminating the task with an error message",
+                            "Ensure sandbox resources are freed after execution"
+                        ],
+                        "id": "openmanus.terminate",
+                        "inputModes": null,
+                        "name": "Task Termination & Cleanup",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "terminate",
+                            "cleanup",
+                            "lifecycle",
+                            "shutdown"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.245.132.74:10003/",
+                "version": "1.0.0",
+                "id": "SJJ34ZgBIR0L7JeZC9L4",
+                "created_at": "2025-08-25T13:42:12.214280Z",
+                "updated_at": "2025-08-25T13:42:12.214280Z"
+            }
+        ],
+        "total": 18,
+        "page": 1,
+        "size": 20,
+        "pages": 1
+    }
+}

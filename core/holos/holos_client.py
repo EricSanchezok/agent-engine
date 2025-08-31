@@ -50,9 +50,6 @@ class HolosClient:
             # Save agents_data to JSON file
             self._save_agents_data_to_file(agents_data)
             
-            # Log the response for debugging
-            print(agents_data)
-            
             return agents_data
             
         except requests.exceptions.RequestException as e:
@@ -62,7 +59,7 @@ class HolosClient:
             print(f"Error parsing JSON response: {e}")
             raise
     
-    def _save_agents_data_to_file(self, agents_data: List[Dict[str, Any]]) -> None:
+    def _save_agents_data_to_file(self, agents_data: Any) -> None:
         """
         Save agents_data to a JSON file.
         
@@ -76,7 +73,7 @@ class HolosClient:
             
             # Save data to JSON file with proper formatting
             with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(agents_data, f, indent=2, ensure_ascii=False)
+                json.dump(agents_data, f, indent=4, ensure_ascii=False)
             
             print(f"Agents data saved to: {file_path}")
             
@@ -116,12 +113,6 @@ if __name__ == "__main__":
     try:
         # Using the simple function
         agents = get_all_agent_cards()
-        print(f"Retrieved {len(agents)} agents")
-        
-        # Print first agent as example
-        if agents:
-            print("First agent:")
-            print(json.dumps(agents[0], indent=2, ensure_ascii=False))
             
     except Exception as e:
         print(f"Error: {e}")
