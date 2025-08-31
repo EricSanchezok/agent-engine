@@ -36,7 +36,7 @@ from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING
 from core.utils import DateFormatter
 
 # Local imports
-from agents.ArxivSearchAgent.config import AGENT_CARD, LOG_DIR
+from agents.ArxivSearchAgent.config import AGENT_CARD
 from agents.ArxivSearchAgent.category_navigator import ArXivCategoryNavigator
 from agents.ArxivSearchAgent.query_parser import ArXivQueryParser
 

@@ -4,9 +4,7 @@ import json
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities, AgentProvider
 
 # AgentEngine imports
-from agent_engine.utils import get_local_ip, get_current_file_dir
-
-LOG_DIR = get_current_file_dir() / 'logs'
+from agent_engine.utils import get_local_ip
 
 AGENT_NAME = 'PaperFilterAgent'
 AGENT_DESCRIPTION = '接收一个论文元数据列表，并根据更高级的语义标准或用户特定指令进行智能筛选、排序和推荐，最终输出一个精简的论文 ID 列表。'

@@ -4,9 +4,7 @@ import json
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities, AgentProvider
 
 # AgentEngine imports
-from agent_engine.utils import get_local_ip, get_current_file_dir
-
-LOG_DIR = get_current_file_dir() / 'logs'
+from agent_engine.utils import get_local_ip
 
 AGENT_NAME = 'PaperAnalysisAgent'
 AGENT_DESCRIPTION = '可根据用户提供的 ArXiv 论文 ID 或直接分析消息中附加的 PDF 文件，进行深度内容分析和总结，并生成结构化的解读报告。'

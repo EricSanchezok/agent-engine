@@ -3,7 +3,7 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 import shutil
 
 
@@ -32,28 +32,44 @@ class ColoredFormatter(logging.Formatter):
 
 
 class AgentLogger:
-    """Global logger class with colored output, rolling storage, and link file management"""
+    """Global singleton logger class with colored output, rolling storage, and link file management"""
+    
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls, name: str = "AgentLogger", log_dir: Optional[str] = None, max_file_size: int = 100 * 1024 * 1024):
+        """Singleton pattern - ensure only one instance exists"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self, name: str = "AgentLogger", log_dir: Optional[str] = None, max_file_size: int = 100 * 1024 * 1024):
         """
-        Initialize AgentLogger
+        Initialize AgentLogger (only once due to singleton pattern)
         
         Args:
-            name: Logger name
+            name: Logger name (used for filtering, not for creating new instances)
             log_dir: Directory to store log files (default: project_root/logs)
             max_file_size: Maximum log file size in bytes (default: 100MB)
         """
+        # Only initialize once
+        if self._initialized:
+            return
+            
         self.name = name
         self.max_file_size = max_file_size
+        self.loggers: Dict[str, logging.Logger] = {}  # Store different named loggers
         
         # Get project root directory
         project_root = self._get_project_root()
         
-        # Set log directory
-        if log_dir is None:
-            self.log_dir = project_root / "logs"
-        else:
+        # Set log directory - priority: log_dir parameter > AGENT_LOG_DIR env var > default project_root/logs
+        if log_dir is not None:
             self.log_dir = Path(log_dir)
+        elif os.getenv('AGENT_LOG_DIR'):
+            self.log_dir = Path(os.getenv('AGENT_LOG_DIR'))
+        else:
+            self.log_dir = project_root / "logs"
         
         # Create log directory if it doesn't exist
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -66,14 +82,21 @@ class AgentLogger:
         self.log_filename = f"agent_logger_{timestamp}.log"
         self.log_filepath = self.log_dir / self.log_filename
         
-        # Create and configure logger
-        self.logger = self._setup_logger()
-        
         # Create/update link file
         self._update_link_file()
         
+        # Mark as initialized
+        self._initialized = True
+        
         # Log initialization
-        self.logger.info(f"AgentLogger initialized. Log file: {self.log_filepath}")
+        self._get_logger("AgentLogger").info(f"AgentLogger singleton initialized. Log file: {self.log_filepath}")
+    
+    def _get_logger(self, name: str) -> logging.Logger:
+        """Get or create a logger with the specified name"""
+        if name not in self.loggers:
+            logger = self._setup_logger(name)
+            self.loggers[name] = logger
+        return self.loggers[name]
     
     def _get_project_root(self) -> Path:
         """Get the project root directory"""
@@ -85,9 +108,9 @@ class AgentLogger:
         # Fallback to current working directory
         return Path.cwd()
     
-    def _setup_logger(self) -> logging.Logger:
-        """Setup and configure the logger"""
-        logger = logging.getLogger(self.name)
+    def _setup_logger(self, name: str) -> logging.Logger:
+        """Setup and configure a logger with the specified name"""
+        logger = logging.getLogger(name)
         
         # Clear existing handlers to avoid duplicates
         logger.handlers.clear()
@@ -128,9 +151,8 @@ class AgentLogger:
     
     def _update_link_file(self):
         """Create/update the link file to point to the current log file"""
-        # 使用 logger name 创建唯一的 link 文件名
-        safe_name = self.name.replace('.', '_').replace('/', '_').replace('\\', '_')
-        link_file = self.log_dir / f"{safe_name}_link.log"
+        # Create a single link file for the main logger with "00_" prefix to ensure it appears first
+        link_file = self.log_dir / "00_agent_logger_link.log"
         
         # Remove existing link if it exists
         if link_file.exists():
@@ -139,10 +161,11 @@ class AgentLogger:
         # Create a text file with the current log filename and content
         try:
             with open(link_file, 'w', encoding='utf-8') as f:
-                f.write(f"Logger: {self.name}\n")
+                f.write(f"Main AgentLogger Link File\n")
                 f.write(f"Current log file: {self.log_filename}\n")
                 f.write(f"Created at: {datetime.now().isoformat()}\n")
                 f.write(f"Full path: {self.log_filepath}\n")
+                f.write(f"Active loggers: {', '.join(self.loggers.keys())}\n")
                 f.write("-" * 50 + "\n")
                 # Copy the actual log content from the current log file
                 if self.log_filepath.exists():
@@ -155,22 +178,20 @@ class AgentLogger:
         except Exception as e:
             # Fallback: create a simple text file
             with open(link_file, 'w', encoding='utf-8') as f:
-                f.write(f"Logger: {self.name}\n")
+                f.write(f"Main AgentLogger Link File\n")
                 f.write(f"Current log file: {self.log_filename}\n")
                 f.write(f"Created at: {datetime.now().isoformat()}\n")
                 f.write(f"Error: {str(e)}\n")
     
     def _clear_old_link_file(self):
         """Clear the old link file content when reinitializing"""
-        # 使用 logger name 创建唯一的 link 文件名
-        safe_name = self.name.replace('.', '_').replace('/', '_').replace('\\', '_')
-        link_file = self.log_dir / f"{safe_name}_link.log"
+        link_file = self.log_dir / "00_agent_logger_link.log"
         
         if link_file.exists():
             try:
                 # Clear the content but keep the file
                 with open(link_file, 'w', encoding='utf-8') as f:
-                    f.write(f"Logger: {self.name}\n")
+                    f.write(f"Main AgentLogger Link File\n")
                     f.write("Log file cleared. Waiting for new content...\n")
             except Exception as e:
                 # If we can't clear it, just remove it
@@ -188,13 +209,14 @@ class AgentLogger:
             self.log_filename = new_log_filename
             self.log_filepath = new_log_filepath
             
-            # Reconfigure logger with new file
-            self.logger = self._setup_logger()
+            # Reconfigure all loggers with new file
+            for name in self.loggers:
+                self.loggers[name] = self._setup_logger(name)
             
             # Update link file
             self._update_link_file()
             
-            self.logger.info(f"Log file rotated. New log file: {self.log_filepath}")
+            self._get_logger("AgentLogger").info(f"Log file rotated. New log file: {self.log_filepath}")
     
     def get_latest_logs(self, n: int = 100) -> str:
         """
@@ -232,43 +254,50 @@ class AgentLogger:
             for log_file in self.log_dir.glob("agent_logger_*.log"):
                 if log_file.stat().st_mtime < cutoff_time:
                     log_file.unlink()
-                    self.logger.info(f"Cleaned up old log file: {log_file.name}")
+                    self._get_logger("AgentLogger").info(f"Cleaned up old log file: {log_file.name}")
         
         except Exception as e:
-            self.logger.error(f"Error cleaning up old logs: {str(e)}")
+            self._get_logger("AgentLogger").error(f"Error cleaning up old logs: {str(e)}")
     
     # Proxy methods to the underlying logger
     def debug(self, msg, *args, **kwargs):
         self._check_file_size()
-        self.logger.debug(msg, *args, **kwargs)
+        logger = self._get_logger(self.name)
+        logger.debug(msg, *args, **kwargs)
         self._update_link_file()
     
     def info(self, msg, *args, **kwargs):
         self._check_file_size()
-        self.logger.info(msg, *args, **kwargs)
+        logger = self._get_logger(self.name)
+        logger.info(msg, *args, **kwargs)
         self._update_link_file()
     
     def warning(self, msg, *args, **kwargs):
         self._check_file_size()
-        self.logger.warning(msg, *args, **kwargs)
+        logger = self._get_logger(self.name)
+        logger.warning(msg, *args, **kwargs)
         self._update_link_file()
     
     def error(self, msg, *args, **kwargs):
         self._check_file_size()
-        self.logger.error(msg, *args, **kwargs)
+        logger = self._get_logger(self.name)
+        logger.error(msg, *args, **kwargs)
         self._update_link_file()
     
     def critical(self, msg, *args, **kwargs):
         self._check_file_size()
-        self.logger.critical(msg, *args, **kwargs)
+        logger = self._get_logger(self.name)
+        logger.critical(msg, *args, **kwargs)
         self._update_link_file()
     
     def exception(self, msg, *args, **kwargs):
         self._check_file_size()
-        self.logger.exception(msg, *args, **kwargs)
+        logger = self._get_logger(self.name)
+        logger.exception(msg, *args, **kwargs)
         self._update_link_file()
     
     def log(self, level, msg, *args, **kwargs):
         self._check_file_size()
-        self.logger.log(level, msg, *args, **kwargs)
+        logger = self._get_logger(self.name)
+        logger.log(level, msg, *args, **kwargs)
         self._update_link_file()

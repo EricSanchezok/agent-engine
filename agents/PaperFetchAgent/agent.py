@@ -49,7 +49,7 @@ from core.arxiv import ArXivFetcher, Paper, CATEGORIES_QUERY_STRING, ArxivIdPars
 from core.utils import DateFormatter
 
 # Local imports
-from agents.PaperFetchAgent.config import AGENT_CARD, LOG_DIR
+from agents.PaperFetchAgent.config import AGENT_CARD
 
 logger = AgentLogger(__name__)
 
