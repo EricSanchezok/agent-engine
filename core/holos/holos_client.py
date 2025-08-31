@@ -9,6 +9,12 @@ from urllib.parse import urljoin
 import os
 
 
+# AgentEngine imports
+from agent_engine.agent_logger import AgentLogger
+
+logger = AgentLogger(__name__)
+
+
 class HolosClient:
     """Client for interacting with Holos API services."""
     
@@ -36,12 +42,12 @@ class HolosClient:
             List of agent dictionaries containing agentcard information
             
         Raises:
-            requests.RequestException: If the API request fails
+            requests.RequestException: If the API request fails and no fallback data is available
         """
         url = urljoin(self.base_url, "/api/v1/holos/agents")
         
         try:
-            response = self.session.get(url)
+            response = self.session.get(url, timeout=1)
             response.raise_for_status()
             
             # Parse JSON response
@@ -50,14 +56,32 @@ class HolosClient:
             # Save agents_data to JSON file
             self._save_agents_data_to_file(agents_data)
             
-            return agents_data
+            return agents_data["data"]["items"]
             
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching agents: {e}")
-            raise
+            logger.error(f"Error fetching agents from API: {e}")
+            logger.error("Attempting to load agents data from local file...")
+            
+            # Try to load from local file as fallback
+            fallback_data = self._load_agents_data_from_file()
+            if fallback_data:
+                logger.info("Successfully loaded agents data from local file")
+                return fallback_data
+            else:
+                logger.error("No fallback data available")
+                raise
         except json.JSONDecodeError as e:
-            print(f"Error parsing JSON response: {e}")
-            raise
+            logger.error(f"Error parsing JSON response: {e}")
+            logger.error("Attempting to load agents data from local file...")
+            
+            # Try to load from local file as fallback
+            fallback_data = self._load_agents_data_from_file()
+            if fallback_data:
+                logger.info("Successfully loaded agents data from local file")
+                return fallback_data
+            else:
+                logger.error("No fallback data available")
+                raise
     
     def _save_agents_data_to_file(self, agents_data: Any) -> None:
         """
@@ -75,11 +99,39 @@ class HolosClient:
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(agents_data, f, indent=4, ensure_ascii=False)
             
-            print(f"Agents data saved to: {file_path}")
+            logger.info(f"Agents data saved to: {file_path}")
             
         except Exception as e:
-            print(f"Error saving agents data to file: {e}")
+            logger.error(f"Error saving agents data to file: {e}")
             # Don't raise the exception to avoid breaking the main functionality
+    
+    def _load_agents_data_from_file(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        Load agents data from local JSON file as fallback.
+        
+        Returns:
+            List of agent dictionaries if file exists and is valid, None otherwise
+        """
+        try:
+            # Get the directory of the current file
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(current_dir, "agents_data.json")
+            
+            # Check if file exists
+            if not os.path.exists(file_path):
+                logger.error(f"Fallback file not found: {file_path}")
+                return None
+            
+            # Load data from JSON file
+            with open(file_path, 'r', encoding='utf-8') as f:
+                agents_data = json.load(f)
+            
+            logger.info(f"Loaded agents data from fallback file: {file_path}")
+            return agents_data["data"]["items"]
+            
+        except Exception as e:
+            logger.error(f"Error loading agents data from fallback file: {e}")
+            return None
     
     def close(self):
         """Close the session and clean up resources."""
@@ -115,4 +167,4 @@ if __name__ == "__main__":
         agents = get_all_agent_cards()
             
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
