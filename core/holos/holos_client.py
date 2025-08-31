@@ -6,6 +6,7 @@ import requests
 import json
 from typing import List, Dict, Any, Optional
 from urllib.parse import urljoin
+import os
 
 
 class HolosClient:
@@ -46,6 +47,9 @@ class HolosClient:
             # Parse JSON response
             agents_data = response.json()
             
+            # Save agents_data to JSON file
+            self._save_agents_data_to_file(agents_data)
+            
             # Log the response for debugging
             print(agents_data)
             
@@ -57,6 +61,28 @@ class HolosClient:
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON response: {e}")
             raise
+    
+    def _save_agents_data_to_file(self, agents_data: List[Dict[str, Any]]) -> None:
+        """
+        Save agents_data to a JSON file.
+        
+        Args:
+            agents_data: List of agent dictionaries to save
+        """
+        try:
+            # Get the directory of the current file
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(current_dir, "agents_data.json")
+            
+            # Save data to JSON file with proper formatting
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(agents_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"Agents data saved to: {file_path}")
+            
+        except Exception as e:
+            print(f"Error saving agents data to file: {e}")
+            # Don't raise the exception to avoid breaking the main functionality
     
     def close(self):
         """Close the session and clean up resources."""
