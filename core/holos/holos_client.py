@@ -47,7 +47,7 @@ class HolosClient:
             agents_data = response.json()
             
             # Log the response for debugging
-            print(f"Successfully retrieved {len(agents_data) if isinstance(agents_data, list) else 'unknown'} agents")
+            print(agents_data)
             
             return agents_data
             
