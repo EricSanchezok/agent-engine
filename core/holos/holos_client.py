@@ -71,7 +71,7 @@ class HolosClient:
         self.close()
 
 
-def get_all_agents_simple(base_url: str = "http://10.245.130.134:8000") -> List[Dict[str, Any]]:
+def get_all_agent_cards(base_url: str = "http://10.245.130.134:8000") -> List[Dict[str, Any]]:
     """
     Simple function to get all agents without creating a client instance.
     
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     # Example usage
     try:
         # Using the simple function
-        agents = get_all_agents_simple()
+        agents = get_all_agent_cards()
         print(f"Retrieved {len(agents)} agents")
         
         # Print first agent as example
