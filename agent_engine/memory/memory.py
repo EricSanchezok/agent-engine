@@ -9,7 +9,7 @@ import sqlite3
 import json
 import os
 import numpy as np
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Tuple, Any, Set
 from pathlib import Path
 import hashlib
 
@@ -23,6 +23,11 @@ logger = AgentLogger(__name__)
 class Memory:
     """Vector-based memory storage using SQLite database"""
     
+    # Schema version for SQLite PRAGMA user_version
+    SCHEMA_VERSION: int = 1
+    # In-process cache of initialized database paths to avoid repeated checks
+    _initialized_paths: Set[str] = set()
+
     def __init__(self, name: str, db_path: Optional[str] = None, model_name: str = "all-MiniLM-L6-v2"):
         """
         Initialize the memory storage
@@ -36,12 +41,8 @@ class Memory:
             raise ValueError("Memory name is required")
         
         self.name = name
-        
-        # Create embedder with specified model
-        self.embedder = Embedder(model_name=model_name)
-        
-        # Initialize the embedder
-        self.embedder.fit()
+        self.model_name = model_name
+        self.embedder = None  # Initialize embedder lazily when needed
         
         # Set database path
         if db_path:
@@ -53,7 +54,24 @@ class Memory:
             memory_dir.mkdir(exist_ok=True)
             self.db_path = str(memory_dir / f"{name}.db")
         
-        self._init_db()
+        self._ensure_db_initialized()
+
+    def _ensure_db_initialized(self):
+        """Ensure the database is initialized only once per process and path.
+
+        This checks if the DB file exists and has the required schema and indexes.
+        If already initialized (either persisted on disk or cached in-process), it skips work.
+        """
+        # Fast path: in-process cache
+        if self.db_path in Memory._initialized_paths:
+            return
+
+        # Check on-disk state; if not initialized, run init
+        if not self._is_db_initialized():
+            self._init_db()
+
+        # Mark as initialized for this process
+        Memory._initialized_paths.add(self.db_path)
     
     def _init_db(self):
         """Initialize the SQLite database with required tables"""
@@ -77,8 +95,50 @@ class Memory:
             # Create indexes for better performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_id ON vectors (id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_content ON vectors (content)")
+
+            # Set schema version to mark successful initialization
+            cursor.execute(f"PRAGMA user_version = {Memory.SCHEMA_VERSION}")
             
             conn.commit()
+
+    def _is_db_initialized(self) -> bool:
+        """Check whether the database exists and has the expected schema and indexes."""
+        if not os.path.exists(self.db_path):
+            return False
+
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Check table existence
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='vectors'")
+                if cursor.fetchone() is None:
+                    return False
+
+                # Check required columns
+                cursor.execute("PRAGMA table_info(vectors)")
+                columns = {row[1] for row in cursor.fetchall()}  # row[1] is column name
+                required_columns = {"id", "vector", "content", "metadata"}
+                if not required_columns.issubset(columns):
+                    return False
+
+                # Check indexes
+                cursor.execute("PRAGMA index_list('vectors')")
+                index_names = {row[1] for row in cursor.fetchall()}  # row[1] is index name
+                if "idx_id" not in index_names or "idx_content" not in index_names:
+                    return False
+
+                # Check schema version
+                cursor.execute("PRAGMA user_version")
+                version_row = cursor.fetchone()
+                version = version_row[0] if version_row else 0
+                if version < Memory.SCHEMA_VERSION:
+                    return False
+
+                return True
+        except sqlite3.Error as e:
+            logger.error(f"Failed to check database initialization: {e}")
+            return False
     
     def _vector_to_blob(self, vector: List[float]) -> bytes:
         """Convert vector list to binary blob for storage"""
@@ -91,6 +151,62 @@ class Memory:
     def _generate_id(self, content: str) -> str:
         """Generate a unique ID for content using hash"""
         return hashlib.md5(content.encode('utf-8')).hexdigest()
+    
+    def _get_embedder(self) -> Embedder:
+        """Get or create embedder instance"""
+        if self.embedder is None:
+            self.embedder = Embedder(model_name=self.model_name)
+        return self.embedder
+    
+    def _calculate_similarity(self, vector1: List[float], vector2: List[float]) -> float:
+        """
+        Calculate cosine similarity between two vectors
+        
+        Args:
+            vector1: First vector
+            vector2: Second vector
+            
+        Returns:
+            Similarity score between 0 and 1
+        """
+        v1 = np.array(vector1)
+        v2 = np.array(vector2)
+        
+        # Check for zero vectors
+        v1_norm = np.linalg.norm(v1)
+        v2_norm = np.linalg.norm(v2)
+        
+        if v1_norm == 0 or v2_norm == 0:
+            return 0.0
+        
+        # Normalize vectors
+        v1_normalized = v1 / v1_norm
+        v2_normalized = v2 / v2_norm
+        
+        # Calculate cosine similarity
+        similarity = np.dot(v1_normalized, v2_normalized)
+        return float(np.clip(similarity, -1.0, 1.0))
+    
+    def _find_most_similar(self, query_vector: List[float], vectors: List[List[float]], top_k: int = 5) -> List[Tuple[int, float]]:
+        """
+        Find the most similar vectors to a query vector using independent similarity calculation
+        
+        Args:
+            query_vector: Query vector to compare against
+            vectors: List of vectors to compare with
+            top_k: Number of top similar vectors to return
+            
+        Returns:
+            List of tuples (index, similarity_score) sorted by similarity
+        """
+        similarities = []
+        for i, vector in enumerate(vectors):
+            sim = self._calculate_similarity(query_vector, vector)
+            similarities.append((i, sim))
+        
+        # Sort by similarity (descending) and return top_k
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        return similarities[:top_k]
     
     def add(self, content: str, vector: Optional[List[float]] = None, metadata: Optional[Dict] = None):
         """
@@ -115,10 +231,17 @@ class Memory:
         # Compute vector if not provided
         if vector is None:
             logger.info(f"Computing vector for content: {content_id}")
+            embedder = self._get_embedder()
             # Ensure embedder is fitted with current content for consistent dimensions
-            if not self.embedder._fitted:
-                self.embedder.fit([content])
-            vector = self.embedder.embed(content)
+            if not embedder._fitted:
+                embedder.fit([content])
+            vector = embedder.embed(content)
+            
+            # Validate vector
+            if not vector or len(vector) == 0:
+                raise ValueError(f"Generated vector is empty for content: {content}")
+            if np.linalg.norm(vector) == 0:
+                logger.warning(f"Generated zero vector for content: {content}")
         
         # Convert metadata to JSON string
         metadata_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
@@ -150,9 +273,9 @@ class Memory:
             if not rows:
                 return None, {}
             
-            # Find most similar vector
+            # Find most similar vector using independent similarity calculation
             vectors = [self._blob_to_vector(row[0]) for row in rows]
-            similarities = self.embedder.find_most_similar(vector, vectors, top_k=1)
+            similarities = self._find_most_similar(vector, vectors, top_k=1)
             
             if similarities and similarities[0][1] > 0.9:  # High similarity threshold
                 idx = similarities[0][0]
@@ -201,8 +324,11 @@ class Memory:
         if isinstance(query, list) and all(isinstance(x, (int, float)) for x in query):
             query_vector = query
         else:
-            # Treat as text and embed
-            query_vector = self.embedder.embed(query)
+            # Treat as text and embed using embedder
+            embedder = self._get_embedder()
+            if not embedder._fitted:
+                embedder.fit([query])
+            query_vector = embedder.embed(query)
         
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -212,9 +338,9 @@ class Memory:
             if not rows:
                 return []
             
-            # Calculate similarities
+            # Calculate similarities using independent similarity calculation
             vectors = [self._blob_to_vector(row[0]) for row in rows]
-            similarities = self.embedder.find_most_similar(query_vector, vectors, top_k=top_k)
+            similarities = self._find_most_similar(query_vector, vectors, top_k=top_k)
             
             # Return results with content and metadata
             results = []
@@ -261,9 +387,9 @@ class Memory:
             if not rows:
                 return False
             
-            # Find most similar vector
+            # Find most similar vector using independent similarity calculation
             vectors = [self._blob_to_vector(row[1]) for row in rows]
-            similarities = self.embedder.find_most_similar(vector, vectors, top_k=1)
+            similarities = self._find_most_similar(vector, vectors, top_k=1)
             
             if similarities and similarities[0][1] > 0.9:  # High similarity threshold
                 idx = similarities[0][0]
@@ -349,10 +475,11 @@ class Memory:
         Returns:
             Dictionary with memory information
         """
+        embedder = self._get_embedder()
         return {
             "name": self.name,
             "db_path": self.db_path,
             "count": self.count(),
-            "embedder_method": self.embedder.method,
-            "vector_dimension": self.embedder.get_vector_dimension()
+            "embedder_method": embedder.method,
+            "vector_dimension": embedder.get_vector_dimension()
         }

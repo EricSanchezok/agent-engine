@@ -6,7 +6,9 @@ with fallback to basic methods when needed.
 """
 
 import numpy as np
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict, Any
+import threading
+import os
 import hashlib
 import os
 
@@ -14,7 +16,11 @@ import os
 class Embedder:
     """Text embedder using Sentence Transformers for fixed dimensions"""
     
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2", max_features: int = 384):
+    # In-process model cache to reuse loaded SentenceTransformer models by name
+    _model_cache: Dict[str, Any] = {}
+    _vector_dim_cache: Dict[str, int] = {}
+
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", max_features: int = 384, prefer_fallback: Optional[bool] = None):
         """
         Initialize the embedder
         
@@ -28,6 +34,11 @@ class Embedder:
         self.model = None
         self._fitted = False
         self._vector_dimension = None
+        self._preload_lock = threading.Lock()
+        self._preload_thread: Optional[threading.Thread] = None
+        # Prefer fallback if explicitly requested or via env
+        env_mode = os.getenv("AGENT_ENGINE_EMBEDDER_MODE", "").lower()
+        self.prefer_fallback = prefer_fallback if prefer_fallback is not None else (env_mode == "fallback")
         
         # Try to import sentence_transformers
         try:
@@ -57,15 +68,27 @@ class Embedder:
         if self.model_name not in available_models:
             print(f"Warning: {self.model_name} not in recommended list, using anyway")
         
+        # Use cached model if available
+        if self.model_name in Embedder._model_cache:
+            self._vector_dimension = Embedder._vector_dim_cache.get(self.model_name)
+            return Embedder._model_cache[self.model_name]
+
         try:
             model = SentenceTransformer(self.model_name)
-            self._vector_dimension = model.get_sentence_embedding_dimension()
+            dim = model.get_sentence_embedding_dimension()
+            self._vector_dimension = dim
+            Embedder._model_cache[self.model_name] = model
+            Embedder._vector_dim_cache[self.model_name] = dim
             return model
         except Exception as e:
             print(f"Error loading model {self.model_name}: {e}")
             print("Falling back to all-MiniLM-L6-v2")
             model = SentenceTransformer("all-MiniLM-L6-v2")
-            self._vector_dimension = model.get_sentence_embedding_dimension()
+            dim = model.get_sentence_embedding_dimension()
+            self._vector_dimension = dim
+            # Cache fallback under its own key
+            Embedder._model_cache["all-MiniLM-L6-v2"] = model
+            Embedder._vector_dim_cache["all-MiniLM-L6-v2"] = dim
             return model
     
     def _get_fallback_embedder(self):
@@ -131,6 +154,15 @@ class Embedder:
         Args:
             texts: Not used for Sentence Transformers, kept for compatibility
         """
+        # If user prefers fallback, skip Sentence Transformers even if available
+        if self.prefer_fallback:
+            self.method = "fallback"
+            self.model = self._get_fallback_embedder()
+            if texts:
+                self.model.fit(texts)
+            self._fitted = True
+            return
+
         if self._sentence_transformers_available:
             self.model = self._get_sentence_transformer()
             self._fitted = True
@@ -140,6 +172,21 @@ class Embedder:
             if texts:
                 self.model.fit(texts)
             self._fitted = True
+
+    def preload_async(self):
+        """Preload the model asynchronously to reduce first-use latency."""
+        if self._fitted:
+            return
+        with self._preload_lock:
+            if self._preload_thread and self._preload_thread.is_alive():
+                return
+            def _load():
+                try:
+                    self.fit()
+                except Exception as e:
+                    print(f"Embedder preload failed: {e}")
+            self._preload_thread = threading.Thread(target=_load, daemon=True)
+            self._preload_thread.start()
     
     def embed(self, text: str) -> List[float]:
         """
@@ -233,6 +280,8 @@ class Embedder:
         elif self.model and hasattr(self.model, 'get_sentence_embedding_dimension'):
             return self.model.get_sentence_embedding_dimension()
         elif hasattr(self.model, 'get_vector_dimension'):
+            return self.model.get_vector_dimension()
+        elif self.model and hasattr(self.model, 'vectorizer') and self.model._fitted:
             return self.model.get_vector_dimension()
         else:
             return self.max_features

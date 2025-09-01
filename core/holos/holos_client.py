@@ -34,6 +34,29 @@ class HolosClient:
             'Accept': 'application/json'
         })
     
+    def _deduplicate_items(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Deduplicate list elements while preserving order.
+        """
+        if not isinstance(items, list):
+            return []
+
+        seen = set()
+        unique_items: List[Dict[str, Any]] = []
+
+        for item in items:
+            try:
+                key = json.dumps(item, sort_keys=True, ensure_ascii=False) if isinstance(item, dict) else str(item)
+            except Exception:
+                key = str(item)
+
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_items.append(item)
+
+        return unique_items
+
     def get_all_agents(self) -> List[Dict[str, Any]]:
         """
         Get all agents' agentcard information.
@@ -53,10 +76,24 @@ class HolosClient:
             # Parse JSON response
             agents_data = response.json()
             
+            # Deduplicate items inside agents_data
+            items = agents_data.get("data", {}).get("items", [])
+            deduped_items = self._deduplicate_items(items)
+            if "data" not in agents_data or not isinstance(agents_data.get("data"), dict):
+                agents_data = {"data": {"items": deduped_items}}
+            else:
+                agents_data["data"]["items"] = deduped_items
+
             # Save agents_data to JSON file
             self._save_agents_data_to_file(agents_data)
             
-            return agents_data["data"]["items"]
+            # Filter out excluded names for the return value
+            excluded_names = {"Routing Agent", "User Assistant", "Planning Agent"}
+            filtered_items = [
+                item for item in deduped_items
+                if not (isinstance(item, dict) and item.get("name") in excluded_names)
+            ]
+            return filtered_items
             
         except requests.exceptions.RequestException as e:
             logger.error(f"Error fetching agents from API: {e}")
@@ -66,7 +103,12 @@ class HolosClient:
             fallback_data = self._load_agents_data_from_file()
             if fallback_data:
                 logger.info("Successfully loaded agents data from local file")
-                return fallback_data
+                excluded_names = {"Routing Agent", "User Assistant", "Planning Agent"}
+                filtered_items = [
+                    item for item in fallback_data
+                    if not (isinstance(item, dict) and item.get("name") in excluded_names)
+                ]
+                return filtered_items
             else:
                 logger.error("No fallback data available")
                 raise
@@ -78,7 +120,12 @@ class HolosClient:
             fallback_data = self._load_agents_data_from_file()
             if fallback_data:
                 logger.info("Successfully loaded agents data from local file")
-                return fallback_data
+                excluded_names = {"Routing Agent", "User Assistant", "Planning Agent"}
+                filtered_items = [
+                    item for item in fallback_data
+                    if not (isinstance(item, dict) and item.get("name") in excluded_names)
+                ]
+                return filtered_items
             else:
                 logger.error("No fallback data available")
                 raise
@@ -127,7 +174,8 @@ class HolosClient:
                 agents_data = json.load(f)
             
             logger.info(f"Loaded agents data from fallback file: {file_path}")
-            return agents_data["data"]["items"]
+            items = agents_data.get("data", {}).get("items", [])
+            return self._deduplicate_items(items)
             
         except Exception as e:
             logger.error(f"Error loading agents data from fallback file: {e}")
@@ -165,6 +213,7 @@ if __name__ == "__main__":
     try:
         # Using the simple function
         agents = get_all_agent_cards()
+        print(len(agents))
             
     except Exception as e:
         logger.error(f"Error: {e}")
