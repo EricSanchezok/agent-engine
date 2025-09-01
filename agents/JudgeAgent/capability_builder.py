@@ -151,13 +151,67 @@ class CapabilityBuilder:
                 result.append(_capability)
             return result
 
-    async def save(self):
+    def all_capabilities(self) -> List[Dict[str, Any]]:
         capabilities = []
         for capability in self.capability_memory.get_all_contents():
             capabilities.append(json.loads(capability))
+        return capabilities
+
+    async def save(self):
+        capabilities = self.all_capabilities()
 
         with open(get_current_file_dir() / 'view_capabilities.json', 'w', encoding='utf-8') as f:
             json.dump(capabilities, f, ensure_ascii=False, indent=4)
+
+    async def run_task_generator(self) -> List[Dict[str, Any]]:
+        capabilities = self.all_capabilities()
+        tasks = [self._task_generator(capability) for capability in capabilities]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        results = [result for result in results if result]
+
+        with open(get_current_file_dir() / 'task_capabilities.json', 'w', encoding='utf-8') as f:
+            json.dump(results, f, ensure_ascii=False, indent=4)
+
+        return results
+
+    async def _task_generator(self, capability: Dict[str, Any]) -> Dict[str, Any]:
+        async with self.semaphore:
+            system_prompt = self.prompt_loader.get_prompt(
+                section='capability_filter',
+                prompt_type='system'
+            )
+            user_prompt = self.prompt_loader.get_prompt(
+                section='capability_filter',
+                prompt_type='user',
+                capability_name=capability.get('name'),
+                capability_definition=capability.get('definition')
+            )
+            response = await self.llm_client.chat(system_prompt, user_prompt, model_name='o3-mini')
+
+            if 'yes' in response or len(capability.get('agents')) <= 1:
+                return {}
+
+            system_prompt = self.prompt_loader.get_prompt(
+                section='task_generator',
+                prompt_type='system'
+            )
+            user_prompt = self.prompt_loader.get_prompt(
+                section='task_generator',
+                prompt_type='user',
+                capability_name=capability.get('name'),
+                capability_definition=capability.get('definition'),
+                num_tasks=10
+            )
+            response = await self.llm_client.chat(system_prompt, user_prompt, model_name='o3-mini')
+            response = json.loads(response)
+
+            tasks = response.get('tasks')
+            if not tasks:
+                return {}
+
+            capability['tasks'] = tasks
+            return capability
 
     async def test(self):
         # text = {
@@ -198,5 +252,7 @@ class CapabilityBuilder:
 
 if __name__ == '__main__':
     builder = CapabilityBuilder()
-    asyncio.run(builder.invoke())
+    # asyncio.run(builder.invoke())
     # asyncio.run(builder.test())
+    # asyncio.run(builder.save())
+    asyncio.run(builder.run_task_generator())

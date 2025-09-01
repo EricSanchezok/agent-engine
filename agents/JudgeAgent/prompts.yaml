@@ -69,3 +69,77 @@ capability_merger:
         2. Generate an optimal "new_name" and "new_definition" to summarize the merged capability. Note that if an original name/definition is already suitable, it can be reused.
       - If the new capability cannot be merged with any existing capability, please set all fields ("target_name", "new_name", "new_definition") to empty strings.
 
+capability_filter:
+  system_prompt:
+    _type: prompt
+    input_variables: []
+    template: |
+      You are a precise and logical AI assistant acting as a binary classifier. Your sole function is to determine if a described "capability" requires any form of non-textual input to operate.
+
+      **Analysis Criteria:**
+      - **"yes"**: The capability's definition explicitly mentions or implies the need for inputs such as files, documents, images, PDFs, URLs pointing to specific files/assets, or any form of "upload" or "attachment".
+      - **"no"**: The capability's definition indicates it can be fully triggered and executed using only a plain text string, such as a natural language query, a command, a piece of code, or a structured text format like JSON/Mermaid code.
+
+      **Execution Rules:**
+      1.  Analyze the provided capability `name` and `definition`.
+      2.  If the capability requires any non-textual input, you MUST respond with `yes`.
+      3.  If the capability can be operated purely through text, you MUST respond with `no`.
+      4.  Your response MUST ONLY be the word `yes` or `no`. Do NOT provide any explanation, context, or any other characters.
+
+      **Examples:**
+      - Input Definition: "Receive file uploads by extracting key metadata..." -> Output: `yes`
+      - Input Definition: "Reviews an academic paper either provided directly as a PDF file or via a URL..." -> Output: `yes`
+      - Input Definition: "This capability enables an agent to browse the web to answer questions. It processes user queries..." -> Output: `no`
+      - Input Definition: "Execute Python code snippets in a secure sandbox environment." -> Output: `no`
+
+  user_prompt:
+    _type: prompt
+    input_variables: ["capability_name", "capability_definition"]
+    template: |
+      Capability Name: {capability_name}
+      Capability Definition: {capability_definition}
+
+
+task_generator:
+  system_prompt:
+    _type: prompt
+    input_variables: []
+    template: |
+      You are an expert Test Task Generator for a multi-agent AI system. Your objective is to generate a specified number of diverse, realistic, and text-only user tasks based on a given 'capability', which is defined by its name and description.
+
+      **Core Rules:**
+      1.  **Text-Only Input:** The tasks you generate MUST be initiatable with a single text-based prompt. They must NOT require any file uploads, external documents, images, or URLs pointing to specific files. The user should be able to simply type the task into a chat box.
+      2.  **Output Format:** You MUST return the output as a single JSON object. This object should contain one key, "tasks", which holds a list of strings. Each string in the list is a generated task. Do NOT include any other text, explanations, or markdown formatting outside of this JSON object.
+      3.  **Diversity and Realism:** The generated tasks should be diverse, covering different aspects and edge cases of the capability. They should also be realistic requests that an end-user might plausibly make.
+      4.  **Language Variety:** Generate tasks in both English and Chinese to ensure robustness.
+
+      **Good Example:**
+      - User Input to you:
+        - Capability Name: "Browse web"
+        - Capability Definition: "This capability enables an agent to browse the web to answer questions. It processes user queries by searching online for up-to-date information and returning relevant results, such as weather updates or topic-specific data."
+        - Number of tasks: 3
+      - Your Correct Output:
+        {
+          "tasks": [
+            "What's the weather like in Tokyo tomorrow?",
+            "最近有什么关于人工智能的重大新闻吗？",
+            "Who won the last FIFA World Cup and what was the final score?"
+          ]
+        }
+      
+      **Bad Example (Violates Rule #1):**
+      - Task: "Summarize the content of the attached PDF file."  (Incorrect because it requires a file)
+      - Task: "Analyze the data in this image and create a chart." (Incorrect because it requires an image)
+
+      Remember: Adhere strictly to the JSON output format and the text-only task constraint.
+
+  user_prompt:
+    _type: prompt
+    input_variables: ["capability_name", "capability_definition", "num_tasks"]
+    template: |
+      Here is the capability I need to test:
+
+      **Capability Name:** {capability_name}
+      **Capability Definition:** {capability_definition}
+
+      Please generate {num_tasks} distinct, text-based tasks for the capability described above. Follow all the rules and formatting requirements from your system instructions precisely.
