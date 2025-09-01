@@ -1,13 +1,119 @@
 [
     {
-        "name": "Analyze and Extract Research Insights and Gaps from Scientific Papers",
-        "definition": "This capability accepts input in various formats, including text with embedded paper identifiers, JSON objects, or attached PDFs representing academic research papers. It retrieves and processes the relevant papers, then performs a comprehensive analysis that includes detailed summarization, extraction of potential research ideas, experimental directions, emerging trends, and identification of research gaps. The results are provided in a structured format, such as Markdown or JSON, to facilitate further academic inquiry.",
+        "name": "Cancel Running Tasks and Cleanup",
+        "definition": "Provide functionality to safely terminate running tasks or multi-step processes, ensuring that execution is halted, all associated resources (such as browsers and remote connections) are properly cleaned up, and a final success or failure status is reported.",
+        "alias": [
+            "Cancel running tasks",
+            "Cancel task",
+            "Terminate Process and Cleanup"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            },
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
+            }
+        ]
+    },
+    {
+        "name": "Collect academic signals",
+        "definition": "This capability collects academic data and signals based on specified parameters such as dates, topics, or research domains. It serves as the initial step by gathering raw data required for subsequent processing.",
+        "alias": [
+            "Collect academic signals"
+        ],
+        "agents": [
+            {
+                "name": "SignalApplication",
+                "url": "http://10.245.130.134:11015"
+            }
+        ]
+    },
+    {
+        "name": "Convert Mermaid to SVG",
+        "definition": "Converts provided Mermaid code into an SVG image format, enabling visual representation of the diagram.",
+        "alias": [
+            "Convert Mermaid to SVG"
+        ],
+        "agents": [
+            {
+                "name": "Mermaid图表生成代理",
+                "url": "http://35.243.101.101:10008/"
+            }
+        ]
+    },
+    {
+        "name": "Create long-running asynchronous tasks",
+        "definition": "Initiate and configure tasks that execute asynchronously in the background and support progress tracking, allowing for parameter setup and ongoing status updates.",
+        "alias": [
+            "Create long-running tasks",
+            "Create task"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            }
+        ]
+    },
+    {
+        "name": "Edit and Transform Text",
+        "definition": "Perform structured text edits including find-and-replace, templating, and content transformations using a programmable editor interface.",
+        "alias": [
+            "Edit and Transform Text"
+        ],
+        "agents": [
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
+            }
+        ]
+    },
+    {
+        "name": "Execute Python Code",
+        "definition": "Run arbitrary Python code snippets securely in a sandbox, capturing stdout, plots, errors, and integrating the execution results into the dialogue.",
+        "alias": [
+            "Execute Python Code"
+        ],
+        "agents": [
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
+            }
+        ]
+    },
+    {
+        "name": "Extract and Download Paper PDFs",
+        "definition": "This capability accepts either a JSON object containing an 'arxiv_ids' list or natural language text that includes one or more ArXiv IDs. It automatically extracts valid ArXiv IDs when necessary, downloads the corresponding PDF files, converts their content to Base64 encoded strings, and returns a JSON list of these encoded strings.",
+        "alias": [
+            "Download paper PDFs",
+            "Extract and download paper PDFs"
+        ],
+        "agents": [
+            {
+                "name": "PaperFetchAgent",
+                "url": "http://10.244.9.104:9902/"
+            }
+        ]
+    },
+    {
+        "name": "Extract, Analyze, and Synthesize Research Papers",
+        "definition": "This capability processes academic research papers provided as plain text with embedded identifiers or as attached PDF files. It extracts necessary metadata and content, performs comprehensive analysis that includes summarization, identification of key insights, detection of trends, and extraction of potential research ideas and directions, and returns a structured JSON report with Markdown formatted interpretation reports.",
         "alias": [
             "Analyze papers by ArXiv IDs",
             "Extract and analyze ArXiv papers from text",
-            "Analyze attached paper PDFs",
-            "Analyze research papers",
-            "Identify research gaps"
+            "Analyze attached PDF papers",
+            "Analyze research papers"
         ],
         "agents": [
             {
@@ -21,252 +127,10 @@
         ]
     },
     {
-        "name": "Automate browser tasks",
-        "definition": "This capability allows the agent to control a headless browser for web automation. It can navigate web pages, perform searches, click elements, extract web content, automate form filling, and take screenshots.",
+        "name": "Extract, Filter, and Recommend Academic Research",
+        "definition": "This capability ingests inputs that may include natural language text containing one or more academic research identifiers (e.g., ArXiv IDs) or specific research identifiers directly. It automatically extracts valid research IDs from the text, retrieves comprehensive metadata for each paper, and applies intelligent filtering, sorting, and semantic analysis to generate a prioritized list of recommended research papers, trends, or findings. This consolidated capability supports robust decision-making by merging metadata enrichment with precise recommendation logic.",
         "alias": [
-            "Automate browser tasks"
-        ],
-        "agents": [
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
-            }
-        ]
-    },
-    {
-        "name": "Browse web",
-        "definition": "This capability enables an agent to browse the web to answer questions. It processes user queries by searching online for up-to-date information and returning relevant results, such as weather updates or topic-specific data.",
-        "alias": [
-            "Browse web"
-        ],
-        "agents": [
-            {
-                "name": "Web Sailor Agent",
-                "url": "http://10.244.3.40:7777/"
-            }
-        ]
-    },
-    {
-        "name": "Collect academic signals",
-        "definition": "Acquires academic data and signals based on specified dates or research queries to initiate the signal processing workflow.",
-        "alias": [
-            "Collect academic signals"
-        ],
-        "agents": [
-            {
-                "name": "SignalApplication",
-                "url": "http://10.245.130.134:11015"
-            }
-        ]
-    },
-    {
-        "name": "Convert Mermaid code",
-        "definition": "Convert provided Mermaid code into a visual diagram image, such as an SVG. The capability accepts Mermaid code as input and returns a rendered image of the diagram.",
-        "alias": [
-            "Convert Mermaid code"
-        ],
-        "agents": [
-            {
-                "name": "Mermaid图表生成代理",
-                "url": "http://35.243.101.101:10008/"
-            }
-        ]
-    },
-    {
-        "name": "Download Paper PDFs with ID Extraction",
-        "definition": "This capability accepts input in various formats, such as JSON objects containing ArXiv IDs or natural language text that may include one or more ArXiv IDs. It automatically extracts valid ArXiv IDs from the input and downloads the corresponding PDF files for each ID. Each PDF is then encoded into a Base64 string, and the capability returns a JSON list of these encoded strings.",
-        "alias": [
-            "Download paper PDF",
-            "Extract IDs and download paper PDFs"
-        ],
-        "agents": [
-            {
-                "name": "PaperFetchAgent",
-                "url": "http://10.244.9.104:9902/"
-            }
-        ]
-    },
-    {
-        "name": "Edit and transform text",
-        "definition": "This capability empowers the agent to perform structured text editing and transformation, including find-and-replace operations, templating, formatting, and content modifications according to specified patterns or guidelines.",
-        "alias": [
-            "Edit and transform text"
-        ],
-        "agents": [
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
-            }
-        ]
-    },
-    {
-        "name": "Execute Python code",
-        "definition": "This capability enables the agent to run arbitrary Python code snippets in a secure sandbox environment. It processes the code to produce standard output, generate visual plots, handle errors, and integrate the results back into the conversation.",
-        "alias": [
-            "Execute Python code"
-        ],
-        "agents": [
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
-            }
-        ]
-    },
-    {
-        "name": "Generate Mermaid diagram",
-        "definition": "Generate Mermaid code for various diagram types such as flowcharts, sequence diagrams, and class diagrams based on input descriptions. The capability accepts a diagram specification as input and returns the corresponding Mermaid code.",
-        "alias": [
-            "Generate Mermaid diagram"
-        ],
-        "agents": [
-            {
-                "name": "Mermaid图表生成代理",
-                "url": "http://35.243.101.101:10008/"
-            }
-        ]
-    },
-    {
-        "name": "Generate academic report",
-        "definition": "Compiles and structures the outcomes of the signal processing workflow into a comprehensive academic report summarizing findings and recommendations.",
-        "alias": [
-            "Generate academic report"
-        ],
-        "agents": [
-            {
-                "name": "SignalApplication",
-                "url": "http://10.245.130.134:11015"
-            }
-        ]
-    },
-    {
-        "name": "Greeting and Help",
-        "definition": "Handles greetings and inquiries by providing information about the agent's capabilities, available functions, and guidelines for effective usage.",
-        "alias": [
-            "Greeting and Help"
-        ],
-        "agents": [
-            {
-                "name": "Reviewer Agent",
-                "url": "http://10.245.131.167:9998/"
-            }
-        ]
-    },
-    {
-        "name": "Integrate MCP tools",
-        "definition": "This capability enables the agent to dynamically connect to remote MCP servers via SSE or stdio. It discovers, invokes, and refreshes remote tool schemas on-the-fly, allowing the integration of external service tools as if they were local.",
-        "alias": [
-            "Integrate MCP tools"
-        ],
-        "agents": [
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
-            }
-        ]
-    },
-    {
-        "name": "Interpret academic signals",
-        "definition": "Analyzes and deciphers collected academic signals to extract meaningful insights and trends from the data.",
-        "alias": [
-            "Interpret academic signals"
-        ],
-        "agents": [
-            {
-                "name": "SignalApplication",
-                "url": "http://10.245.130.134:11015"
-            }
-        ]
-    },
-    {
-        "name": "Iterative Prompt Optimization",
-        "definition": "This capability encompasses both initial and iterative refinement of prompts to improve clarity, effectiveness, and consistency. It continuously incorporates feedback and additional context to enhance the prompt's performance, ensuring that user instructions provide a robust operational framework to guide AI responses.",
-        "alias": [
-            "Optimize User Prompt",
-            "Optimize System Prompt",
-            "Iterative Prompt Optimization"
-        ],
-        "agents": [
-            {
-                "name": "Prompt Optimizer Agent",
-                "url": "http://35.243.101.101:9001/"
-            }
-        ]
-    },
-    {
-        "name": "Manage Long-Running Tasks",
-        "definition": "This capability encompasses the creation, monitoring, and control of long-running tasks throughout their lifecycle. It includes initiating tasks, real-time progress tracking, multi-step execution monitoring, generating output artifacts in various formats (e.g., Markdown, HTML, images), and supporting task cancellation.",
-        "alias": [
-            "Create long-running task",
-            "Monitor task progress",
-            "Generate task artifact",
-            "Manage long-running tasks",
-            "Manage tasks"
-        ],
-        "agents": [
-            {
-                "name": "Gaia Task Agent",
-                "url": "http://localhost:10005/"
-            },
-            {
-                "name": "Simple Test Agent",
-                "url": "http://10.245.130.134:10001"
-            },
-            {
-                "name": "Simple Test Agent",
-                "url": "http://10.245.132.142:10001"
-            }
-        ]
-    },
-    {
-        "name": "Process File Uploads",
-        "definition": "Receive file uploads by extracting key metadata such as file name, type, and size. Acknowledge and summarize the file's details, and facilitate further processing of the document if required.",
-        "alias": [
-            "Process file upload",
-            "Process file uploads"
-        ],
-        "agents": [
-            {
-                "name": "Gaia Task Agent",
-                "url": "http://localhost:10005/"
-            },
-            {
-                "name": "Simple Test Agent",
-                "url": "http://10.245.130.134:10001"
-            },
-            {
-                "name": "Simple Test Agent",
-                "url": "http://10.245.132.142:10001"
-            }
-        ]
-    },
-    {
-        "name": "Provide Conversational Assistance",
-        "definition": "Engage in natural language text-based conversations using conversational AI and large language models to process queries, answer questions, provide clear explanations, generate summaries, and handle multi-turn dialogue for clarifying and communicating complex topics.",
-        "alias": [
-            "Provide conversational assistance",
-            "Respond to text queries",
-            "Converse using LLMs"
-        ],
-        "agents": [
-            {
-                "name": "Simple Test Agent",
-                "url": "http://10.245.130.134:10001"
-            },
-            {
-                "name": "Simple Test Agent",
-                "url": "http://10.245.132.142:10001"
-            },
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
-            }
-        ]
-    },
-    {
-        "name": "Recommend and Filter Academic Content",
-        "definition": "Accepts input in various formats — such as natural language text containing ArXiv paper IDs or a list of IDs — and extracts valid academic identifiers. It retrieves full metadata for the identified papers and applies intelligent filtering, sorting, and ranking based on provided instructions or internal logic. The capability outputs a ranked list of recommended academic papers or research topics to support scholarly inquiry.",
-        "alias": [
-            "Recommend academic content",
+            "Recommend academic research",
             "Filter and recommend papers",
             "Extract IDs and recommend papers"
         ],
@@ -282,21 +146,212 @@
         ]
     },
     {
-        "name": "Respond to Gaia task",
-        "definition": "Handle Gaia-related queries and tasks by generating appropriate responses based on Gaia task instructions.",
+        "name": "Generate Mermaid Diagram",
+        "definition": "Generates Mermaid diagram code for various diagram types such as flowcharts, sequence diagrams, and class diagrams based on textual descriptions of diagram requirements.",
         "alias": [
-            "Respond to Gaia task"
+            "Generate Mermaid Diagram"
+        ],
+        "agents": [
+            {
+                "name": "Mermaid图表生成代理",
+                "url": "http://35.243.101.101:10008/"
+            }
+        ]
+    },
+    {
+        "name": "Generate academic report",
+        "definition": "This capability synthesizes collected data, interpreted insights, and recommendations into a comprehensive academic report. It formats and summarizes the outcome of the signal processing task for clear presentation.",
+        "alias": [
+            "Generate academic report"
+        ],
+        "agents": [
+            {
+                "name": "SignalApplication",
+                "url": "http://10.245.130.134:11015"
+            }
+        ]
+    },
+    {
+        "name": "Generate task artifacts",
+        "definition": "Produce task output artifacts in multiple formats (e.g., markdown, HTML, images) as deliverables of task execution.",
+        "alias": [
+            "Generate task artifacts"
         ],
         "agents": [
             {
                 "name": "Gaia Task Agent",
                 "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            }
+        ]
+    },
+    {
+        "name": "Greeting and Help",
+        "definition": "Respond to greetings and inquiries by providing information about the agent's capabilities, available functions, and usage instructions, thus assisting users in understanding how to interact with the agent.",
+        "alias": [
+            "Greeting and Help"
+        ],
+        "agents": [
+            {
+                "name": "Reviewer Agent",
+                "url": "http://10.245.131.167:9998/"
+            }
+        ]
+    },
+    {
+        "name": "Identify research gaps",
+        "definition": "This capability reviews academic literature to identify unexplored research areas and scientific opportunities, highlighting gaps where further investigation may be beneficial.",
+        "alias": [
+            "Identify research gaps"
+        ],
+        "agents": [
+            {
+                "name": "Research Agent",
+                "url": "http://10.245.131.167:10000/"
+            }
+        ]
+    },
+    {
+        "name": "Integrate Remote MCP Tools",
+        "definition": "Connect dynamically to remote MCP servers via SSE or stdio, discover available tools, invoke them, and refresh tool schemas at runtime.",
+        "alias": [
+            "Integrate Remote MCP Tools"
+        ],
+        "agents": [
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
+            }
+        ]
+    },
+    {
+        "name": "Interpret academic signals",
+        "definition": "This capability processes and analyzes the collected academic signals to extract meaningful insights and trends. It interprets the raw data, facilitating a deeper understanding of the researched topic.",
+        "alias": [
+            "Interpret academic signals"
+        ],
+        "agents": [
+            {
+                "name": "SignalApplication",
+                "url": "http://10.245.130.134:11015"
+            }
+        ]
+    },
+    {
+        "name": "Manage Long-running Task",
+        "definition": "Create and manage long-running tasks with features including progress tracking, artifact generation (markdown, HTML, image), and support for task cancellation. This capability enables multi-step task execution and real-time monitoring.",
+        "alias": [
+            "Manage Long-running Task"
+        ],
+        "agents": [
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.132.142:10001"
+            }
+        ]
+    },
+    {
+        "name": "Monitor task progress",
+        "definition": "Track and report the real-time progress of ongoing tasks, including long-running tasks, by monitoring multi-step execution and providing regular status updates.",
+        "alias": [
+            "Monitor task progress"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            }
+        ]
+    },
+    {
+        "name": "Optimize Prompt",
+        "definition": "Refine and improve any provided prompt by rephrasing, restructuring, and enhancing its language and structure, including performing iterative optimizations based on feedback to improve specificity, context inclusion, and overall effectiveness, thereby ensuring high clarity, consistent AI behavior, and accurate task execution.",
+        "alias": [
+            "Optimize User Prompt",
+            "Optimize System Prompt",
+            "Iterative Prompt Optimization"
+        ],
+        "agents": [
+            {
+                "name": "Prompt Optimizer Agent",
+                "url": "http://35.243.101.101:9001/"
+            }
+        ]
+    },
+    {
+        "name": "Parse natural language query",
+        "definition": "This capability accepts a natural language instruction for academic paper search (e.g., 'yesterday's AI papers') and processes it using natural language processing techniques to generate a structured JSON query object that specifies search criteria such as date, subject area, and keywords.",
+        "alias": [
+            "Parse natural language query"
+        ],
+        "agents": [
+            {
+                "name": "ArxivSearchAgent",
+                "url": "http://10.244.9.104:9900/"
+            }
+        ]
+    },
+    {
+        "name": "Process File Uploads",
+        "definition": "Receive and acknowledge file uploads by extracting file metadata—including file name, type, and size—for display and further processing.",
+        "alias": [
+            "Process file uploads",
+            "Process file upload",
+            "Process File Upload"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.132.142:10001"
+            }
+        ]
+    },
+    {
+        "name": "Respond to Conversational Text Queries",
+        "definition": "Receive and process natural language text queries and engage in multi-turn dialogues, including answering questions, clarifying ambiguous instructions, and explaining topics. This capability leverages advanced natural language processing to generate clear, concise, and helpful responses for a broad range of conversational interactions.",
+        "alias": [
+            "Respond to Gaia queries",
+            "Answer text queries",
+            "Converse with User",
+            "Conduct Conversation"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.132.142:10001"
+            },
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
             }
         ]
     },
     {
         "name": "Review Academic Paper",
-        "definition": "Reviews an academic paper either provided directly as a PDF file or via a URL from which the PDF is downloaded. The capability extracts text and metadata, analyzes the content, and generates a comprehensive review report with structured scoring (for example, on a scale of 1-10) for methodology, novelty, clarity, and significance.",
+        "definition": "This capability accepts an academic paper provided either as a PDF file or via a URL. It automatically downloads the PDF if needed, extracts its text and metadata, and performs a comprehensive review that includes structured scoring (e.g., methodology, novelty, clarity, and significance) as well as detailed analysis with summary, strengths, weaknesses, and potential questions, resulting in a detailed review report.",
         "alias": [
             "Review PDF Paper",
             "Review Paper from URL"
@@ -310,9 +365,9 @@
     },
     {
         "name": "Search Academic Papers",
-        "definition": "This capability accepts a natural language query or a structured JSON query to search academic papers across one or more databases such as arXiv and Semantic Scholar. It processes the input query, executes searches on the specified academic databases, and returns a numbered list (up to 5 results) where each entry includes key metadata such as the paper title, authors with publication year, source identifier, a truncated abstract, and available PDF URLs.",
+        "definition": "This capability accepts a natural language query to search academic research papers across multiple databases such as arXiv and Semantic Scholar. It processes the query—potentially converting it into a structured search criteria—and returns a numbered list of up to 5 relevant papers. Each paper is accompanied by essential metadata including the title, authors with publication year, source, a truncated abstract if necessary, and direct URL and PDF links when available.",
         "alias": [
-            "Search Arxiv papers",
+            "Search arxiv papers",
             "Search Academic Papers"
         ],
         "agents": [
@@ -327,33 +382,33 @@
         ]
     },
     {
-        "name": "Terminate Tasks with Cleanup",
-        "definition": "This capability allows for the graceful termination of multi-step tasks by issuing a cancellation command that not only stops the ongoing process but also ensures that associated resources (such as browser instances or MCP connections) are properly released and that a final success or error status is reported. It effectively combines task cancellation with resource cleanup.",
+        "name": "Validate Mermaid Syntax",
+        "definition": "Validates the syntax of provided Mermaid code to ensure it is correct and can be properly rendered.",
         "alias": [
-            "Cancel running task",
-            "Terminate tasks and cleanup resources"
-        ],
-        "agents": [
-            {
-                "name": "Gaia Task Agent",
-                "url": "http://localhost:10005/"
-            },
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
-            }
-        ]
-    },
-    {
-        "name": "Validate Mermaid syntax",
-        "definition": "Verify the correctness of Mermaid code by checking its syntax. The capability accepts Mermaid code as input and returns a validation result indicating whether the syntax is correct or provides error details.",
-        "alias": [
-            "Validate Mermaid syntax"
+            "Validate Mermaid Syntax"
         ],
         "agents": [
             {
                 "name": "Mermaid图表生成代理",
                 "url": "http://35.243.101.101:10008/"
+            }
+        ]
+    },
+    {
+        "name": "Web Browsing and Automation",
+        "definition": "This capability enables the agent to perform comprehensive web interactions, including automated browsing, page navigation, search operations, element clicks, content extraction, and screenshot capturing to retrieve and analyze information from the Internet.",
+        "alias": [
+            "Browse web",
+            "Automate Browser Navigation"
+        ],
+        "agents": [
+            {
+                "name": "Web Sailor Agent",
+                "url": "http://10.244.3.40:7777/"
+            },
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
             }
         ]
     }

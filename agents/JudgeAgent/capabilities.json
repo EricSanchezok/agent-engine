@@ -1,23 +1,23 @@
 [
     {
-        "name": "Respond to Gaia task",
-        "definition": "Handle Gaia-related queries and tasks by generating appropriate responses based on Gaia task instructions.",
+        "name": "Respond to Gaia queries",
+        "definition": "Receive natural language inputs related to Gaia tasks and generate appropriate responses in a conversational format.",
         "agent": {
             "name": "Gaia Task Agent",
             "url": "http://localhost:10005/"
         }
     },
     {
-        "name": "Process file upload",
-        "definition": "Receive and acknowledge file uploads by extracting and displaying metadata such as file name, file type, and file size, and processing the document if needed.",
+        "name": "Process file uploads",
+        "definition": "Receive file uploads and extract file metadata including name, type, and size for further processing.",
         "agent": {
             "name": "Gaia Task Agent",
             "url": "http://localhost:10005/"
         }
     },
     {
-        "name": "Create long-running task",
-        "definition": "Initiate a new long-running task with capabilities for subsequent progress tracking and output artifact generation.",
+        "name": "Create long-running tasks",
+        "definition": "Initiate and configure tasks that execute asynchronously, setting up parameters and enabling progress tracking.",
         "agent": {
             "name": "Gaia Task Agent",
             "url": "http://localhost:10005/"
@@ -25,23 +25,23 @@
     },
     {
         "name": "Monitor task progress",
-        "definition": "Track and report real-time updates on the progress of a multi-step long-running task.",
+        "definition": "Track and report the real-time progress of ongoing tasks, handling multi-step execution and status updates.",
         "agent": {
             "name": "Gaia Task Agent",
             "url": "http://localhost:10005/"
         }
     },
     {
-        "name": "Generate task artifact",
-        "definition": "Produce output artifacts from a task in various formats including markdown, HTML, and image, as part of task completion.",
+        "name": "Generate task artifacts",
+        "definition": "Produce output artifacts from tasks in various formats such as markdown, HTML, and images based on task execution.",
         "agent": {
             "name": "Gaia Task Agent",
             "url": "http://localhost:10005/"
         }
     },
     {
-        "name": "Cancel running task",
-        "definition": "Terminate an ongoing long-running task by issuing a cancellation command.",
+        "name": "Cancel running tasks",
+        "definition": "Provide functionality to terminate tasks that are currently in progress, ensuring safe and orderly cancellation.",
         "agent": {
             "name": "Gaia Task Agent",
             "url": "http://localhost:10005/"
@@ -49,7 +49,7 @@
     },
     {
         "name": "Collect academic signals",
-        "definition": "Acquires academic data and signals based on specified dates or research queries to initiate the signal processing workflow.",
+        "definition": "This capability collects academic data and signals based on specified parameters such as dates, topics, or research domains. It serves as the initial step by gathering raw data required for subsequent processing.",
         "agent": {
             "name": "SignalApplication",
             "url": "http://10.245.130.134:11015"
@@ -57,15 +57,15 @@
     },
     {
         "name": "Interpret academic signals",
-        "definition": "Analyzes and deciphers collected academic signals to extract meaningful insights and trends from the data.",
+        "definition": "This capability processes and analyzes the collected academic signals to extract meaningful insights and trends. It interprets the raw data, facilitating a deeper understanding of the researched topic.",
         "agent": {
             "name": "SignalApplication",
             "url": "http://10.245.130.134:11015"
         }
     },
     {
-        "name": "Recommend academic content",
-        "definition": "Identifies and suggests relevant academic papers or research topics based on the interpreted signals to guide scholarly inquiry.",
+        "name": "Recommend academic research",
+        "definition": "This capability uses interpreted academic signals to generate recommendations on relevant academic content such as research papers or trends. It supports decision-making by suggesting the most pertinent findings.",
         "agent": {
             "name": "SignalApplication",
             "url": "http://10.245.130.134:11015"
@@ -73,31 +73,55 @@
     },
     {
         "name": "Generate academic report",
-        "definition": "Compiles and structures the outcomes of the signal processing workflow into a comprehensive academic report summarizing findings and recommendations.",
+        "definition": "This capability synthesizes collected data, interpreted insights, and recommendations into a comprehensive academic report. It formats and summarizes the outcome of the signal processing task for clear presentation.",
         "agent": {
             "name": "SignalApplication",
             "url": "http://10.245.130.134:11015"
         }
     },
     {
-        "name": "Provide conversational assistance",
-        "definition": "Engage in text-based conversation by answering questions, offering explanations, and providing general information in response to user queries.",
+        "name": "Answer text queries",
+        "definition": "Use LLM capabilities to respond to user text queries with clear, concise answers and helpful information.",
         "agent": {
             "name": "Simple Test Agent",
             "url": "http://10.245.130.134:10001"
         }
     },
     {
-        "name": "Process file uploads",
-        "definition": "Receive file uploads and extract file metadata such as name, type, and size to provide users with a summary of the uploaded file's details.",
+        "name": "Process file upload",
+        "definition": "Receive file uploads and extract file metadata such as name, type, and size for display and further processing.",
         "agent": {
             "name": "Simple Test Agent",
             "url": "http://10.245.130.134:10001"
         }
     },
     {
-        "name": "Manage long-running tasks",
-        "definition": "Create, monitor, and control tasks that execute over a long period, including tracking progress, generating artifacts (markdown, HTML, image), and handling task cancellation.",
+        "name": "Create task",
+        "definition": "Initiate long-running asynchronous tasks that can operate in the background and support progress tracking.",
+        "agent": {
+            "name": "Simple Test Agent",
+            "url": "http://10.245.130.134:10001"
+        }
+    },
+    {
+        "name": "Monitor task progress",
+        "definition": "Track and report the real-time progress of long-running tasks to provide updates on execution status.",
+        "agent": {
+            "name": "Simple Test Agent",
+            "url": "http://10.245.130.134:10001"
+        }
+    },
+    {
+        "name": "Generate task artifacts",
+        "definition": "Create deliverable artifacts, including markdown, HTML, and images, as outputs from task execution.",
+        "agent": {
+            "name": "Simple Test Agent",
+            "url": "http://10.245.130.134:10001"
+        }
+    },
+    {
+        "name": "Cancel task",
+        "definition": "Terminate a currently running task, stopping further execution and resource utilization.",
         "agent": {
             "name": "Simple Test Agent",
             "url": "http://10.245.130.134:10001"
@@ -105,7 +129,7 @@
     },
     {
         "name": "Optimize User Prompt",
-        "definition": "This capability refines a user-provided prompt to improve clarity, effectiveness, and overall quality of the AI's responses based on principles of prompt optimization.",
+        "definition": "Refine and improve a user-provided prompt by rephrasing, restructuring, and enhancing its clarity to generate higher-quality AI responses.",
         "agent": {
             "name": "Prompt Optimizer Agent",
             "url": "http://35.243.101.101:9001/"
@@ -113,7 +137,7 @@
     },
     {
         "name": "Optimize System Prompt",
-        "definition": "This capability enhances system prompts to better guide AI behavior and consistency, ensuring that the instructions foster a desired operational framework.",
+        "definition": "Enhance a system-level prompt by adjusting its language and structure to ensure consistent, effective AI behavior and accurate task execution.",
         "agent": {
             "name": "Prompt Optimizer Agent",
             "url": "http://35.243.101.101:9001/"
@@ -121,31 +145,31 @@
     },
     {
         "name": "Iterative Prompt Optimization",
-        "definition": "This capability allows for repeated improvements of a prompt based on specific feedback or additional context, ensuring that the prompt continuously evolves to meet performance goals.",
+        "definition": "Perform iterative refinements on an already optimized prompt based on specific feedback, improving its specificity, context inclusion, and overall effectiveness.",
         "agent": {
             "name": "Prompt Optimizer Agent",
             "url": "http://35.243.101.101:9001/"
         }
     },
     {
-        "name": "Generate Mermaid diagram",
-        "definition": "Generate Mermaid code for various diagram types such as flowcharts, sequence diagrams, and class diagrams based on input descriptions. The capability accepts a diagram specification as input and returns the corresponding Mermaid code.",
+        "name": "Generate Mermaid Diagram",
+        "definition": "Generates Mermaid diagram code for various diagram types such as flowcharts, sequence diagrams, and class diagrams based on textual descriptions of diagram requirements.",
         "agent": {
             "name": "Mermaid图表生成代理",
             "url": "http://35.243.101.101:10008/"
         }
     },
     {
-        "name": "Convert Mermaid code",
-        "definition": "Convert provided Mermaid code into a visual diagram image, such as an SVG. The capability accepts Mermaid code as input and returns a rendered image of the diagram.",
+        "name": "Convert Mermaid to SVG",
+        "definition": "Converts provided Mermaid code into an SVG image format, enabling visual representation of the diagram.",
         "agent": {
             "name": "Mermaid图表生成代理",
             "url": "http://35.243.101.101:10008/"
         }
     },
     {
-        "name": "Validate Mermaid syntax",
-        "definition": "Verify the correctness of Mermaid code by checking its syntax. The capability accepts Mermaid code as input and returns a validation result indicating whether the syntax is correct or provides error details.",
+        "name": "Validate Mermaid Syntax",
+        "definition": "Validates the syntax of provided Mermaid code to ensure it is correct and can be properly rendered.",
         "agent": {
             "name": "Mermaid图表生成代理",
             "url": "http://35.243.101.101:10008/"
@@ -153,7 +177,7 @@
     },
     {
         "name": "Filter and recommend papers",
-        "definition": "Accepts a JSON input containing an 'arxiv_ids' list. The capability fetches full metadata for these ArXiv papers, performs intelligent filtering, sorting, and ranking based on predefined internal logic or user instructions, and outputs a JSON list of up to 8 recommended ArXiv IDs in ranked order.",
+        "definition": "This capability accepts a JSON object input containing an 'arxiv_ids' list. It fetches the complete metadata for the provided ArXiv IDs, applies intelligent filtering, sorting, and recommendation based on internal semantic and user-defined criteria, and outputs an ordered JSON list of recommended ArXiv IDs (up to a maximum of 8).",
         "agent": {
             "name": "PaperFilterAgent",
             "url": "http://10.244.9.104:9901/"
@@ -161,7 +185,7 @@
     },
     {
         "name": "Extract IDs and recommend papers",
-        "definition": "Accepts a natural language text input containing one or more ArXiv paper IDs. The capability extracts valid ArXiv IDs from the text, retrieves their full metadata, applies intelligent filtering, sorting, and ranking based on internal logic, and outputs a JSON list of up to 8 recommended ArXiv IDs in recommended order.",
+        "definition": "This capability accepts a natural language text input that contains one or more ArXiv paper IDs. It automatically extracts all valid ArXiv IDs from the text, retrieves the complete metadata for each paper, applies intelligent filtering, sorting, and recommendation based on internal logic, and outputs an ordered JSON list of recommended ArXiv IDs (up to a maximum of 8).",
         "agent": {
             "name": "PaperFilterAgent",
             "url": "http://10.244.9.104:9901/"
@@ -169,7 +193,7 @@
     },
     {
         "name": "Analyze papers by ArXiv IDs",
-        "definition": "Accepts a JSON object containing a list of ArXiv paper IDs. Retrieves the corresponding papers from the ArXiv platform, performs deep content analysis and summarization, and returns a JSON list where each entry is a Markdown formatted interpretation report of the paper.",
+        "definition": "Receives a JSON object containing an array of ArXiv paper IDs, automatically retrieves the corresponding papers from the ArXiv platform, performs deep content analysis and summarization, and returns a JSON list where each element is a Markdown formatted interpretation report of a paper.",
         "agent": {
             "name": "PaperAnalysisAgent",
             "url": "http://10.244.9.104:9903/"
@@ -177,39 +201,47 @@
     },
     {
         "name": "Extract and analyze ArXiv papers from text",
-        "definition": "Accepts a text string containing one or more ArXiv paper IDs. Automatically extracts valid IDs, retrieves the corresponding papers from the ArXiv platform, performs deep analysis and summarization, and returns a JSON list where each entry is a Markdown formatted interpretation report of the paper.",
+        "definition": "Accepts text containing one or more ArXiv paper IDs, automatically extracts all valid IDs, retrieves the corresponding papers from the ArXiv platform, performs in-depth analysis and summarization, and returns a JSON list where each entry is a Markdown formatted interpretation report of a paper.",
         "agent": {
             "name": "PaperAnalysisAgent",
             "url": "http://10.244.9.104:9903/"
         }
     },
     {
-        "name": "Analyze attached paper PDFs",
-        "definition": "Accepts a message with one or more attached PDF files of scientific papers. Reads each attached file, performs deep content analysis and summarization, and returns a JSON list where each entry is a Markdown formatted interpretation report of the paper.",
+        "name": "Analyze attached PDF papers",
+        "definition": "Processes messages containing PDF file attachments of academic papers, reads the attached files, performs deep content analysis and summarization, and returns a JSON list where each element is a Markdown formatted interpretation report of the analyzed paper.",
         "agent": {
             "name": "PaperAnalysisAgent",
             "url": "http://10.244.9.104:9903/"
         }
     },
     {
-        "name": "Download paper PDF",
-        "definition": "This capability accepts a JSON input containing a list of ArXiv IDs, downloads the corresponding paper's PDF file for each ID, encodes each PDF into a Base64 string, and returns a JSON list of these encoded strings.",
+        "name": "Download paper PDFs",
+        "definition": "Accepts a JSON object containing an 'arxiv_ids' list. For each provided ArXiv ID, downloads the corresponding PDF file, converts its content to a Base64 encoded string, and returns a JSON list of these encoded strings.",
         "agent": {
             "name": "PaperFetchAgent",
             "url": "http://10.244.9.104:9902/"
         }
     },
     {
-        "name": "Extract IDs and download paper PDFs",
-        "definition": "This capability accepts a natural language text input which may contain one or more ArXiv paper IDs. It extracts all valid ArXiv IDs from the text, downloads the corresponding PDF file for each extracted ID, encodes each PDF into a Base64 string, and returns a JSON list of these encoded strings.",
+        "name": "Extract and download paper PDFs",
+        "definition": "Accepts a natural language text input that may include one or more ArXiv IDs. Automatically extracts valid ArXiv IDs from the text, downloads each corresponding PDF file, converts the content to a Base64 encoded string, and returns a JSON list of these encoded strings.",
         "agent": {
             "name": "PaperFetchAgent",
             "url": "http://10.244.9.104:9902/"
         }
     },
     {
-        "name": "Search Arxiv papers",
-        "definition": "This capability accepts either a natural language instruction or a structured JSON query to search the Arxiv database for academic papers. It processes natural language inputs by converting them into a structured query, executes the search, and returns a JSON-formatted list of paper metadata (including titles, authors, abstracts, etc.).",
+        "name": "Parse natural language query",
+        "definition": "This capability accepts a natural language instruction for academic paper search (e.g., 'yesterday's AI papers') and processes it using natural language processing techniques to generate a structured JSON query object that specifies search criteria such as date, subject area, and keywords.",
+        "agent": {
+            "name": "ArxivSearchAgent",
+            "url": "http://10.244.9.104:9900/"
+        }
+    },
+    {
+        "name": "Search arxiv papers",
+        "definition": "This capability takes a structured JSON query object as input, executes a search on the Arxiv database, and returns a JSON formatted string containing a list of paper metadata including titles, authors, abstracts, and other relevant details.",
         "agent": {
             "name": "ArxivSearchAgent",
             "url": "http://10.244.9.104:9900/"
@@ -217,7 +249,7 @@
     },
     {
         "name": "Analyze research papers",
-        "definition": "This capability analyzes provided academic research papers to extract potential research ideas and directions. It takes as input a collection of research papers and outputs a list of research insights that may include novel ideas, experimental directions, or emerging trends.",
+        "definition": "This capability processes academic research papers to extract potential research ideas and directions, based on analysis of content and trends.",
         "agent": {
             "name": "Research Agent",
             "url": "http://10.245.131.167:10000/"
@@ -225,7 +257,7 @@
     },
     {
         "name": "Identify research gaps",
-        "definition": "This capability reviews academic literature to identify existing research gaps and unexplored areas in a given field. It processes input research articles and outputs a list of opportunities for further investigation or novel research directions.",
+        "definition": "This capability reviews academic literature to identify unexplored research areas and scientific opportunities, highlighting gaps where further investigation may be beneficial.",
         "agent": {
             "name": "Research Agent",
             "url": "http://10.245.131.167:10000/"
@@ -233,7 +265,7 @@
     },
     {
         "name": "Search Academic Papers",
-        "definition": "This capability accepts a natural language text query via the A2A protocol and searches academic databases, specifically arXiv and Semantic Scholar, for relevant papers. It returns a numbered list (up to 5 results) where each entry includes the paper title, authors with publication year, source identifier, a truncated abstract, and URLs with available PDF links.",
+        "definition": "This capability accepts a natural language query to search academic databases such as arXiv and Semantic Scholar. It returns a numbered list of up to 5 relevant research papers, each with essential metadata including the paper title, authors with year, source, a truncated abstract if necessary, and direct URL and PDF links when available.",
         "agent": {
             "name": "Paper Search Agent",
             "url": "http://10.245.131.167:9999/"
@@ -241,7 +273,7 @@
     },
     {
         "name": "Review PDF Paper",
-        "definition": "Reviews an academic paper provided as a PDF file by extracting text and metadata, analyzing content, and generating a comprehensive review report with structured scoring for methodology, novelty, clarity, and significance.",
+        "definition": "Process an academic paper provided as a PDF file by automatically extracting text and metadata, then performing comprehensive analysis with structured scoring (methodology, novelty, clarity, and significance) to generate a detailed review report.",
         "agent": {
             "name": "Reviewer Agent",
             "url": "http://10.245.131.167:9998/"
@@ -249,7 +281,7 @@
     },
     {
         "name": "Review Paper from URL",
-        "definition": "Reviews an academic paper given as a URL by automatically downloading the PDF, extracting text and metadata, and generating a detailed review report with structured scoring (1-10) for methodology, novelty, clarity, and significance.",
+        "definition": "Process an academic paper provided via a URL by automatically downloading the PDF file, extracting its text and metadata, and performing a comprehensive review with structured scoring and detailed analysis including summary, strengths, weaknesses, and questions.",
         "agent": {
             "name": "Reviewer Agent",
             "url": "http://10.245.131.167:9998/"
@@ -257,31 +289,31 @@
     },
     {
         "name": "Greeting and Help",
-        "definition": "Handles greetings and inquiries by providing information about the agent's capabilities, available functions, and guidelines for effective usage.",
+        "definition": "Respond to greetings and inquiries by providing information about the agent's capabilities, available functions, and usage instructions, thus assisting users in understanding how to interact with the agent.",
         "agent": {
             "name": "Reviewer Agent",
             "url": "http://10.245.131.167:9998/"
         }
     },
     {
-        "name": "Respond to text queries",
-        "definition": "This capability processes text queries to provide helpful, clear, and concise responses by leveraging conversational AI and language model functions. It supports engaging in general discussion, answering questions, and offering explanations.",
+        "name": "Converse with User",
+        "definition": "Respond to text queries in a conversational manner. This capability processes natural language input and provides clear, concise, and helpful responses based on the query context.",
         "agent": {
             "name": "Simple Test Agent",
             "url": "http://10.245.132.142:10001"
         }
     },
     {
-        "name": "Process file uploads",
-        "definition": "This capability acknowledges file uploads by receiving file inputs and extracting metadata such as file name, type, and size. It facilitates the display and processing of this file metadata for subsequent use.",
+        "name": "Process File Upload",
+        "definition": "Accept and acknowledge file uploads by extracting and displaying file metadata such as file name, file type, and file size. This capability handles file input and returns relevant file information.",
         "agent": {
             "name": "Simple Test Agent",
             "url": "http://10.245.132.142:10001"
         }
     },
     {
-        "name": "Manage tasks",
-        "definition": "This capability allows for the creation and control of long-running tasks by providing progress tracking, artifact generation in multiple formats (e.g., markdown, HTML, images), and cancellation support during task execution.",
+        "name": "Manage Long-running Task",
+        "definition": "Create and manage long-running tasks with features including progress tracking, artifact generation (markdown, HTML, image), and support for task cancellation. This capability enables multi-step task execution and real-time monitoring.",
         "agent": {
             "name": "Simple Test Agent",
             "url": "http://10.245.132.142:10001"
@@ -289,55 +321,55 @@
     },
     {
         "name": "Browse web",
-        "definition": "This capability enables an agent to browse the web to answer questions. It processes user queries by searching online for up-to-date information and returning relevant results, such as weather updates or topic-specific data.",
+        "definition": "This capability allows the agent to perform web browsing to answer questions by searching for and retrieving information from the Internet, including specific queries such as weather updates or topic-related searches.",
         "agent": {
             "name": "Web Sailor Agent",
             "url": "http://10.244.3.40:7777/"
         }
     },
     {
-        "name": "Converse using LLMs",
-        "definition": "This capability allows the agent to engage in natural language conversations using large language models. It can answer questions, provide explanations, generate summaries, and handle multi-turn dialogue to clarify and communicate complex topics.",
+        "name": "Conduct Conversation",
+        "definition": "Engage in multi-turn dialogues, answer questions, explain topics, and clarify ambiguous instructions leveraging natural language processing.",
         "agent": {
             "name": "OpenManus Agent",
             "url": "http://10.245.132.74:10003/"
         }
     },
     {
-        "name": "Execute Python code",
-        "definition": "This capability enables the agent to run arbitrary Python code snippets in a secure sandbox environment. It processes the code to produce standard output, generate visual plots, handle errors, and integrate the results back into the conversation.",
+        "name": "Execute Python Code",
+        "definition": "Run arbitrary Python code snippets securely in a sandbox, capturing stdout, plots, errors, and integrating the execution results into the dialogue.",
         "agent": {
             "name": "OpenManus Agent",
             "url": "http://10.245.132.74:10003/"
         }
     },
     {
-        "name": "Automate browser tasks",
-        "definition": "This capability allows the agent to control a headless browser for web automation. It can navigate web pages, perform searches, click elements, extract web content, automate form filling, and take screenshots.",
+        "name": "Automate Browser Navigation",
+        "definition": "Control a headless browser to navigate web pages, perform searches, click elements, extract content, and capture screenshots.",
         "agent": {
             "name": "OpenManus Agent",
             "url": "http://10.245.132.74:10003/"
         }
     },
     {
-        "name": "Integrate MCP tools",
-        "definition": "This capability enables the agent to dynamically connect to remote MCP servers via SSE or stdio. It discovers, invokes, and refreshes remote tool schemas on-the-fly, allowing the integration of external service tools as if they were local.",
+        "name": "Integrate Remote MCP Tools",
+        "definition": "Connect dynamically to remote MCP servers via SSE or stdio, discover available tools, invoke them, and refresh tool schemas at runtime.",
         "agent": {
             "name": "OpenManus Agent",
             "url": "http://10.245.132.74:10003/"
         }
     },
     {
-        "name": "Edit and transform text",
-        "definition": "This capability empowers the agent to perform structured text editing and transformation, including find-and-replace operations, templating, formatting, and content modifications according to specified patterns or guidelines.",
+        "name": "Edit and Transform Text",
+        "definition": "Perform structured text edits including find-and-replace, templating, and content transformations using a programmable editor interface.",
         "agent": {
             "name": "OpenManus Agent",
             "url": "http://10.245.132.74:10003/"
         }
     },
     {
-        "name": "Terminate tasks and cleanup resources",
-        "definition": "This capability provides the agent with the ability to gracefully terminate multi-step processes. It ensures the proper shutdown of ongoing tasks, the release of resources such as browser instances or MCP connections, and reports the final success or error status.",
+        "name": "Terminate Process and Cleanup",
+        "definition": "Gracefully terminate multi-step processes, clean up resources such as browsers and remote connections, and report final success or failure status.",
         "agent": {
             "name": "OpenManus Agent",
             "url": "http://10.245.132.74:10003/"

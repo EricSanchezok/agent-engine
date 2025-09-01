@@ -198,5 +198,5 @@ class CapabilityBuilder:
 
 if __name__ == '__main__':
     builder = CapabilityBuilder()
-    # asyncio.run(builder.invoke())
-    asyncio.run(builder.test())
+    asyncio.run(builder.invoke())
+    # asyncio.run(builder.test())
