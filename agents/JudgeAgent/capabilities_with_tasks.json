@@ -1,0 +1,72 @@
+[
+    {
+        "name": "Answer Questions",
+        "definition": "This capability allows users to engage in natural language conversation and ask questions. It accepts diverse user inputs—including queries, requests for explanations, and discussion topics—and returns clear, helpful, and contextually relevant textual responses that support multi-turn dialogue and detailed explanations.",
+        "alias": [
+            "Answer Questions",
+            "Conduct conversation",
+            "Chat with assistant",
+            "Conduct Conversation"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.132.142:10001"
+            },
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
+            }
+        ],
+        "tasks": [
+            "Can you explain the theory of relativity in simple terms?",
+            "What are the main causes of climate change and how do they affect the environment?",
+            "请问中国古代四大发明是什么？请详细解释一下它们的历史和影响。",
+            "How does blockchain technology work and what are its practical applications?",
+            "Explain the concept of machine learning and its significance in today's technology.",
+            "你能用简单的话解释一下量子物理的基本原理吗？",
+            "What are the economic impacts of globalization on developing countries?",
+            "请说明一下什么是人工智能，并讨论它可能带来的社会变化。",
+            "Could you discuss the major differences between renewable and non-renewable energy sources?",
+            "请介绍一下计算机科学中的大数据分析，并说明它在现代商业中的应用。"
+        ]
+    },
+    {
+        "name": "Search Academic Papers",
+        "definition": "This capability accepts either natural language instructions or a structured query to search academic papers across various databases, such as ArXiv and Semantic Scholar. It returns a structured list of up to five relevant papers, with each entry including key metadata such as the title, authors, publication year, a truncated abstract, and available links (e.g., URL/PDF).",
+        "alias": [
+            "Search Arxiv Papers",
+            "Search academic papers"
+        ],
+        "agents": [
+            {
+                "name": "ArxivSearchAgent",
+                "url": "http://10.244.9.104:9900/"
+            },
+            {
+                "name": "Paper Search Agent",
+                "url": "http://10.245.131.167:9999/"
+            }
+        ],
+        "tasks": [
+            "Search for academic papers on quantum computing breakthroughs in the past two years.",
+            "Can you find scholarly articles about the latest developments in natural language processing and sentiment analysis?",
+            "Please search for research papers on reinforcement learning and robotics applications in recent years.",
+            "找寻关于深度学习在医学影像分析中应用的学术论文，要求包含核心元数据。",
+            "搜索最新的论文，主题为区块链技术在金融交易安全性中的应用。",
+            "请查找有关可持续能源，特别是太阳能和风能的新技术研究的学术文章。",
+            "Can you retrieve academic papers that discuss the ethical implications of artificial intelligence in healthcare?",
+            "搜索关于智能交通系统和自动驾驶技术的学术文献，要求包含标题、作者和发表年份信息。",
+            "Find recent research articles on cybersecurity, emphasizing advanced techniques and trend analysis.",
+            "请搜索关于大数据分析在社会经济研究中的应用的学术论文，要求提供摘要和链接信息。"
+        ]
+    }
+]

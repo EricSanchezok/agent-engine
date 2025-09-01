@@ -110,16 +110,66 @@ class CapabilityBuilder:
         for result in results:
             capabilities.extend(result)
         
+        # Apply capability validation to filter out invalid capabilities (concurrent execution)
+        validation_tasks = [self._validate_capability(capability) for capability in capabilities]
+        validation_results = await asyncio.gather(*validation_tasks, return_exceptions=True)
+        
+        validated_capabilities = []
+        for i, result in enumerate(validation_results):
+            if isinstance(result, Exception):
+                logger.error(f"Validation failed for capability {capabilities[i].get('name')}: {result}")
+                continue
+            if result:
+                validated_capabilities.append(capabilities[i])
+            else:
+                logger.info(f"Rejected capability: {capabilities[i].get('name')} - {capabilities[i].get('definition')}")
+        
+        logger.info(f"Extracted {len(capabilities)} capabilities, validated {len(validated_capabilities)} capabilities")
+        
         # Save to local JSON file for future use
         try:
-            json_file_path = get_current_file_dir() / 'capabilities.json'
+            json_file_path = get_current_file_dir() / 'raw_capabilities.json'
             with open(json_file_path, 'w', encoding='utf-8') as f:
-                json.dump(capabilities, f, ensure_ascii=False, indent=4)
-            logger.info(f"Saved {len(capabilities)} capabilities to local JSON file")
+                json.dump(validated_capabilities, f, ensure_ascii=False, indent=4)
+            logger.info(f"Saved {len(validated_capabilities)} validated capabilities to local JSON file")
         except Exception as e:
             logger.error(f"Failed to save to local JSON file: {e}")
         
-        return capabilities
+        return validated_capabilities
+
+    async def _validate_capability(self, capability: Dict[str, Any]) -> bool:
+        """Validate if a capability is user-facing and valuable"""
+        async with self.semaphore:
+            system_prompt = self.prompt_loader.get_prompt(
+                section='capability_validator',
+                prompt_type='system'
+            )
+            user_prompt = self.prompt_loader.get_prompt(
+                section='capability_validator',
+                prompt_type='user',
+                capability_name=capability.get('name'),
+                capability_definition=capability.get('definition')
+            )
+            
+            try:
+                response = await self.llm_client.chat(system_prompt, user_prompt, model_name='o3-mini')
+                validation_result = json.loads(response)
+                
+                # Log detailed validation result
+                is_valid = validation_result.get('is_valid', False)
+                reason = validation_result.get('reason', 'No reason provided')
+                category = validation_result.get('category', 'Unknown')
+                score = validation_result.get('business_value_score', 0)
+                
+                if not is_valid:
+                    logger.info(f"Rejected capability: {capability.get('name')} - Category: {category}, Score: {score}, Reason: {reason}")
+                else:
+                    logger.info(f"Accepted capability: {capability.get('name')} - Category: {category}, Score: {score}")
+                
+                return is_valid
+            except Exception as e:
+                logger.error(f"Error validating capability {capability.get('name')}: {e}")
+                return False
 
     async def _capability_extract(self, card: Dict[str, Any]) -> List[Dict[str, Any]]:
         async with self.semaphore:
@@ -160,7 +210,7 @@ class CapabilityBuilder:
     async def save(self):
         capabilities = self.all_capabilities()
 
-        with open(get_current_file_dir() / 'view_capabilities.json', 'w', encoding='utf-8') as f:
+        with open(get_current_file_dir() / 'capabilities.json', 'w', encoding='utf-8') as f:
             json.dump(capabilities, f, ensure_ascii=False, indent=4)
 
     async def run_task_generator(self) -> List[Dict[str, Any]]:
@@ -168,12 +218,19 @@ class CapabilityBuilder:
         tasks = [self._task_generator(capability) for capability in capabilities]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        results = [result for result in results if result]
+        # Filter out exceptions and empty results
+        valid_results = []
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"Task generation failed: {result}")
+                continue
+            if result:
+                valid_results.append(result)
 
-        with open(get_current_file_dir() / 'task_capabilities.json', 'w', encoding='utf-8') as f:
-            json.dump(results, f, ensure_ascii=False, indent=4)
+        with open(get_current_file_dir() / 'capabilities_with_tasks.json', 'w', encoding='utf-8') as f:
+            json.dump(valid_results, f, ensure_ascii=False, indent=4)
 
-        return results
+        return valid_results
 
     async def _task_generator(self, capability: Dict[str, Any]) -> Dict[str, Any]:
         async with self.semaphore:
@@ -252,7 +309,5 @@ class CapabilityBuilder:
 
 if __name__ == '__main__':
     builder = CapabilityBuilder()
-    # asyncio.run(builder.invoke())
-    # asyncio.run(builder.test())
-    # asyncio.run(builder.save())
+    asyncio.run(builder.invoke())
     asyncio.run(builder.run_task_generator())
