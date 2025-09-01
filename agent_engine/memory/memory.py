@@ -449,6 +449,24 @@ class Memory:
                     metadata_list.append({})
         return metadata_list
     
+    def get_all(self) -> List[Tuple[str, List[float], Dict]]:
+        """
+        Get all stored items with their content, vector, and metadata
+        
+        Returns:
+            List of tuples (content, vector, metadata) for all stored items
+        """
+        items = []
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT content, vector, metadata FROM vectors")
+            for row in cursor.fetchall():
+                content = row[0]
+                vector = self._blob_to_vector(row[1])
+                metadata = json.loads(row[2]) if row[2] else {}
+                items.append((content, vector, metadata))
+        return items
+    
     def count(self) -> int:
         """
         Get the number of stored items

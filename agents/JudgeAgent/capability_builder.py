@@ -15,6 +15,9 @@ from agent_engine.utils import get_relative_path_from_current_file, get_current_
 # Core imports
 from core.holos import get_all_agent_cards
 
+# Local imports
+from agents.JudgeAgent.judge_memory import JudgeMemory
+
 logger = AgentLogger(__name__)
 
 load_dotenv()
@@ -23,35 +26,43 @@ class CapabilityBuilder:
     def __init__(self):
         self.llm_client = AzureClient(api_key=os.getenv('AZURE_API_KEY'))
         self.prompt_loader = PromptLoader(get_relative_path_from_current_file('prompts.yaml'))
-        self.capability_memory = Memory(name='capability_memory', db_path=get_current_file_dir() / 'database' / 'capability_memory.db')
+        self.capability_memory = JudgeMemory(name='judge_memory', db_path=get_current_file_dir() / 'database' / 'judge_memory.db')
         self.semaphore = asyncio.Semaphore(32)
 
     async def invoke(self):
-        capabilities = await self.run_capability_extractor(load=False)
+        capabilities = await self.run_capability_extractor(load=True)
         self.capability_memory.clear()
 
-        for capability in capabilities:
-            capability_content = {
-                'name': capability.get('name'),
-                'definition': capability.get('definition'),
-                'alias': [capability.get('name')],
-                'agents': [capability.get('agent')]
-            }
-            text = {
-                'name': capability.get('name'),
-                'definition': capability.get('definition'),
-            }
-            text = json.dumps(text, ensure_ascii=False, indent=4)
-            vector = await self.llm_client.embedding(text, model_name='text-embedding-3-small')
+        async def add_capability(capability: Dict[str, Any]):
+            await self.capability_memory.add_capability(
+                name=capability.get('name'),
+                definition=capability.get('definition'),
+                alias=[capability.get('name')],
+                agents=[capability.get('agent')]
+            )
 
+        for capability in capabilities:
             if self.capability_memory.count() == 0:
-                self.capability_memory.add(json.dumps(capability_content, ensure_ascii=False, indent=4), vector)
+                await add_capability(capability)
                 continue
             
-            result = self.capability_memory.search(vector, top_k=5)
-            similar_capabilities = [json.loads(_result[0]) for _result in result if _result[1] > 0.50]
+            result = await self.capability_memory.search_similar_capabilities(capability.get('name'), capability.get('definition'), top_k=5, threshold=0.7)
+            similar_capabilities = []
+            for similar_cap in result:
+                similar_cap_content = {
+                    'name': similar_cap['name'],
+                    'definition': similar_cap['definition'],
+                    'alias': similar_cap.get('metadata', {}).get('alias', []),
+                    'agents': similar_cap.get('metadata', {}).get('agents', [])
+                }
+                similar_capabilities.append(similar_cap_content)
 
             if similar_capabilities:
+                # print("*"*100)
+                # pprint(capability)
+                # print("-"*100)
+                # pprint(similar_capabilities)
+                # print("-"*100)
                 system_prompt = self.prompt_loader.get_prompt(
                     section='capability_merger',
                     prompt_type='system'
@@ -67,23 +78,46 @@ class CapabilityBuilder:
 
                 target_name = response.get('target_name')
                 if target_name:
+                    # print("x"*100)
+                    # pprint(response)
+                    # print("x"*100)
                     target_capability = next((_capability for _capability in similar_capabilities if _capability.get('name') == target_name), None)
                     if target_capability:
-                        self.capability_memory.delete_by_content(json.dumps(target_capability, ensure_ascii=False, indent=4))
-                        target_capability['name'] = response.get('new_name') if response.get('new_name') else target_capability['name']
-                        target_capability['definition'] = response.get('new_definition') if response.get('new_definition') else target_capability['definition']
+                        await self.capability_memory.delete_capability(capability.get('name'), capability.get('definition'))
+                        
+                        # Update target capability
+                        new_name = response.get('new_name') if response.get('new_name') else target_capability['name']
+                        new_definition = response.get('new_definition') if response.get('new_definition') else target_capability['definition']
+                        
+                        # Update alias and agents
                         if capability.get('name') not in target_capability['alias']:
                             target_capability['alias'].append(capability.get('name'))
                         if capability.get('agent') not in target_capability['agents']:
                             target_capability['agents'].append(capability.get('agent'))
-                        self.capability_memory.add(json.dumps(target_capability, ensure_ascii=False, indent=4), vector)
+                        
+                        # Add updated capability
+                        await self.capability_memory.add_capability(
+                            name=new_name,
+                            definition=new_definition,
+                            alias=target_capability['alias'],
+                            agents=target_capability['agents']
+                        )
+                        # pprint({
+                        #     'name': new_name,
+                        #     'definition': new_definition,
+                        #     'alias': target_capability['alias'],
+                        #     'agents': target_capability['agents']
+                        # })
+                        # print("-"*100)
                     else:
-                        self.capability_memory.add(json.dumps(capability_content, ensure_ascii=False, indent=4), vector)
+                        logger.error(f"Target capability not found: {target_name}")
+                        await add_capability(capability)
                 else:
-                    self.capability_memory.add(json.dumps(capability_content, ensure_ascii=False, indent=4), vector)
+                    logger.warning(f"Target name not found: {target_name}")
+                    await add_capability(capability)
                 continue
         
-            self.capability_memory.add(json.dumps(capability_content, ensure_ascii=False, indent=4), vector)
+            await add_capability(capability)
 
         await self.save()
 
@@ -92,7 +126,7 @@ class CapabilityBuilder:
         # Try to load from local JSON file if load is True
         if load:
             try:
-                json_file_path = get_current_file_dir() / 'capabilities.json'
+                json_file_path = get_current_file_dir() / 'raw_capabilities.json'
                 if json_file_path.exists():
                     with open(json_file_path, 'r', encoding='utf-8') as f:
                         capabilities = json.load(f)
@@ -203,8 +237,19 @@ class CapabilityBuilder:
 
     def all_capabilities(self) -> List[Dict[str, Any]]:
         capabilities = []
-        for capability in self.capability_memory.get_all_contents():
-            capabilities.append(json.loads(capability))
+        all_items = self.capability_memory.get_all()
+        
+        for content_str, vector, metadata in all_items:
+            content = json.loads(content_str)
+            
+            # Combine content with metadata
+            capability = {
+                'name': content['name'],
+                'definition': content['definition'],
+                'alias': metadata.get('alias', []),
+                'agents': metadata.get('agents', [])
+            }
+            capabilities.append(capability)
         return capabilities
 
     async def save(self):

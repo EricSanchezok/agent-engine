@@ -1,12 +1,71 @@
 [
     {
-        "name": "Answer Questions",
-        "definition": "This capability allows users to engage in natural language conversation and ask questions. It accepts diverse user inputs—including queries, requests for explanations, and discussion topics—and returns clear, helpful, and contextually relevant textual responses that support multi-turn dialogue and detailed explanations.",
+        "name": "Chat with Task Assistant",
+        "definition": "This capability provides a conversational interface that accepts user text queries and delivers clear, concise, and helpful text responses through a dialogue-based interaction.",
         "alias": [
-            "Answer Questions",
-            "Conduct conversation",
-            "Chat with assistant",
-            "Conduct Conversation"
+            "Chat with Gaia Task Assistant",
+            "Chat with Assistant"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            }
+        ],
+        "tasks": [
+            "Can you help me organize my tasks for the week?",
+            "请帮我检查一下今天需要完成的工作清单。",
+            "I need advice on how to prioritize my daily chores. Can you assist?",
+            "你能给我一些安排会议日程的建议吗？",
+            "What are the best ways to manage multiple projects concurrently?",
+            "请帮我整理一下我的待办事项列表，并建议优先级。",
+            "Can you guide me through creating a clear action plan for a new project?",
+            "你能和我讨论一下如何制定详细的计划来达成我的目标吗？",
+            "I would like to have a conversation about improving my time management skills.",
+            "请问您能帮助我制定一个更有效的时间管理方案吗？"
+        ]
+    },
+    {
+        "name": "Search Academic Papers",
+        "definition": "This capability accepts a natural language text query encapsulated in a JSON message (following the A2A protocol) and performs a search for academic papers across multiple scholarly sources, such as arXiv and others like Semantic Scholar. It returns a numbered list of up to 5 relevant papers, where each entry includes metadata such as title, authors with publication year, source information, a truncated abstract if needed, and direct links to the paper and its PDF.",
+        "alias": [
+            "Search Arxiv Papers",
+            "Search Academic Papers"
+        ],
+        "agents": [
+            {
+                "name": "ArxivSearchAgent",
+                "url": "http://10.244.9.104:9900/"
+            },
+            {
+                "name": "Paper Search Agent",
+                "url": "http://10.245.131.167:9999/"
+            }
+        ],
+        "tasks": [
+            "Search for up to 5 academic papers discussing deep learning applications in medical imaging, focusing on CT scan analysis.",
+            "Find academic papers on blockchain for supply chain management including metadata such as authors, publication year, and source.",
+            "请搜索关于人工智能伦理的学术论文，重点查找探讨算法偏见和透明度问题的研究。",
+            "Find research papers on quantum computing with a focus on cryptography applications, published after 2019.",
+            "在arXiv和Semantic Scholar上搜索关于气候变化对农业影响的最新学术论文，返回标题、作者和摘要。",
+            "Search for academic studies on natural language processing advancements in multilingual translation systems with direct links to the PDFs.",
+            "请帮我查找并返回关于5G技术在工业自动化中的应用的最相关学术论文，并附上作者信息和发布时间。",
+            "Locate academic papers exploring the integration of machine learning with IoT in smart home systems, including truncated abstracts and links.",
+            "搜索关于心理健康与社交媒体影响的相关学术论文，请提供标题、作者、摘要以及详细链接。",
+            "Search for papers on cybersecurity defenses in cloud computing environments, ensuring results include publication details and source URLs."
+        ]
+    },
+    {
+        "name": "Chat with Task Assistant",
+        "definition": "This capability provides a conversational interface that accepts user text queries and delivers clear, concise, and helpful text responses through a dialogue-based interaction. It enables users to ask questions and engage in conversation on any topic by offering explanations, answers, and extended dialogue as needed.",
+        "alias": [
+            "Chat with Gaia Task Assistant",
+            "Chat with Assistant",
+            "Engage in conversation"
         ],
         "agents": [
             {
@@ -20,6 +79,36 @@
             {
                 "name": "Simple Test Agent",
                 "url": "http://10.245.132.142:10001"
+            }
+        ],
+        "tasks": [
+            "Can you explain how a refrigerator works?",
+            "请解释一下空气调节系统的工作原理。",
+            "What are the key differences between socialism and capitalism?",
+            "解释下量子力学的基本原理。",
+            "How does photosynthesis work in plants?",
+            "请详细说明人工智能的主要应用领域。",
+            "What strategies can I use to manage my time effectively?",
+            "你可以给我一些提高学习效率的建议吗？",
+            "What are some effective stress reduction techniques?",
+            "请描述下全球变暖对气候变化的影响。"
+        ]
+    },
+    {
+        "name": "Chat with Task Assistant",
+        "definition": "This capability provides a multi-turn conversational interface that accepts user text queries, questions, or prompts and delivers clear, concise, and helpful responses. It supports engaging dialogue by offering detailed explanations, answers, and summaries, thereby facilitating human-like interactions.",
+        "alias": [
+            "Chat with Gaia Task Assistant",
+            "Chat with Assistant"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
             },
             {
                 "name": "OpenManus Agent",
@@ -27,46 +116,16 @@
             }
         ],
         "tasks": [
-            "Can you explain the theory of relativity in simple terms?",
-            "What are the main causes of climate change and how do they affect the environment?",
-            "请问中国古代四大发明是什么？请详细解释一下它们的历史和影响。",
-            "How does blockchain technology work and what are its practical applications?",
-            "Explain the concept of machine learning and its significance in today's technology.",
-            "你能用简单的话解释一下量子物理的基本原理吗？",
-            "What are the economic impacts of globalization on developing countries?",
-            "请说明一下什么是人工智能，并讨论它可能带来的社会变化。",
-            "Could you discuss the major differences between renewable and non-renewable energy sources?",
-            "请介绍一下计算机科学中的大数据分析，并说明它在现代商业中的应用。"
-        ]
-    },
-    {
-        "name": "Search Academic Papers",
-        "definition": "This capability accepts either natural language instructions or a structured query to search academic papers across various databases, such as ArXiv and Semantic Scholar. It returns a structured list of up to five relevant papers, with each entry including key metadata such as the title, authors, publication year, a truncated abstract, and available links (e.g., URL/PDF).",
-        "alias": [
-            "Search Arxiv Papers",
-            "Search academic papers"
-        ],
-        "agents": [
-            {
-                "name": "ArxivSearchAgent",
-                "url": "http://10.244.9.104:9900/"
-            },
-            {
-                "name": "Paper Search Agent",
-                "url": "http://10.245.131.167:9999/"
-            }
-        ],
-        "tasks": [
-            "Search for academic papers on quantum computing breakthroughs in the past two years.",
-            "Can you find scholarly articles about the latest developments in natural language processing and sentiment analysis?",
-            "Please search for research papers on reinforcement learning and robotics applications in recent years.",
-            "找寻关于深度学习在医学影像分析中应用的学术论文，要求包含核心元数据。",
-            "搜索最新的论文，主题为区块链技术在金融交易安全性中的应用。",
-            "请查找有关可持续能源，特别是太阳能和风能的新技术研究的学术文章。",
-            "Can you retrieve academic papers that discuss the ethical implications of artificial intelligence in healthcare?",
-            "搜索关于智能交通系统和自动驾驶技术的学术文献，要求包含标题、作者和发表年份信息。",
-            "Find recent research articles on cybersecurity, emphasizing advanced techniques and trend analysis.",
-            "请搜索关于大数据分析在社会经济研究中的应用的学术论文，要求提供摘要和链接信息。"
+            "Can you provide a clear and concise summary of the main differences between renewable and non-renewable energy sources?",
+            "请解释一下人工智能在现代医疗中的应用，着重介绍其优点和挑战。",
+            "I need help in drafting a polite and professional inquiry email regarding a job application status.",
+            "请详细讨论一下全球气候变化的主要原因以及可能的解决方案。",
+            "Could you give a step-by-step guide on how to create an effective study schedule for exam preparation?",
+            "请提供一份关于如何进行有效团队协作的建议，包括沟通和任务分配技巧。",
+            "I would like a brief overview of the historical significance of the Renaissance period, highlighting key figures and inventions.",
+            "请解释什么是区块链技术，它是如何改变金融行业的？",
+            "Can you list and describe the main steps involved in developing a successful marketing strategy for a new product launch?",
+            "请帮我概括一下当前热门科技趋势，并预测未来几年可能的发展方向。"
         ]
     }
 ]

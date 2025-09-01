@@ -1,19 +1,228 @@
 [
     {
-        "name": "Analyze Research Papers and Identify Research Gaps",
-        "definition": "This capability accepts academic literature in various forms—including natural language texts, references, Arxiv IDs, or attached PDFs—and performs a deep content analysis to produce a comprehensive report. The report includes detailed summaries, key insights, and explicitly identifies unexplored or under-researched areas, offering potential research ideas and directions for further investigation. The output is provided in a structured JSON list or Markdown format.",
+        "name": "Chat with Gaia Task Assistant",
+        "definition": "This capability allows the user to ask questions and receive responses through a Gaia-like dialogue. It accepts a text query as input and produces a text response.",
         "alias": [
-            "Analyze Papers by Arxiv IDs",
-            "Extract and Analyze Arxiv Papers",
-            "Analyze Attached Paper PDFs",
-            "Analyze Research Papers",
-            "Identify Research Gaps"
+            "Chat with Gaia Task Assistant"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            }
+        ]
+    },
+    {
+        "name": "Collect Academic Signals",
+        "definition": "Collect academic research data based on provided query details such as date, research field, or topic. Accepts parameters indicating time and area of interest, and outputs raw academic data for further processing.",
+        "alias": [
+            "Collect Academic Signals"
+        ],
+        "agents": [
+            {
+                "name": "SignalApplication",
+                "url": "http://10.245.130.134:11015"
+            }
+        ]
+    },
+    {
+        "name": "Interpret Academic Signals",
+        "definition": "Analyze and interpret the raw academic data to extract key insights and trends. Accepts the collected academic signals as input and outputs a summarized interpretation of research progress or thematic developments.",
+        "alias": [
+            "Interpret Academic Signals"
+        ],
+        "agents": [
+            {
+                "name": "SignalApplication",
+                "url": "http://10.245.130.134:11015"
+            }
+        ]
+    },
+    {
+        "name": "Recommend Academic Content",
+        "definition": "Provide recommendations for academic papers or research topics based on analyzed signals. Accepts interpreted insights and query context (e.g., date, field) as input, and outputs a curated list of recommended academic content.",
+        "alias": [
+            "Recommend Academic Content"
+        ],
+        "agents": [
+            {
+                "name": "SignalApplication",
+                "url": "http://10.245.130.134:11015"
+            }
+        ]
+    },
+    {
+        "name": "Generate Academic Report",
+        "definition": "Generate a comprehensive report summarizing academic research findings. Accepts interpreted academic signals and recommendations as input, and outputs a detailed report that captures research developments and trends.",
+        "alias": [
+            "Generate Academic Report"
+        ],
+        "agents": [
+            {
+                "name": "SignalApplication",
+                "url": "http://10.245.130.134:11015"
+            }
+        ]
+    },
+    {
+        "name": "Chat with Task Assistant",
+        "definition": "This capability provides a conversational interface that accepts user text queries and delivers clear, concise, and helpful text responses through a dialogue-based interaction.",
+        "alias": [
+            "Chat with Gaia Task Assistant",
+            "Chat with Assistant"
+        ],
+        "agents": [
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            }
+        ]
+    },
+    {
+        "name": "Optimize User Prompt",
+        "definition": "This capability accepts a raw user prompt as input and returns an optimized version of the prompt that enhances clarity and effectiveness for AI responses.",
+        "alias": [
+            "Optimize User Prompt"
+        ],
+        "agents": [
+            {
+                "name": "Prompt Optimizer Agent",
+                "url": "http://35.243.101.101:9001/"
+            }
+        ]
+    },
+    {
+        "name": "Optimize and Refine User Prompt",
+        "definition": "This capability accepts a prompt input—whether raw or partially optimized—and optional feedback or additional context, and returns a refined version that enhances clarity, effectiveness, and overall performance for AI responses by iteratively optimizing the language and context.",
+        "alias": [
+            "Optimize User Prompt",
+            "Iterative Prompt Optimization"
+        ],
+        "agents": [
+            {
+                "name": "Prompt Optimizer Agent",
+                "url": "http://35.243.101.101:9001/"
+            }
+        ]
+    },
+    {
+        "name": "Filter and Recommend Papers",
+        "definition": "This capability accepts a JSON object input containing a list of ArXiv paper IDs under the key 'arxiv_ids'. It retrieves the full metadata for these papers and applies intelligent filtering, sorting, and recommendation based on high-level semantic criteria or specific user instructions. The output is a JSON list of recommended ArXiv IDs arranged in order of recommendation priority, with a maximum of 8 recommended papers.",
+        "alias": [
+            "Filter and Recommend Papers"
+        ],
+        "agents": [
+            {
+                "name": "PaperFilterAgent",
+                "url": "http://10.244.9.104:9901/"
+            }
+        ]
+    },
+    {
+        "name": "Extract, Filter, and Recommend Papers",
+        "definition": "This capability accepts input in either a structured JSON format, where ArXiv paper IDs are provided under a specific key (e.g., 'arxiv_ids'), or as natural language text that may contain embedded ArXiv IDs. It extracts all valid ArXiv IDs, retrieves the full paper metadata, and applies intelligent filtering, sorting, and recommendation logic based on semantic criteria or user instructions. The output is a JSON list of up to 8 recommended ArXiv paper IDs ordered by recommendation priority.",
+        "alias": [
+            "Filter and Recommend Papers",
+            "Extract IDs and Recommend Papers"
+        ],
+        "agents": [
+            {
+                "name": "PaperFilterAgent",
+                "url": "http://10.244.9.104:9901/"
+            }
+        ]
+    },
+    {
+        "name": "Analyze Paper by ArXiv ID",
+        "definition": "This capability accepts a JSON object containing a list of ArXiv paper IDs (e.g., { 'arxiv_ids': ['2402.19473', '2305.10601'] }). It retrieves the corresponding papers from the ArXiv platform, performs in-depth content analysis and summarization, and returns a JSON-formatted list where each item is a Markdown-formatted analysis report for the respective paper.",
+        "alias": [
+            "Analyze Paper by ArXiv ID"
         ],
         "agents": [
             {
                 "name": "PaperAnalysisAgent",
                 "url": "http://10.244.9.104:9903/"
-            },
+            }
+        ]
+    },
+    {
+        "name": "Analyze ArXiv Papers",
+        "definition": "This capability accepts input either as a structured JSON object containing a list of ArXiv paper IDs or as natural language text that includes embedded ArXiv IDs. It extracts all valid IDs from the provided input if necessary, retrieves the corresponding papers from the ArXiv platform, performs in-depth content analysis and summarization, and returns a JSON-formatted list where each item is a Markdown-formatted analysis report for the respective paper.",
+        "alias": [
+            "Analyze Paper by ArXiv ID",
+            "Extract and Analyze ArXiv Papers from Text"
+        ],
+        "agents": [
+            {
+                "name": "PaperAnalysisAgent",
+                "url": "http://10.244.9.104:9903/"
+            }
+        ]
+    },
+    {
+        "name": "Analyze Attached Paper PDFs",
+        "definition": "This capability handles requests where one or more PDF files of academic papers are attached to a message. Upon receiving such a request, it reads the attached PDF files, performs deep content analysis and summarization, and returns a JSON-formatted list where each item is a Markdown-formatted analysis report for the respective paper.",
+        "alias": [
+            "Analyze Attached Paper PDFs"
+        ],
+        "agents": [
+            {
+                "name": "PaperAnalysisAgent",
+                "url": "http://10.244.9.104:9903/"
+            }
+        ]
+    },
+    {
+        "name": "Download Paper PDFs",
+        "definition": "This capability accepts a JSON object input that contains a key 'arxiv_ids', which is a list of arXiv paper IDs. It downloads the corresponding PDF files for each provided paper, encodes each PDF in Base64, and returns a JSON array where each element is a Base64 encoded string of a PDF file.",
+        "alias": [
+            "Download Paper PDFs"
+        ],
+        "agents": [
+            {
+                "name": "PaperFetchAgent",
+                "url": "http://10.244.9.104:9902/"
+            }
+        ]
+    },
+    {
+        "name": "Download Paper PDFs",
+        "definition": "This capability accepts input either as a structured JSON object containing a list of arXiv paper IDs or as natural language text that embeds arXiv IDs. It automatically extracts valid arXiv IDs when necessary, downloads the corresponding PDF files, encodes each PDF in Base64, and returns a JSON array where each element is a Base64 encoded string representing a downloaded PDF.",
+        "alias": [
+            "Download Paper PDFs",
+            "Extract IDs and Download PDFs"
+        ],
+        "agents": [
+            {
+                "name": "PaperFetchAgent",
+                "url": "http://10.244.9.104:9902/"
+            }
+        ]
+    },
+    {
+        "name": "Search Arxiv Papers",
+        "definition": "This capability accepts a search query provided either as natural language text (e.g., 'yesterday's artificial intelligence papers') or as a structured JSON query. It performs a search on the Arxiv database and returns a JSON formatted string containing a list of metadata for the matching academic papers, such as title, authors, abstract, and other relevant details.",
+        "alias": [
+            "Search Arxiv Papers"
+        ],
+        "agents": [
+            {
+                "name": "ArxivSearchAgent",
+                "url": "http://10.244.9.104:9900/"
+            }
+        ]
+    },
+    {
+        "name": "Analyze Research Papers",
+        "definition": "This capability analyzes a collection of academic research papers to extract potential research ideas and directions. It accepts one or more research paper texts or references as input and outputs summarized research ideas and suggested research directions based on the content.",
+        "alias": [
+            "Analyze Research Papers"
+        ],
+        "agents": [
             {
                 "name": "Research Agent",
                 "url": "http://10.245.131.167:10000/"
@@ -21,13 +230,94 @@
         ]
     },
     {
-        "name": "Answer Questions",
-        "definition": "This capability allows users to engage in natural language conversation and ask questions. It accepts diverse user inputs—including queries, requests for explanations, and discussion topics—and returns clear, helpful, and contextually relevant textual responses that support multi-turn dialogue and detailed explanations.",
+        "name": "Analyze Academic Literature for Research Ideas and Gaps",
+        "definition": "This capability analyzes academic literature including research papers, documents, and literature reviews to extract potential research ideas, directions, and to identify gaps or unexplored areas. It accepts relevant academic texts or references as input and provides summarized research ideas, suggestions for further exploration, and a list of identified research gaps.",
         "alias": [
-            "Answer Questions",
-            "Conduct conversation",
-            "Chat with assistant",
-            "Conduct Conversation"
+            "Analyze Research Papers",
+            "Identify Research Gaps"
+        ],
+        "agents": [
+            {
+                "name": "Research Agent",
+                "url": "http://10.245.131.167:10000/"
+            }
+        ]
+    },
+    {
+        "name": "Search Academic Papers",
+        "definition": "This capability accepts a natural language text query encapsulated in a JSON message (following the A2A protocol) and performs a search for academic papers across multiple scholarly sources, such as arXiv and others like Semantic Scholar. It returns a numbered list of up to 5 relevant papers, where each entry includes metadata such as title, authors with publication year, source information, a truncated abstract if needed, and direct links to the paper and its PDF.",
+        "alias": [
+            "Search Arxiv Papers",
+            "Search Academic Papers"
+        ],
+        "agents": [
+            {
+                "name": "ArxivSearchAgent",
+                "url": "http://10.244.9.104:9900/"
+            },
+            {
+                "name": "Paper Search Agent",
+                "url": "http://10.245.131.167:9999/"
+            }
+        ]
+    },
+    {
+        "name": "Analyze and Review Academic PDF Papers",
+        "definition": "This capability processes requests containing one or more PDF files of academic papers, whether attached directly or provided as base64-encoded file data. It extracts text and metadata from the PDFs, performs deep content analysis, and generates comprehensive, structured review reports. These reports include a summary, analysis of strengths and weaknesses, questions for further consideration, and detailed scoring on aspects such as methodology, novelty, clarity, and significance, all formatted in Markdown.",
+        "alias": [
+            "Analyze Attached Paper PDFs",
+            "Review PDF Paper"
+        ],
+        "agents": [
+            {
+                "name": "PaperAnalysisAgent",
+                "url": "http://10.244.9.104:9903/"
+            },
+            {
+                "name": "Reviewer Agent",
+                "url": "http://10.245.131.167:9998/"
+            }
+        ]
+    },
+    {
+        "name": "Analyze and Review Academic Papers from Multiple Sources",
+        "definition": "This capability processes academic papers provided either as attached PDF files, base64-encoded PDFs, or URLs from which PDFs are automatically downloaded. It extracts text and metadata, performs in-depth content analysis, and generates comprehensive review reports that include summaries, structured scoring on methodology, novelty, clarity, and significance, as well as detailed insights on strengths and weaknesses, all formatted in Markdown.",
+        "alias": [
+            "Analyze Attached Paper PDFs",
+            "Review PDF Paper",
+            "Review Paper from URL"
+        ],
+        "agents": [
+            {
+                "name": "PaperAnalysisAgent",
+                "url": "http://10.244.9.104:9903/"
+            },
+            {
+                "name": "Reviewer Agent",
+                "url": "http://10.245.131.167:9998/"
+            }
+        ]
+    },
+    {
+        "name": "Greeting and Help",
+        "definition": "This capability handles greetings and help inquiries from the user. It provides information about the agent's academic paper review and search functions, explaining available commands and how to use them effectively.",
+        "alias": [
+            "Greeting and Help"
+        ],
+        "agents": [
+            {
+                "name": "Reviewer Agent",
+                "url": "http://10.245.131.167:9998/"
+            }
+        ]
+    },
+    {
+        "name": "Chat with Task Assistant",
+        "definition": "This capability provides a conversational interface that accepts user text queries and delivers clear, concise, and helpful text responses through a dialogue-based interaction. It enables users to ask questions and engage in conversation on any topic by offering explanations, answers, and extended dialogue as needed.",
+        "alias": [
+            "Chat with Gaia Task Assistant",
+            "Chat with Assistant",
+            "Engage in conversation"
         ],
         "agents": [
             {
@@ -41,16 +331,12 @@
             {
                 "name": "Simple Test Agent",
                 "url": "http://10.245.132.142:10001"
-            },
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
             }
         ]
     },
     {
         "name": "Browse the web",
-        "definition": "This capability allows users to submit a query (such as a question or search request) to retrieve current web-based information. It accepts a text input representing the query and produces an answer or relevant details derived from browsing up-to-date web content.",
+        "definition": "This capability allows users to browse the web to answer questions. It accepts a natural language query (for example, 'What is the weather today?' or 'Search for information about a topic') as input and returns relevant information gathered from web searches as output.",
         "alias": [
             "Browse the web"
         ],
@@ -62,25 +348,21 @@
         ]
     },
     {
-        "name": "Download Paper PDFs",
-        "definition": "This capability accepts a JSON object with an 'arxiv_ids' field containing a list of ArXiv paper IDs. It downloads each paper's PDF file, encodes the content in Base64 format, and returns a JSON list where each element is the Base64 encoded string of the corresponding PDF file.",
+        "name": "Chat with Task Assistant",
+        "definition": "This capability provides a multi-turn conversational interface that accepts user text queries, questions, or prompts and delivers clear, concise, and helpful responses. It supports engaging dialogue by offering detailed explanations, answers, and summaries, thereby facilitating human-like interactions.",
         "alias": [
-            "Download Paper PDFs"
+            "Chat with Gaia Task Assistant",
+            "Chat with Assistant"
         ],
         "agents": [
             {
-                "name": "PaperFetchAgent",
-                "url": "http://10.244.9.104:9902/"
-            }
-        ]
-    },
-    {
-        "name": "Edit and Transform Text",
-        "definition": "Performs structured text edits including find-and-replace, templating, and content transformations. Accepts text input along with transformation instructions, and returns the modified text as output.",
-        "alias": [
-            "Edit and Transform Text"
-        ],
-        "agents": [
+                "name": "Gaia Task Agent",
+                "url": "http://localhost:10005/"
+            },
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.130.134:10001"
+            },
             {
                 "name": "OpenManus Agent",
                 "url": "http://10.245.132.74:10003/"
@@ -88,88 +370,15 @@
         ]
     },
     {
-        "name": "Execute academic signal task",
-        "definition": "Processes end-to-end academic signal tasks by accepting user instructions that specify a date and a research domain (e.g., artificial intelligence, machine learning, deep learning). This capability collects relevant academic information, interprets the underlying signals, provides recommendations, and generates a comprehensive report that summarizes findings and insights.",
+        "name": "Edit and Transform Text",
+        "definition": "Performs structured text editing operations including find-and-replace, templating, and content transformation. Accepts source text and transformation instructions, and returns the modified text after applying the specified changes.",
         "alias": [
-            "Execute academic signal task"
+            "Edit and Transform Text"
         ],
         "agents": [
             {
-                "name": "SignalApplication",
-                "url": "http://10.245.130.134:11015"
-            }
-        ]
-    },
-    {
-        "name": "Extract, Filter, and Recommend Papers",
-        "definition": "This capability accepts input in the form of either a natural language text or a JSON object containing one or more ArXiv IDs. It automatically extracts valid ArXiv IDs from free text if needed, retrieves complete metadata for each paper, and applies intelligent filtering, sorting, and ranking based on predefined semantic criteria or user instructions. The capability produces a JSON list of recommended paper ArXiv IDs ordered by recommendation priority, with the output limited to a maximum of 8 papers.",
-        "alias": [
-            "Filter and Recommend Papers",
-            "Extract, Filter, and Recommend from Text"
-        ],
-        "agents": [
-            {
-                "name": "PaperFilterAgent",
-                "url": "http://10.244.9.104:9901/"
-            }
-        ]
-    },
-    {
-        "name": "Greeting and Help",
-        "definition": "This capability handles user greetings and provides information about the agent's functionalities. It accepts text inputs such as greetings or questions about capabilities, and outputs an explanation of available functions, usage instructions, and detailed information on how to effectively use the agent's services.",
-        "alias": [
-            "Greeting and Help"
-        ],
-        "agents": [
-            {
-                "name": "Reviewer Agent",
-                "url": "http://10.245.131.167:9998/"
-            }
-        ]
-    },
-    {
-        "name": "Iterative User Prompt Optimization",
-        "definition": "This capability refines and iteratively improves a user-supplied prompt to enhance its clarity, precision, and overall effectiveness. It accepts a text input representing the prompt along with feedback details when available, and returns an optimized version that better meets user requirements.",
-        "alias": [
-            "Optimize user prompt",
-            "Iterative prompt optimization"
-        ],
-        "agents": [
-            {
-                "name": "Prompt Optimizer Agent",
-                "url": "http://35.243.101.101:9001/"
-            }
-        ]
-    },
-    {
-        "name": "Review Academic Paper",
-        "definition": "This capability reviews an academic paper provided either as a PDF file or via a URL. For PDF files, it accepts an input that includes a file name ending in .pdf and Base64-encoded file bytes. For URLs, it automatically downloads and caches the corresponding PDF. In both cases, the agent extracts the text and metadata from the paper and generates a comprehensive review report. This report includes paper metadata, scores (on a scale from 1 to 10) for methodology, novelty, clarity, and significance, as well as a detailed analysis covering summary, strengths, weaknesses, and questions. The output is returned as a structured text message in markdown format.",
-        "alias": [
-            "Review PDF Paper",
-            "Review Paper from URL"
-        ],
-        "agents": [
-            {
-                "name": "Reviewer Agent",
-                "url": "http://10.245.131.167:9998/"
-            }
-        ]
-    },
-    {
-        "name": "Search Academic Papers",
-        "definition": "This capability accepts either natural language instructions or a structured query to search academic papers across various databases, such as ArXiv and Semantic Scholar. It returns a structured list of up to five relevant papers, with each entry including key metadata such as the title, authors, publication year, a truncated abstract, and available links (e.g., URL/PDF).",
-        "alias": [
-            "Search Arxiv Papers",
-            "Search academic papers"
-        ],
-        "agents": [
-            {
-                "name": "ArxivSearchAgent",
-                "url": "http://10.244.9.104:9900/"
-            },
-            {
-                "name": "Paper Search Agent",
-                "url": "http://10.245.131.167:9999/"
+                "name": "OpenManus Agent",
+                "url": "http://10.245.132.74:10003/"
             }
         ]
     }
