@@ -7,6 +7,254 @@
                 "additionalInterfaces": null,
                 "capabilities": {
                     "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
+                    "streaming": false
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A versatile agent based on OpenManus, supporting local & MCP tools.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "OpenManus Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "General-purpose conversational AI using LLMs, capable of answering questions, providing explanations, and maintaining multi-turn dialogue context.",
+                        "examples": [
+                            "Ask OpenManus to explain the transformer architecture",
+                            "Have a back-and-forth discussion on project requirements",
+                            "Request definitions, analogies, or summaries of complex topics",
+                            "Clarify ambiguous instructions in a step-by-step manner"
+                        ],
+                        "id": "openmanus.chat",
+                        "inputModes": null,
+                        "name": "Conversational Assistant",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "chat",
+                            "conversation",
+                            "llm",
+                            "text"
+                        ]
+                    },
+                    {
+                        "description": "Run arbitrary Python code snippets in a secure sandbox, return stdout, plots, and errors, and integrate results back into the dialogue.",
+                        "examples": [
+                            "Execute a Python function to calculate Fibonacci numbers",
+                            "Generate and save a matplotlib plot, then retrieve it",
+                            "Debug a snippet with syntax or runtime errors",
+                            "Write and run a small script to process a CSV file"
+                        ],
+                        "id": "openmanus.code_exec",
+                        "inputModes": null,
+                        "name": "Code Execution",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "code",
+                            "python",
+                            "execution",
+                            "sandbox"
+                        ]
+                    },
+                    {
+                        "description": "Control a headless browser (Playwright) to navigate web pages, perform searches, click elements, extract content, and take screenshots.",
+                        "examples": [
+                            "Visit a news site and scrape the top headlines",
+                            "Automate form filling on an internal dashboard",
+                            "Search a keyword on Baidu and extract the first 3 results",
+                            "Capture a screenshot of a dynamic chart on a web page"
+                        ],
+                        "id": "openmanus.browser",
+                        "inputModes": null,
+                        "name": "Browser Automation",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "browser",
+                            "playwright",
+                            "automation",
+                            "scraping"
+                        ]
+                    },
+                    {
+                        "description": "Dynamically connect to remote MCP servers over SSE or stdio, discover and invoke their tools as if they were local, and refresh tool schemas at runtime.",
+                        "examples": [
+                            "Connect to an internal analytics MCP service and run `get_metrics`",
+                            "List available tools from a downstream agent via SSE",
+                            "Invoke a remote `generate_report` tool and integrate its output",
+                            "Handle schema changes of remote tools without restarting"
+                        ],
+                        "id": "openmanus.mcp",
+                        "inputModes": null,
+                        "name": "MCP Tool Integration",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "mcp",
+                            "remote",
+                            "toolchain",
+                            "dynamic"
+                        ]
+                    },
+                    {
+                        "description": "Perform structured text edits such as find-and-replace, templating, and content transformations, leveraging a programmable editor interface.",
+                        "examples": [
+                            "Replace all dates in a document with a new format",
+                            "Apply a custom template to generate boilerplate code",
+                            "Batch-rename variables in a codebase snippet",
+                            "Reformat markdown headings according to style guide"
+                        ],
+                        "id": "openmanus.text_edit",
+                        "inputModes": null,
+                        "name": "Text Editing & Replacement",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "text",
+                            "editing",
+                            "replace",
+                            "templating"
+                        ]
+                    },
+                    {
+                        "description": "Gracefully terminate multi-step processes, clean up resources (browsers, MCP connections), and report final success or failure status.",
+                        "examples": [
+                            "Cancel a long-running browser scrape midway",
+                            "Disconnect from all MCP servers after job completion",
+                            "Handle exceptions by terminating the task with an error message",
+                            "Ensure sandbox resources are freed after execution"
+                        ],
+                        "id": "openmanus.terminate",
+                        "inputModes": null,
+                        "name": "Task Termination & Cleanup",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "terminate",
+                            "cleanup",
+                            "lifecycle",
+                            "shutdown"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.245.133.169:10003/",
+                "version": "1.0.0",
+                "id": "cpIjCJkBIR0L7JeZIdK_",
+                "created_at": "2025-09-02T01:55:44.190510Z",
+                "updated_at": "2025-09-02T01:55:44.190510Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A General AI assistant agent for general task.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "General Task Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "Holos Development Team",
+                    "url": "https://github.com/holos-team/general-task-agent"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "General AI assistant based on OWL",
+                        "examples": [
+                            "Ask questions and get responses"
+                        ],
+                        "id": "owl-based-general_task_assistant",
+                        "inputModes": null,
+                        "name": "OWL-based General Task Assistant",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "general task",
+                            "assistant",
+                            "chat",
+                            "llm",
+                            "owl"
+                        ]
+                    },
+                    {
+                        "description": "Can receive and acknowledge file uploads, displaying file metadata including name, type, and size",
+                        "examples": [
+                            "Upload files and get file information",
+                            "View file metadata (name, type, size)",
+                            "Process uploaded documents"
+                        ],
+                        "id": "file_processing",
+                        "inputModes": null,
+                        "name": "File Processing",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "file",
+                            "upload",
+                            "metadata",
+                            "processing"
+                        ]
+                    },
+                    {
+                        "description": "Create and manage long-running tasks with progress tracking, artifact generation, and cancellation support",
+                        "examples": [
+                            "Create tasks with /task command",
+                            "Monitor task progress in real-time",
+                            "Generate markdown, HTML, and image artifacts",
+                            "Cancel running tasks",
+                            "Track multi-step task execution"
+                        ],
+                        "id": "task_management",
+                        "inputModes": null,
+                        "name": "Task Management",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "task",
+                            "management",
+                            "progress",
+                            "artifacts",
+                            "async"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.244.21.160:10003/",
+                "version": "1.0.0",
+                "id": "cZLgAJkBIR0L7JeZ1dI-",
+                "created_at": "2025-08-31T16:05:58.716623Z",
+                "updated_at": "2025-08-31T16:05:58.716623Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
                     "pushNotifications": true,
                     "stateTransitionHistory": false,
                     "streaming": true
@@ -92,11 +340,11 @@
                     }
                 ],
                 "supportsAuthenticatedExtendedCard": true,
-                "url": "http://localhost:10005/",
+                "url": "http://10.244.21.160:10005/",
                 "version": "1.0.0",
-                "id": "a5LJ_5gBIR0L7JeZpdKJ",
-                "created_at": "2025-08-31T11:01:01.957789Z",
-                "updated_at": "2025-08-31T11:01:01.957789Z"
+                "id": "cJLKAJkBIR0L7JeZ-dJy",
+                "created_at": "2025-08-31T15:42:06.192387Z",
+                "updated_at": "2025-08-31T15:42:06.192387Z"
             },
             {
                 "additionalInterfaces": null,
@@ -1300,162 +1548,9 @@
                 "id": "UpJ06pgBIR0L7JeZPdL6",
                 "created_at": "2025-08-27T07:35:43.352077Z",
                 "updated_at": "2025-08-27T07:35:43.352077Z"
-            },
-            {
-                "additionalInterfaces": null,
-                "capabilities": {
-                    "extensions": null,
-                    "pushNotifications": false,
-                    "stateTransitionHistory": false,
-                    "streaming": false
-                },
-                "defaultInputModes": [
-                    "text"
-                ],
-                "defaultOutputModes": [
-                    "text"
-                ],
-                "description": "A versatile agent based on OpenManus, supporting local & MCP tools.",
-                "documentationUrl": null,
-                "iconUrl": null,
-                "name": "OpenManus Agent",
-                "preferredTransport": "JSONRPC",
-                "protocolVersion": "0.3.0",
-                "provider": null,
-                "security": null,
-                "securitySchemes": null,
-                "signatures": null,
-                "skills": [
-                    {
-                        "description": "General-purpose conversational AI using LLMs, capable of answering questions, providing explanations, and maintaining multi-turn dialogue context.",
-                        "examples": [
-                            "Ask OpenManus to explain the transformer architecture",
-                            "Have a back-and-forth discussion on project requirements",
-                            "Request definitions, analogies, or summaries of complex topics",
-                            "Clarify ambiguous instructions in a step-by-step manner"
-                        ],
-                        "id": "openmanus.chat",
-                        "inputModes": null,
-                        "name": "Conversational Assistant",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "chat",
-                            "conversation",
-                            "llm",
-                            "text"
-                        ]
-                    },
-                    {
-                        "description": "Run arbitrary Python code snippets in a secure sandbox, return stdout, plots, and errors, and integrate results back into the dialogue.",
-                        "examples": [
-                            "Execute a Python function to calculate Fibonacci numbers",
-                            "Generate and save a matplotlib plot, then retrieve it",
-                            "Debug a snippet with syntax or runtime errors",
-                            "Write and run a small script to process a CSV file"
-                        ],
-                        "id": "openmanus.code_exec",
-                        "inputModes": null,
-                        "name": "Code Execution",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "code",
-                            "python",
-                            "execution",
-                            "sandbox"
-                        ]
-                    },
-                    {
-                        "description": "Control a headless browser (Playwright) to navigate web pages, perform searches, click elements, extract content, and take screenshots.",
-                        "examples": [
-                            "Visit a news site and scrape the top headlines",
-                            "Automate form filling on an internal dashboard",
-                            "Search a keyword on Baidu and extract the first 3 results",
-                            "Capture a screenshot of a dynamic chart on a web page"
-                        ],
-                        "id": "openmanus.browser",
-                        "inputModes": null,
-                        "name": "Browser Automation",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "browser",
-                            "playwright",
-                            "automation",
-                            "scraping"
-                        ]
-                    },
-                    {
-                        "description": "Dynamically connect to remote MCP servers over SSE or stdio, discover and invoke their tools as if they were local, and refresh tool schemas at runtime.",
-                        "examples": [
-                            "Connect to an internal analytics MCP service and run `get_metrics`",
-                            "List available tools from a downstream agent via SSE",
-                            "Invoke a remote `generate_report` tool and integrate its output",
-                            "Handle schema changes of remote tools without restarting"
-                        ],
-                        "id": "openmanus.mcp",
-                        "inputModes": null,
-                        "name": "MCP Tool Integration",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "mcp",
-                            "remote",
-                            "toolchain",
-                            "dynamic"
-                        ]
-                    },
-                    {
-                        "description": "Perform structured text edits such as find-and-replace, templating, and content transformations, leveraging a programmable editor interface.",
-                        "examples": [
-                            "Replace all dates in a document with a new format",
-                            "Apply a custom template to generate boilerplate code",
-                            "Batch-rename variables in a codebase snippet",
-                            "Reformat markdown headings according to style guide"
-                        ],
-                        "id": "openmanus.text_edit",
-                        "inputModes": null,
-                        "name": "Text Editing & Replacement",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "text",
-                            "editing",
-                            "replace",
-                            "templating"
-                        ]
-                    },
-                    {
-                        "description": "Gracefully terminate multi-step processes, clean up resources (browsers, MCP connections), and report final success or failure status.",
-                        "examples": [
-                            "Cancel a long-running browser scrape midway",
-                            "Disconnect from all MCP servers after job completion",
-                            "Handle exceptions by terminating the task with an error message",
-                            "Ensure sandbox resources are freed after execution"
-                        ],
-                        "id": "openmanus.terminate",
-                        "inputModes": null,
-                        "name": "Task Termination & Cleanup",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "terminate",
-                            "cleanup",
-                            "lifecycle",
-                            "shutdown"
-                        ]
-                    }
-                ],
-                "supportsAuthenticatedExtendedCard": true,
-                "url": "http://10.245.132.74:10003/",
-                "version": "1.0.0",
-                "id": "SJJ34ZgBIR0L7JeZC9L4",
-                "created_at": "2025-08-25T13:42:12.214280Z",
-                "updated_at": "2025-08-25T13:42:12.214280Z"
             }
         ],
-        "total": 18,
+        "total": 19,
         "page": 1,
         "size": 20,
         "pages": 1

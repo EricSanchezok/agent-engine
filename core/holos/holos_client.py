@@ -12,6 +12,9 @@ import os
 # AgentEngine imports
 from agent_engine.agent_logger import AgentLogger
 
+# Config imports
+from core.holos.config import BASE_URL
+
 logger = AgentLogger(__name__)
 
 
@@ -67,8 +70,9 @@ class HolosClient:
         Raises:
             requests.RequestException: If the API request fails and no fallback data is available
         """
-        url = urljoin(self.base_url, "/api/v1/holos/agents")
-        
+        url = f"{self.base_url}/api/v1/holos/agents"
+        logger.info(f"Getting all agents from: {url}")
+
         try:
             response = self.session.get(url, timeout=1)
             response.raise_for_status()
@@ -194,7 +198,7 @@ class HolosClient:
         self.close()
 
 
-def get_all_agent_cards(base_url: str = "http://10.245.130.134:8000") -> List[Dict[str, Any]]:
+def get_all_agent_cards(base_url: str = BASE_URL) -> List[Dict[str, Any]]:
     """
     Simple function to get all agents without creating a client instance.
     
@@ -209,11 +213,12 @@ def get_all_agent_cards(base_url: str = "http://10.245.130.134:8000") -> List[Di
 
 
 if __name__ == "__main__":
+    import pprint
     # Example usage
     try:
         # Using the simple function
         agents = get_all_agent_cards()
-        print(len(agents))
+        pprint.pprint(agents[:3])
             
     except Exception as e:
         logger.error(f"Error: {e}")

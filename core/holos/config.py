@@ -1,0 +1,2 @@
+
+BASE_URL = "https://nat-notebook-inspire.sii.edu.cn/ws-6e6ba362-e98e-45b2-9c5a-311998e93d65/project-034ec99f-f57a-4c71-9f7e-1654d2c430c8/user-dc5518ff-a2c5-45ed-a36f-3931cb726d94/vscode/58e7bda6-88fd-4361-8e8d-e7501006e24c/71c07c0f-b551-4b65-a4d4-c87c63ba8b72/proxy/8000/"

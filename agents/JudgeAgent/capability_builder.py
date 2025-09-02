@@ -83,7 +83,23 @@ class CapabilityBuilder:
                     # print("x"*100)
                     target_capability = next((_capability for _capability in similar_capabilities if _capability.get('name') == target_name), None)
                     if target_capability:
-                        await self.capability_memory.delete_capability(capability.get('name'), capability.get('definition'))
+                        # Find the actual capability to delete using similarity search
+                        actual_capability_to_delete = None
+                        for similar_cap in result:
+                            if similar_cap['name'] == target_name:
+                                actual_capability_to_delete = similar_cap
+                                break
+                        
+                        if actual_capability_to_delete:
+                            # Delete the actual capability found in memory
+                            await self.capability_memory.delete_capability(
+                                actual_capability_to_delete['name'], 
+                                actual_capability_to_delete['definition']
+                            )
+                        else:
+                            logger.error(f"Target capability not found in memory: {target_name}")
+                            await add_capability(capability)
+                            continue
                         
                         # Update target capability
                         new_name = response.get('new_name') if response.get('new_name') else target_capability['name']
@@ -120,7 +136,6 @@ class CapabilityBuilder:
             await add_capability(capability)
 
         await self.save()
-
 
     async def run_capability_extractor(self, load: bool = False) -> List[Dict[str, Any]]:
         # Try to load from local JSON file if load is True
@@ -315,44 +330,8 @@ class CapabilityBuilder:
             capability['tasks'] = tasks
             return capability
 
-    async def test(self):
-        # text = {
-        #     "name": "Browse web",
-        #     "definition": "This capability enables an agent to browse the web to answer questions. It processes user queries by searching online for up-to-date information and returning relevant results, such as weather updates or topic-specific data.",
-        # }
-
-        # text = json.dumps(text, ensure_ascii=False, indent=4)
-        # vector = await self.llm_client.embedding(text, model_name='text-embedding-3-small')
-
-        # result = self.capability_memory.search(vector, top_k=5)
-        # pprint(result)
-
-        capability_A = {
-            "name": "Automate browser tasks",
-            "definition": "This capability allows the agent to control a headless browser for web automation. It can navigate web pages, perform searches, click elements, extract web content, automate form filling, and take screenshots.",
-        }
-        
-        capability_B = {
-            "name": "Browse web",
-            "definition": "This capability enables an agent to browse the web to answer questions. It processes user queries by searching online for up-to-date information and returning relevant results, such as weather updates or topic-specific data.",
-        }
-        
-        system_prompt = self.prompt_loader.get_prompt(
-            section='capability_merger',
-            prompt_type='system'
-        )
-        user_prompt = self.prompt_loader.get_prompt(
-            section='capability_merger',
-            prompt_type='user',
-            new_capability=capability_A,
-            existing_capabilities=[capability_B]
-        )
-        response = await self.llm_client.chat(system_prompt, user_prompt, model_name='o3-mini')
-        response = json.loads(response)
-        pprint(response)
-
 
 if __name__ == '__main__':
     builder = CapabilityBuilder()
     asyncio.run(builder.invoke())
-    asyncio.run(builder.run_task_generator())
+    # asyncio.run(builder.run_task_generator())

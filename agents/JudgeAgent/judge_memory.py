@@ -73,7 +73,21 @@ class JudgeMemory(Memory):
             definition: Capability definition
         """
         content = json.dumps({'name': name, 'definition': definition}, ensure_ascii=False, indent=4)
-        self.delete_by_content(content)
+        logger.info(f"Attempting to delete capability: {name}")
+        logger.info(f"Content to delete: {content}")
+        
+        # Check if content exists before deletion
+        vector, metadata = self.get_by_content(content)
+        if vector is None:
+            logger.warning(f"Capability not found for deletion: {name}")
+            return
+        
+        logger.info(f"Found capability for deletion: {name}")
+        result = self.delete_by_content(content)
+        if result:
+            logger.info(f"Successfully deleted capability: {name}")
+        else:
+            logger.error(f"Failed to delete capability: {name}")
     
     async def search_similar_capabilities(self, name: str, definition: str, top_k: int = 5, threshold: float = 0.55) -> List[Dict[str, Any]]:
         """

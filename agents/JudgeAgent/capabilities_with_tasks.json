@@ -1,15 +1,45 @@
 [
     {
-        "name": "Chat with Task Assistant",
-        "definition": "This capability provides a conversational interface that accepts user text queries and delivers clear, concise, and helpful text responses through a dialogue-based interaction.",
+        "name": "Conversational Assistance",
+        "definition": "Provides general AI assistant functionality for dialogue and inquiry. It accepts natural language inputs including questions, instructions, and requests for explanations, and returns text-based responses that answer queries, offer explanations, and support sustained, multi-turn conversations.",
         "alias": [
-            "Chat with Gaia Task Assistant",
-            "Chat with Assistant"
+            "Conversational Assistance",
+            "Answer questions"
+        ],
+        "agents": [
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.133.169:10003/"
+            },
+            {
+                "name": "General Task Agent",
+                "url": "http://10.244.21.160:10003/"
+            }
+        ],
+        "tasks": [
+            "Can you explain the main differences between artificial intelligence and human intelligence?",
+            "请问你能讲解一下如何开始学习编程吗？",
+            "What advice do you have for someone trying to improve their time management skills?",
+            "请描述一下中国古代的主要哲学思想以及它们对现代社会的影响。",
+            "Can you help me come up with a creative storyline for a short science fiction story?",
+            "我需要一些关于健康饮食的小贴士，你能给我提供一些建议吗？",
+            "Could you elaborate on the process of photosynthesis in a way that's easy to understand?",
+            "请解释一下目前国际政治局势的基本情况以及可能的未来趋势。",
+            "What are some effective strategies for preparing for a job interview?",
+            "我想了解一下如何规划一次经济实惠的旅行，你有什么建议吗？"
+        ]
+    },
+    {
+        "name": "Assist with Text Queries",
+        "definition": "This capability accepts a natural language text query as input and returns a clear, concise, and context-aware text response. It is designed to answer questions, provide explanations, and engage in conversation, covering both Gaia-related tasks and general inquiries.",
+        "alias": [
+            "Assist with Gaia tasks",
+            "Answer text query"
         ],
         "agents": [
             {
                 "name": "Gaia Task Agent",
-                "url": "http://localhost:10005/"
+                "url": "http://10.244.21.160:10005/"
             },
             {
                 "name": "Simple Test Agent",
@@ -17,23 +47,23 @@
             }
         ],
         "tasks": [
-            "Can you help me organize my tasks for the week?",
-            "请帮我检查一下今天需要完成的工作清单。",
-            "I need advice on how to prioritize my daily chores. Can you assist?",
-            "你能给我一些安排会议日程的建议吗？",
-            "What are the best ways to manage multiple projects concurrently?",
-            "请帮我整理一下我的待办事项列表，并建议优先级。",
-            "Can you guide me through creating a clear action plan for a new project?",
-            "你能和我讨论一下如何制定详细的计划来达成我的目标吗？",
-            "I would like to have a conversation about improving my time management skills.",
-            "请问您能帮助我制定一个更有效的时间管理方案吗？"
+            "Can you explain what Gaia-related tasks are and how they differ from general inquiries?",
+            "请问Gaia任务的主要功能是什么？能详细说明一下吗？",
+            "Describe in detail how context-aware text responses work in this system.",
+            "这个系统如何确保在回答问题时能够准确考虑上下文？",
+            "What are some common strategies for providing clear and concise responses in conversational AI?",
+            "请列举几个在自然语言查询中获得最佳回答的技巧。",
+            "How would you explain the concept of 'Assist with Text Queries' to someone unfamiliar with AI?",
+            "你能否用简单易懂的语言解释一下这个文本查询助手的工作原理？",
+            "What steps would you take to handle ambiguous or multi-part questions effectively?",
+            "请提供一些针对多层次问题的分步回答策略。"
         ]
     },
     {
         "name": "Search Academic Papers",
-        "definition": "This capability accepts a natural language text query encapsulated in a JSON message (following the A2A protocol) and performs a search for academic papers across multiple scholarly sources, such as arXiv and others like Semantic Scholar. It returns a numbered list of up to 5 relevant papers, where each entry includes metadata such as title, authors with publication year, source information, a truncated abstract if needed, and direct links to the paper and its PDF.",
+        "definition": "This capability accepts natural language text or structured JSON queries for academic papers and executes searches across one or more academic databases (e.g., arXiv, Semantic Scholar) using standardized protocols. It returns a JSON formatted list of paper metadata that includes titles, authors, publication years, abstracts (which may be truncated), source details, and direct URLs to the papers and available PDF links.",
         "alias": [
-            "Search Arxiv Papers",
+            "Search academic papers",
             "Search Academic Papers"
         ],
         "agents": [
@@ -47,30 +77,30 @@
             }
         ],
         "tasks": [
-            "Search for up to 5 academic papers discussing deep learning applications in medical imaging, focusing on CT scan analysis.",
-            "Find academic papers on blockchain for supply chain management including metadata such as authors, publication year, and source.",
-            "请搜索关于人工智能伦理的学术论文，重点查找探讨算法偏见和透明度问题的研究。",
-            "Find research papers on quantum computing with a focus on cryptography applications, published after 2019.",
-            "在arXiv和Semantic Scholar上搜索关于气候变化对农业影响的最新学术论文，返回标题、作者和摘要。",
-            "Search for academic studies on natural language processing advancements in multilingual translation systems with direct links to the PDFs.",
-            "请帮我查找并返回关于5G技术在工业自动化中的应用的最相关学术论文，并附上作者信息和发布时间。",
-            "Locate academic papers exploring the integration of machine learning with IoT in smart home systems, including truncated abstracts and links.",
-            "搜索关于心理健康与社交媒体影响的相关学术论文，请提供标题、作者、摘要以及详细链接。",
-            "Search for papers on cybersecurity defenses in cloud computing environments, ensuring results include publication details and source URLs."
+            "Search for academic papers on quantum computing published in the last two years. Return paper titles, authors, abstracts, and direct PDF links.",
+            "请搜索2021年以后关于自然语言处理的学术论文，并提供标题、作者、摘要以及文章的直接链接。",
+            "Find the top 5 articles from Semantic Scholar discussing deep reinforcement learning, including metadata such as publication year and source details.",
+            "查找涵盖机器学习的综述文章，请返回论文的标题、作者及出版年份，优先显示arXiv数据库中的论文。",
+            "Retrieve papers published on climate change and its impact on agriculture since 2018. Provide paper metadata in JSON format with URLs and abstract snippets.",
+            "请检索有关区块链技术的最新研究文章，要求提供详细的作者、标题、年份以及摘要（如有截断）。",
+            "Search for academic works focusing on CRISPR technology in clinical trials. Include titles, authors, and direct URLs to papers and PDFs.",
+            "搜索讨论计算机视觉中深度学习应用的论文，请提供出版年份、作者和文章摘要的关键信息。",
+            "Find highly cited survey papers on machine learning in structured JSON format, with paper titles, authors, source details, and links.",
+            "请找出关于虚拟现实技术的前沿研究论文，返回论文的标题、作者、出版年月以及PDF下载链接。"
         ]
     },
     {
-        "name": "Chat with Task Assistant",
-        "definition": "This capability provides a conversational interface that accepts user text queries and delivers clear, concise, and helpful text responses through a dialogue-based interaction. It enables users to ask questions and engage in conversation on any topic by offering explanations, answers, and extended dialogue as needed.",
+        "name": "Assist with Text Queries",
+        "definition": "This capability accepts a natural language text query as input and returns a clear, concise, context-aware, and helpful text response. It is designed to answer questions, provide explanations, and engage in conversation for both Gaia-related tasks and general inquiries.",
         "alias": [
-            "Chat with Gaia Task Assistant",
-            "Chat with Assistant",
-            "Engage in conversation"
+            "Assist with Gaia tasks",
+            "Answer text query",
+            "Answer questions"
         ],
         "agents": [
             {
                 "name": "Gaia Task Agent",
-                "url": "http://localhost:10005/"
+                "url": "http://10.244.21.160:10005/"
             },
             {
                 "name": "Simple Test Agent",
@@ -82,50 +112,16 @@
             }
         ],
         "tasks": [
-            "Can you explain how a refrigerator works?",
-            "请解释一下空气调节系统的工作原理。",
-            "What are the key differences between socialism and capitalism?",
-            "解释下量子力学的基本原理。",
-            "How does photosynthesis work in plants?",
-            "请详细说明人工智能的主要应用领域。",
-            "What strategies can I use to manage my time effectively?",
-            "你可以给我一些提高学习效率的建议吗？",
-            "What are some effective stress reduction techniques?",
-            "请描述下全球变暖对气候变化的影响。"
-        ]
-    },
-    {
-        "name": "Chat with Task Assistant",
-        "definition": "This capability provides a multi-turn conversational interface that accepts user text queries, questions, or prompts and delivers clear, concise, and helpful responses. It supports engaging dialogue by offering detailed explanations, answers, and summaries, thereby facilitating human-like interactions.",
-        "alias": [
-            "Chat with Gaia Task Assistant",
-            "Chat with Assistant"
-        ],
-        "agents": [
-            {
-                "name": "Gaia Task Agent",
-                "url": "http://localhost:10005/"
-            },
-            {
-                "name": "Simple Test Agent",
-                "url": "http://10.245.130.134:10001"
-            },
-            {
-                "name": "OpenManus Agent",
-                "url": "http://10.245.132.74:10003/"
-            }
-        ],
-        "tasks": [
-            "Can you provide a clear and concise summary of the main differences between renewable and non-renewable energy sources?",
-            "请解释一下人工智能在现代医疗中的应用，着重介绍其优点和挑战。",
-            "I need help in drafting a polite and professional inquiry email regarding a job application status.",
-            "请详细讨论一下全球气候变化的主要原因以及可能的解决方案。",
-            "Could you give a step-by-step guide on how to create an effective study schedule for exam preparation?",
-            "请提供一份关于如何进行有效团队协作的建议，包括沟通和任务分配技巧。",
-            "I would like a brief overview of the historical significance of the Renaissance period, highlighting key figures and inventions.",
-            "请解释什么是区块链技术，它是如何改变金融行业的？",
-            "Can you list and describe the main steps involved in developing a successful marketing strategy for a new product launch?",
-            "请帮我概括一下当前热门科技趋势，并预测未来几年可能的发展方向。"
+            "Can you explain the main features of Gaia and how it enhances data processing?",
+            "请解释一下Gaia系统在实际应用中的主要优势是什么？",
+            "Provide a clear overview of the causes and effects of climate change.",
+            "你能简明扼要地描述一下人工智能对现代生活的影响吗？",
+            "How does Gaia integrate with other digital workflow tools for efficient task management?",
+            "请问Gaia系统如何帮助改善企业的数据处理效率？",
+            "What is the difference between context-aware responses and generic responses in a text query?",
+            "请详细说明Gaia在处理自然语言查询时如何考虑上下文信息？",
+            "Explain the key responsibilities of a digital assistant in managing both Gaia-related tasks and general inquiries.",
+            "你能提供一个关于当前经济趋势的简明分析和预测吗？"
         ]
     }
 ]
