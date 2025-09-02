@@ -182,7 +182,7 @@ class A2AClientWrapper:
             params=MessageSendParams(**send_message_payload)
         )
         
-        logger.info(f"Sending message to A2A agent: {message[:50]}...")
+        logger.info(f"Sending message to A2A agent: \n{message}")
         try:
             response = await self.client.send_message(request)
             
@@ -236,7 +236,7 @@ class A2AClientWrapper:
             params=MessageSendParams(**send_message_payload)
         )
         
-        logger.info(f"Sending streaming message to A2A agent: {message[:50]}...")
+        logger.info(f"Sending streaming message to A2A agent: \n{message}")
         try:
             stream_response = self.client.send_message_streaming(streaming_request)
             
@@ -262,7 +262,7 @@ async def send_message_to_a2a_agent(
     message: str, 
     message_id: Optional[str] = None,
     role: str = "user",
-    timeout: float = 30.0,
+    timeout: float = 300.0,
     proxy_url: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -273,9 +273,9 @@ async def send_message_to_a2a_agent(
         message: The message text to send
         message_id: Optional message ID (will generate one if not provided)
         role: The role of the message sender (default: "user")
-        timeout: Request timeout in seconds (default: 30.0)
+        timeout: Request timeout in seconds (default: 300.0)
         proxy_url: Optional proxy URL to use for the A2A agent service
-        
+
     Returns:
         Dictionary containing the response from the agent
     """
@@ -289,7 +289,7 @@ async def send_message_to_a2a_agent_streaming(
     message: str, 
     message_id: Optional[str] = None,
     role: str = "user",
-    timeout: float = 30.0,
+    timeout: float = 300.0,
     proxy_url: Optional[str] = None
 ):
     """
@@ -300,14 +300,14 @@ async def send_message_to_a2a_agent_streaming(
         message: The message text to send
         message_id: Optional message ID (will generate one if not provided)
         role: The role of the message sender (default: "user")
-        timeout: Request timeout in seconds (default: 30.0)
+        timeout: Request timeout in seconds (default: 300.0)
         proxy_url: Optional proxy URL to use for the A2A agent service
 
     Yields:
         Dictionary containing streaming response chunks from the agent
     """
     url = base_url if not proxy_url else proxy_url + base_url
-    async with A2AClientWrapper(base_url, timeout) as client:
+    async with A2AClientWrapper(url, timeout) as client:
         async for chunk in client.send_message_streaming(message, message_id, role):
             yield chunk
 
@@ -319,6 +319,7 @@ if __name__ == "__main__":
         message=message,
         message_id=None,
         role="user",
-        timeout=30.0
+        timeout=30.0,
+        proxy_url=None
     ))
     pprint(response)
