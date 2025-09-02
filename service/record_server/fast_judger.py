@@ -21,7 +21,7 @@ class FastJudger:
         self.prompt_loader = PromptLoader(get_relative_path_from_current_file('prompts.yaml'))
 
     async def invoke(self, task_content: str, task_result: str) -> bool:
-        logger.info(f"Judging task: {task_content} with result: \n{task_result}")
+        logger.info(f"Judging task: {task_content} with result: \n{task_result[:4000]}")
         system_prompt = self.prompt_loader.get_prompt(
             section='task_analyzer',
             prompt_type='system'
@@ -30,7 +30,7 @@ class FastJudger:
             section='task_analyzer',
             prompt_type='user',
             task_content=task_content,
-            task_result=task_result
+            task_result=task_result[:4000]
         )
         
         try:

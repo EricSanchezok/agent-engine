@@ -89,10 +89,15 @@ def test():
     with open(capabilities_path, "r", encoding="utf-8") as f:
         capabilities = json.load(f)
 
+    history = []
+
     for capability in capabilities:
         print("="*100)
-        print(capability["name"])
-        pprint(asyncio.run(memory.get_capability_performance(capability["name"], capability["definition"])))
+        history.append(asyncio.run(memory.get_capability_history(capability["name"], capability["definition"])))
+    
+    with open("service/record_server/history.json", "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=4)
+
 
 if __name__ == "__main__":
     test()

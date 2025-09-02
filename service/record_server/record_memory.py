@@ -363,4 +363,4 @@ if __name__ == "__main__":
     from pprint import pprint
     memory = RecordMemory()
 
-    pprint(asyncio.run(memory.get_capability_performance("Chat with Conversational AI Assistant", "This service enables users to engage in a natural language conversation with a conversational AI assistant. It accepts text queries and provides concise, clear, and helpful responses that may include answers, explanations, summaries, or clarifications. It supports multi-turn dialogues and handling of complex topics.")))
+    pprint(asyncio.run(memory.get_capability_history("Chat with Conversational AI Assistant", "This service enables users to engage in a natural language conversation with a conversational AI assistant. It accepts text queries and provides concise, clear, and helpful responses that may include answers, explanations, summaries, or clarifications. It supports multi-turn dialogues and handling of complex topics.")))

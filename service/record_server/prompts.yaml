@@ -363,4 +363,8 @@ task_analyzer:
       **Agent's Final Result:**
       {task_result}
 
+      **Important Note:** The `task_result` can be very long. For efficiency, the value provided above is the first 4000 characters of the full result. An abrupt or truncated ending in the `task_result` is therefore normal and should not on its own be considered a task failure. Please base your analysis on the provided portion.
+
       Based on your system instructions, provide your analysis in the required JSON format.
+
+
