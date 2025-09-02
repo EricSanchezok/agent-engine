@@ -38,7 +38,7 @@ class RecordMemory(Memory):
         self.llm_client = AzureClient(api_key=os.getenv('AZURE_API_KEY'))
         super().__init__(name=name, db_path=str(db_path))
     
-    async def add_capability(self, name: str, definition: str, alias: List[str] = None, agents: List[Dict] = None):
+    async def add_capability(self, name: str, definition: str, alias: List[str] = None, agents: List[Dict] = None) -> bool:
         """
         Add a capability with proper structure for record memory
         
@@ -47,48 +47,65 @@ class RecordMemory(Memory):
             definition: Capability definition
             alias: List of aliases for the capability
             agents: List of agents that can perform this capability
+            
+        Returns:
+            bool: True if capability was added successfully, False otherwise
         """
-        # Create capability content with only name and definition
-        capability_content = {
-            'name': name,
-            'definition': definition
-        }
-        
-        # Create metadata with alias and agents
-        metadata = {}
-        if alias:
-            metadata['alias'] = alias
-        if agents:
-            metadata['agents'] = agents
-        
-        vector = await self.llm_client.embedding(json.dumps(capability_content, ensure_ascii=False, indent=4), model_name='text-embedding-3-small')
-        # Add to memory
-        self.add(json.dumps(capability_content, ensure_ascii=False, indent=4), vector=vector, metadata=metadata)
+        try:
+            # Create capability content with only name and definition
+            capability_content = {
+                'name': name,
+                'definition': definition
+            }
+            
+            # Create metadata with alias and agents
+            metadata = {}
+            if alias:
+                metadata['alias'] = alias
+            if agents:
+                metadata['agents'] = agents
+            
+            vector = await self.llm_client.embedding(json.dumps(capability_content, ensure_ascii=False, indent=4), model_name='text-embedding-3-small')
+            # Add to memory
+            self.add(json.dumps(capability_content, ensure_ascii=False, indent=4), vector=vector, metadata=metadata)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add capability {name}: {str(e)}")
+            return False
 
-    async def delete_capability(self, capability_name: str, capability_definition: str):
+    async def delete_capability(self, capability_name: str, capability_definition: str) -> bool:
         """
         Delete a capability from memory
         
         Args:
             capability_name: Capability name
             capability_definition: Capability definition
+            
+        Returns:
+            bool: True if capability was deleted successfully, False otherwise
         """
-        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
-        logger.info(f"Attempting to delete capability: {capability_name}")
-        logger.info(f"Content to delete: {capability_content_str}")
-        
-        # Check if content exists before deletion
-        vector, metadata = self.get_by_content(capability_content_str)
-        if vector is None:
-            logger.warning(f"Capability not found for deletion: {capability_name}")
-            return
-        
-        logger.info(f"Found capability for deletion: {capability_name}")
-        result = self.delete_by_content(capability_content_str)
-        if result:
-            logger.info(f"Successfully deleted capability: {capability_name}")
-        else:
-            logger.error(f"Failed to delete capability: {capability_name}")
+        try:
+            capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+            logger.info(f"Attempting to delete capability: {capability_name}")
+            logger.info(f"Content to delete: {capability_content_str}")
+            
+            # Check if content exists before deletion
+            vector, metadata = self.get_by_content(capability_content_str)
+            if vector is None:
+                logger.warning(f"Capability not found for deletion: {capability_name}")
+                return False
+            
+            logger.info(f"Found capability for deletion: {capability_name}")
+            result = self.delete_by_content(capability_content_str)
+            if result:
+                logger.info(f"Successfully deleted capability: {capability_name}")
+                return True
+            else:
+                logger.error(f"Failed to delete capability: {capability_name}")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to delete capability {capability_name}: {str(e)}")
+            return False
     
     async def search_similar_capabilities(self, capability_name: str, capability_definition: str, top_k: int = 5, threshold: float = 0.55) -> List[Dict[str, Any]]:
         """
@@ -200,7 +217,7 @@ class RecordMemory(Memory):
     
     async def add_task_result(self, agent_name: str, agent_url: str, 
                           capability_name: str, capability_definition: str, 
-                          success: bool, task_content: str, task_result: str):
+                          success: bool, task_content: str, task_result: str) -> bool:
         """
         Add a task execution result for an agent to the memory
         
@@ -212,47 +229,72 @@ class RecordMemory(Memory):
             success: Whether the task was successful
             task_content: Content of the task
             task_result: Result of the task
+            
+        Returns:
+            bool: True if task result was added successfully, False otherwise
         """
-        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(capability_content_str)
-        
-        if not metadata:
-            metadata = {}
-        
-        # Initialize task_history if not exists
-        if 'task_history' not in metadata:
-            metadata['task_history'] = {}
-        
-        agent_key = f"{agent_name}_{agent_url}"
-        if agent_key not in metadata['task_history']:
-            metadata['task_history'][agent_key] = {
-                'agent_name': agent_name,
-                'agent_url': agent_url,
-                'success_count': 0,
-                'total_count': 0,
-                'tasks': []
+        try:
+            # Validate that the capability exists
+            capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+            vector, metadata = self.get_by_content(capability_content_str)
+            
+            if vector is None:
+                logger.warning(f"Capability not found: {capability_name}")
+                return False
+            
+            # Validate that the agent exists for this capability
+            if not metadata or 'agents' not in metadata:
+                logger.warning(f"No agents found for capability: {capability_name}")
+                return False
+            
+            agent_found = False
+            for agent in metadata['agents']:
+                if agent.get('name') == agent_name and agent.get('url') == agent_url:
+                    agent_found = True
+                    break
+            
+            if not agent_found:
+                logger.warning(f"Agent {agent_name} ({agent_url}) not found for capability: {capability_name}")
+                return False
+            
+            # Initialize task_history if not exists
+            if 'task_history' not in metadata:
+                metadata['task_history'] = {}
+            
+            agent_key = f"{agent_name}_{agent_url}"
+            if agent_key not in metadata['task_history']:
+                metadata['task_history'][agent_key] = {
+                    'agent_name': agent_name,
+                    'agent_url': agent_url,
+                    'success_count': 0,
+                    'total_count': 0,
+                    'tasks': []
+                }
+            
+            # Update task history
+            task_record = {
+                'task_content': task_content,
+                'task_result': task_result,
+                'success': success,
+                'timestamp': self._get_current_timestamp()
             }
-        
-        # Update task history
-        task_record = {
-            'task_content': task_content,
-            'task_result': task_result,
-            'success': success,
-            'timestamp': self._get_current_timestamp()
-        }
-        
-        metadata['task_history'][agent_key]['tasks'].append(task_record)
-        metadata['task_history'][agent_key]['total_count'] += 1
-        if success:
-            metadata['task_history'][agent_key]['success_count'] += 1
-        
-        # Update the content in memory with new metadata
-        self.delete_by_content(capability_content_str)
-        self.add(capability_content_str, vector=vector, metadata=metadata)
+            
+            metadata['task_history'][agent_key]['tasks'].append(task_record)
+            metadata['task_history'][agent_key]['total_count'] += 1
+            if success:
+                metadata['task_history'][agent_key]['success_count'] += 1
+            
+            # Update the content in memory with new metadata
+            self.delete_by_content(capability_content_str)
+            self.add(capability_content_str, vector=vector, metadata=metadata)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add task result for agent {agent_name}: {str(e)}")
+            return False
 
     async def delete_task_result(self, agent_name: str, agent_url: str, 
                            capability_name: str, capability_definition: str, 
-                           task_content: str, task_result: str, timestamp: str = None):
+                           task_content: str, task_result: str, timestamp: str = None) -> bool:
         """
         Delete a specific task execution result for an agent from the memory
         
@@ -264,96 +306,148 @@ class RecordMemory(Memory):
             task_content: Content of the task to delete
             task_result: Result of the task to delete
             timestamp: Optional timestamp to match specific task record
+            
+        Returns:
+            bool: True if task result was deleted successfully, False otherwise
         """
-        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(capability_content_str)
-        
-        if not metadata or 'task_history' not in metadata:
-            logger.warning(f"No task history found for capability: {capability_name}")
-            return
-        
-        agent_key = f"{agent_name}_{agent_url}"
-        if agent_key not in metadata['task_history']:
-            logger.warning(f"No task history found for agent: {agent_name}")
-            return
-        
-        # Find and remove the specific task record
-        tasks = metadata['task_history'][agent_key]['tasks']
-        original_count = len(tasks)
-        
-        # Filter out the matching task record
-        filtered_tasks = []
-        removed_success_count = 0
-        
-        for task in tasks:
-            # Match by task_content and task_result, optionally by timestamp
-            if (task['task_content'] == task_content and 
-                task['task_result'] == task_result and
-                (timestamp is None or task['timestamp'] == timestamp)):
-                # This is the task to remove
-                if task['success']:
-                    removed_success_count += 1
-                continue
-            filtered_tasks.append(task)
-        
-        # Update the task history
-        metadata['task_history'][agent_key]['tasks'] = filtered_tasks
-        metadata['task_history'][agent_key]['total_count'] = len(filtered_tasks)
-        metadata['task_history'][agent_key]['success_count'] -= removed_success_count
-        
-        # Ensure counts don't go negative
-        if metadata['task_history'][agent_key]['success_count'] < 0:
-            metadata['task_history'][agent_key]['success_count'] = 0
-        
-        # Update the content in memory with new metadata
-        self.delete_by_content(capability_content_str)
-        self.add(capability_content_str, vector=vector, metadata=metadata)
-        
-        removed_count = original_count - len(filtered_tasks)
-        if removed_count > 0:
-            logger.info(f"Successfully deleted {removed_count} task record(s) for agent {agent_name} in capability {capability_name}")
-        else:
-            logger.warning(f"No matching task record found for deletion")
+        try:
+            # Validate that the capability exists
+            capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+            vector, metadata = self.get_by_content(capability_content_str)
+            
+            if vector is None:
+                logger.warning(f"Capability not found: {capability_name}")
+                return False
+            
+            # Validate that the agent exists for this capability
+            if not metadata or 'agents' not in metadata:
+                logger.warning(f"No agents found for capability: {capability_name}")
+                return False
+            
+            agent_found = False
+            for agent in metadata['agents']:
+                if agent.get('name') == agent_name and agent.get('url') == agent_url:
+                    agent_found = True
+                    break
+            
+            if not agent_found:
+                logger.warning(f"Agent {agent_name} ({agent_url}) not found for capability: {capability_name}")
+                return False
+            
+            # Check if task history exists
+            if 'task_history' not in metadata:
+                logger.warning(f"No task history found for capability: {capability_name}")
+                return False
+            
+            agent_key = f"{agent_name}_{agent_url}"
+            if agent_key not in metadata['task_history']:
+                logger.warning(f"No task history found for agent: {agent_name}")
+                return False
+            
+            # Find and remove the specific task record
+            tasks = metadata['task_history'][agent_key]['tasks']
+            original_count = len(tasks)
+            
+            # Filter out the matching task record
+            filtered_tasks = []
+            removed_success_count = 0
+            
+            for task in tasks:
+                # Match by task_content and task_result, optionally by timestamp
+                if (task['task_content'] == task_content and 
+                    task['task_result'] == task_result and
+                    (timestamp is None or task['timestamp'] == timestamp)):
+                    # This is the task to remove
+                    if task['success']:
+                        removed_success_count += 1
+                    continue
+                filtered_tasks.append(task)
+            
+            # Update the task history
+            metadata['task_history'][agent_key]['tasks'] = filtered_tasks
+            metadata['task_history'][agent_key]['total_count'] = len(filtered_tasks)
+            metadata['task_history'][agent_key]['success_count'] -= removed_success_count
+            
+            # Ensure counts don't go negative
+            if metadata['task_history'][agent_key]['success_count'] < 0:
+                metadata['task_history'][agent_key]['success_count'] = 0
+            
+            # Update the content in memory with new metadata
+            self.delete_by_content(capability_content_str)
+            self.add(capability_content_str, vector=vector, metadata=metadata)
+            
+            removed_count = original_count - len(filtered_tasks)
+            if removed_count > 0:
+                logger.info(f"Successfully deleted {removed_count} task record(s) for agent {agent_name} in capability {capability_name}")
+                return True
+            else:
+                logger.warning(f"No matching task record found for deletion")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to delete task result for agent {agent_name}: {str(e)}")
+            return False
 
-    async def delete_agent_task_history(self, agent_name: str, agent_url: str):
+    async def delete_agent_task_history(self, agent_name: str, agent_url: str) -> bool:
         """
         Delete task history for a specific agent from all capabilities from the memory
         
         Args:
             agent_name: Name of the agent
             agent_url: URL of the agent
+            
+        Returns:
+            bool: True if agent task history was deleted successfully, False otherwise
         """
-        agent_key = f"{agent_name}_{agent_url}"
-        all_items = self.get_all()
+        try:
+            agent_key = f"{agent_name}_{agent_url}"
+            all_items = self.get_all()
+            deleted_count = 0
+            
+            for capability_content_str, vector, metadata in all_items:
+                if metadata and 'task_history' in metadata:
+                    if agent_key in metadata['task_history']:
+                        # Remove the agent's task history
+                        del metadata['task_history'][agent_key]
+                        
+                        # Update the content in memory
+                        self.delete_by_content(capability_content_str)
+                        self.add(capability_content_str, vector=vector, metadata=metadata)
+                        
+                        logger.info(f"Deleted task history for agent {agent_name} from capability {json.loads(capability_content_str)['name']}")
+                        deleted_count += 1
+            
+            return deleted_count > 0
+        except Exception as e:
+            logger.error(f"Failed to delete agent task history for {agent_name}: {str(e)}")
+            return False
+    
+    async def delete_all_task_history(self) -> bool:
+        """
+        Delete all task history from all capabilities from the memory
         
-        for capability_content_str, vector, metadata in all_items:
-            if metadata and 'task_history' in metadata:
-                if agent_key in metadata['task_history']:
-                    # Remove the agent's task history
-                    del metadata['task_history'][agent_key]
+        Returns:
+            bool: True if all task history was deleted successfully, False otherwise
+        """
+        try:
+            all_items = self.get_all()
+            deleted_count = 0
+            
+            for capability_content_str, vector, metadata in all_items:
+                if metadata and 'task_history' in metadata:
+                    # Remove all task history
+                    del metadata['task_history']
                     
                     # Update the content in memory
                     self.delete_by_content(capability_content_str)
                     self.add(capability_content_str, vector=vector, metadata=metadata)
                     
-                    logger.info(f"Deleted task history for agent {agent_name} from capability {json.loads(capability_content_str)['name']}")
-    
-    async def delete_all_task_history(self):
-        """
-        Delete all task history from all capabilities from the memory
-        """
-        all_items = self.get_all()
-        
-        for capability_content_str, vector, metadata in all_items:
-            if metadata and 'task_history' in metadata:
-                # Remove all task history
-                del metadata['task_history']
-                
-                # Update the content in memory
-                self.delete_by_content(capability_content_str)
-                self.add(capability_content_str, vector=vector, metadata=metadata)
-                
-                logger.info(f"Deleted all task history from capability {json.loads(capability_content_str)['name']}")
+                    logger.info(f"Deleted all task history from capability {json.loads(capability_content_str)['name']}")
+                    deleted_count += 1
+            
+            return deleted_count > 0
+        except Exception as e:
+            logger.error(f"Failed to delete all task history: {str(e)}")
+            return False
     
     async def get_capability_performance(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
         """
