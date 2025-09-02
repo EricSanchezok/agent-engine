@@ -2,7 +2,7 @@
 
 # Server settings
 HOST = '0.0.0.0'  # Listen on all interfaces
-PORT = 8000       # Default port
+PORT = 3000       # Default port
 
 # Request settings
 REQUEST_TIMEOUT = 30  # Timeout in seconds for forwarded requests

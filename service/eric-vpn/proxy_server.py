@@ -22,61 +22,55 @@ class ProxyServer:
     
     def parse_target_url(self, path):
         """
-        Parse the target URL from the proxy path
-        Expected format: /proxy/{target_host}/{target_port}/{remaining_path}
+        [旧逻辑] 从 /proxy/... 格式的路径中解析目标URL
+        Expected format: proxy/{target_host}/{target_port}/{remaining_path}
         """
-        # Remove leading slash if present
-        if path.startswith('/'):
-            path = path[1:]
-        
-        # Split the path into components
+        # Remove leading slash if present, as it's handled by the route
         parts = path.split('/', 3)  # Split into max 4 parts
         
         if len(parts) < 3:
-            raise ValueError("Invalid proxy path format. Expected: /proxy/{host}/{port}/{path}")
+            raise ValueError("Invalid proxy path format. Expected: proxy/{host}/{port}/{path}")
         
-        if parts[0] != 'proxy':
-            raise ValueError("Path must start with 'proxy'")
-        
-        target_host = parts[1]
-        target_port = parts[2]
-        remaining_path = parts[3] if len(parts) > 3 else ''
+        # NOTE: The first part is now the host because the '/proxy/' part is consumed by the route
+        target_host = parts[0]
+        target_port = parts[1]
+        remaining_path = parts[2] if len(parts) > 2 else ''
         
         # Construct target URL
+        # 确保协议是http，因为这种格式没有指定协议
         target_url = f"http://{target_host}:{target_port}"
         if remaining_path:
+            # urljoin 能够智能地处理斜杠
             target_url = urljoin(target_url + '/', remaining_path)
         
         return target_url
     
     def forward_request(self, target_url, method='GET', headers=None, data=None, params=None):
         """
-        Forward the request to the target URL
+        将请求转发到目标URL
         """
         try:
-            logger.info(f"Forwarding {method} request to: {target_url}")
+            logger.info(f"Forwarding {method} request to: {target_url} with params: {params}")
             
-            # Prepare request parameters
+            # 准备请求参数
             request_kwargs = {
                 'method': method,
                 'url': target_url,
                 'headers': headers or {},
                 'params': params,
-                'timeout': REQUEST_TIMEOUT
+                'timeout': REQUEST_TIMEOUT,
+                'allow_redirects': False # 代理通常不应自动处理重定向
             }
             
-            # Add data/body for POST/PUT/PATCH requests
+            # 为 POST/PUT/PATCH 请求添加请求体
             if method in ['POST', 'PUT', 'PATCH'] and data is not None:
-                request_kwargs['data'] = data
-            
-            # Add JSON data if content-type is application/json
-            if headers and 'content-type' in headers.get('content-type', '').lower():
-                if 'application/json' in headers.get('content-type', '').lower():
+                content_type = headers.get('content-type', '').lower()
+                if 'application/json' in content_type:
                     request_kwargs['json'] = data
-                    if 'data' in request_kwargs:
-                        del request_kwargs['data']
+                else:
+                    request_kwargs['data'] = data
             
-            # Make the request
+            # 发出请求
             response = self.session.request(**request_kwargs)
             
             logger.info(f"Received response from {target_url}: {response.status_code}")
@@ -86,38 +80,23 @@ class ProxyServer:
             logger.error(f"Error forwarding request to {target_url}: {str(e)}")
             raise
 
-# Create proxy server instance
+# 创建代理服务器实例
 proxy_server = ProxyServer()
 
-@app.route('/proxy/<path:proxy_path>', methods=SUPPORTED_METHODS)
-def proxy_handler(proxy_path):
-    """
-    Main proxy handler for all proxy requests
-    """
+# --- 新增的通用代理处理逻辑 ---
+# 这个函数会处理所有形式的代理请求，避免代码重复
+def process_and_forward_request(target_url):
     try:
-        # Parse the target URL from the proxy path
-        target_url = proxy_server.parse_target_url(proxy_path)
-        
-        # Get request method
         method = request.method
         
-        # Get request headers (excluding some headers that shouldn't be forwarded)
-        headers = dict(request.headers)
-        for header in HEADERS_TO_REMOVE:
-            headers.pop(header, None)
+        # 排除不应转发的请求头
+        headers = {key: value for key, value in request.headers if key.lower() not in [h.lower() for h in HEADERS_TO_REMOVE]}
         
-        # Get request data
-        data = None
-        if method in ['POST', 'PUT', 'PATCH']:
-            if request.is_json:
-                data = request.get_json()
-            else:
-                data = request.get_data()
+        data = request.get_data() # get_data() 可以同时处理json和form数据
         
-        # Get query parameters
-        params = dict(request.args)
+        params = request.args.to_dict()
         
-        # Forward the request
+        # 转发请求
         response = proxy_server.forward_request(
             target_url=target_url,
             method=method,
@@ -126,11 +105,14 @@ def proxy_handler(proxy_path):
             params=params
         )
         
-        # Create Flask response
+        # 创建 Flask 响应，排除某些响应头
+        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+        response_headers = [(name, value) for (name, value) in response.raw.headers.items() if name.lower() not in excluded_headers]
+        
         flask_response = Response(
             response.content,
             status=response.status_code,
-            headers=dict(response.headers)
+            headers=response_headers
         )
         
         return flask_response
@@ -142,28 +124,54 @@ def proxy_handler(proxy_path):
         logger.error(f"Proxy error: {str(e)}")
         return {'error': 'Internal proxy error'}, 500
 
+# --- 新增的、更灵活的 "catch-all" 路由 ---
+# 这个路由会捕获所有看起来像URL的路径
+@app.route('/<path:full_url>', methods=SUPPORTED_METHODS)
+def catch_all_proxy(full_url):
+    """
+    处理形如 /http://... 或 /https://... 的请求
+    """
+    # 检查捕获的路径是否以 http:// 或 https:// 开头
+    if full_url.startswith('http://') or full_url.startswith('https://'):
+        # 它本身就是一个完整的URL，直接用它作为目标地址
+        target_url = full_url
+        # 如果原始请求有查询参数，需要附加到目标URL上
+        if request.query_string:
+            target_url += '?' + request.query_string.decode('utf-8')
+        
+        logger.info(f"Catch-all route matched. Target URL: {target_url}")
+        return process_and_forward_request(target_url)
+    
+    # 如果不是我们期望的URL格式，返回404
+    logger.warning(f"Catch-all route received a non-URL path: {full_url}")
+    return {'error': 'Not Found. The path is not a valid proxy request.'}, 404
+
+# --- 保留的原有路由 ---
+@app.route('/proxy/<path:proxy_path>', methods=SUPPORTED_METHODS)
+def proxy_handler(proxy_path):
+    """
+    处理 /proxy/{host}/{port}/{path} 格式的请求
+    """
+    logger.info(f"Proxy route matched. Path: {proxy_path}")
+    target_url = proxy_server.parse_target_url(proxy_path)
+    return process_and_forward_request(target_url)
+
 @app.route('/health')
 def health_check():
-    """
-    Health check endpoint
-    """
     return {'status': 'healthy', 'timestamp': time.time()}
 
 @app.route('/')
 def index():
-    """
-    Root endpoint with usage instructions
-    """
     return {
-        'message': 'Dynamic Proxy Server',
-        'usage': 'Use /proxy/{target_host}/{target_port}/{path} to proxy requests',
-        'example': '/proxy/10.245.134.199/8000/api/users',
+        'message': 'Enhanced Dynamic Proxy Server',
+        'usage_1': 'Use /proxy/{target_host}/{target_port}/{path}',
+        'usage_2': 'Use /{full_target_url_with_http}',
+        'example_1': '/proxy/10.245.134.199/8000/api/users',
+        'example_2': '/http://10.245.134.199:8000/api/users',
         'health': '/health'
     }
 
 if __name__ == '__main__':
-    logger.info("Starting Dynamic Proxy Server...")
+    logger.info("Starting Enhanced Dynamic Proxy Server...")
     logger.info(f"Server will be available at http://{HOST}:{PORT}")
-    logger.info(f"Example usage: http://{HOST}:{PORT}/proxy/10.245.134.199/8000/api/users")
-    
     app.run(host=HOST, port=PORT, debug=True)
