@@ -64,68 +64,70 @@ class JudgeMemory(Memory):
         # Add to memory
         self.add(json.dumps(capability_content, ensure_ascii=False, indent=4), vector=vector, metadata=metadata)
 
-    async def delete_capability(self, name: str, definition: str):
+    async def delete_capability(self, capability_name: str, capability_definition: str):
         """
         Delete a capability from memory
         
         Args:
-            name: Capability name
-            definition: Capability definition
+            capability_name: Capability name
+            capability_definition: Capability definition
         """
-        content = json.dumps({'name': name, 'definition': definition}, ensure_ascii=False, indent=4)
-        logger.info(f"Attempting to delete capability: {name}")
-        logger.info(f"Content to delete: {content}")
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        logger.info(f"Attempting to delete capability: {capability_name}")
+        logger.info(f"Content to delete: {capability_content_str}")
         
         # Check if content exists before deletion
-        vector, metadata = self.get_by_content(content)
+        vector, metadata = self.get_by_content(capability_content_str)
         if vector is None:
-            logger.warning(f"Capability not found for deletion: {name}")
+            logger.warning(f"Capability not found for deletion: {capability_name}")
             return
         
-        logger.info(f"Found capability for deletion: {name}")
-        result = self.delete_by_content(content)
+        logger.info(f"Found capability for deletion: {capability_name}")
+        result = self.delete_by_content(capability_content_str)
         if result:
-            logger.info(f"Successfully deleted capability: {name}")
+            logger.info(f"Successfully deleted capability: {capability_name}")
         else:
-            logger.error(f"Failed to delete capability: {name}")
+            logger.error(f"Failed to delete capability: {capability_name}")
     
-    async def search_similar_capabilities(self, name: str, definition: str, top_k: int = 5, threshold: float = 0.55) -> List[Dict[str, Any]]:
+    async def search_similar_capabilities(self, capability_name: str, capability_definition: str, top_k: int = 5, threshold: float = 0.55) -> List[Dict[str, Any]]:
         """
         Search for similar capabilities based on text similarity
         
         Args:
-            name: Capability name
-            definition: Capability definition
+            capability_name: Capability name
+            capability_definition: Capability definition
             top_k: Number of top similar capabilities to return
             
         Returns:
             List of capability content dictionaries
         """
-        vector = await self.llm_client.embedding(json.dumps({'name': name, 'definition': definition}, ensure_ascii=False, indent=4), model_name='text-embedding-3-small')
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector = await self.llm_client.embedding(capability_content_str, model_name='text-embedding-3-small')
         results = self.search(vector, top_k=top_k)
         similar_capabilities = []
         
-        for content, similarity_score, metadata in results:
-            if similarity_score > threshold:  # Lower similarity threshold for better matching
-                capability_content = json.loads(content)
-                capability_content['similarity_score'] = similarity_score
-                capability_content['metadata'] = metadata
+        for _capability_content_str, _similarity_score, _metadata in results:
+            if _similarity_score > threshold:
+                capability_content = json.loads(_capability_content_str)
+                capability_content['similarity_score'] = _similarity_score
+                capability_content['metadata'] = _metadata
                 similar_capabilities.append(capability_content)
         
         return similar_capabilities
     
-    def get_agents_for_capability(self, capability_content: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def get_agents_for_capability(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
         """
         Get all agents that can perform a specific capability
         
         Args:
-            capability_content: Capability content dictionary with name and definition
+            capability_name: Capability name
+            capability_definition: Capability definition
             
         Returns:
             List of agent dictionaries
         """
-        content_str = json.dumps(capability_content, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(content_str)
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector, metadata = self.get_by_content(capability_content_str)
         
         if metadata and 'agents' in metadata:
             return metadata['agents']
@@ -146,21 +148,21 @@ class JudgeMemory(Memory):
         all_contents = self.get_all_contents()
         agent_capabilities = []
         
-        for content_str in all_contents:
-            content = json.loads(content_str)
-            vector, metadata = self.get_by_content(content_str)
+        for capability_content_str in all_contents:
+            capability_content = json.loads(capability_content_str)
+            vector, metadata = self.get_by_content(capability_content_str)
             
             if metadata and 'agents' in metadata:
                 for agent in metadata['agents']:
                     if (agent.get('name') == agent_name and 
                         agent.get('url') == agent_url):
-                        agent_capabilities.append(content)
+                        agent_capabilities.append(capability_content)
                         break
         
         return agent_capabilities
     
     async def record_task_result(self, agent_name: str, agent_url: str, 
-                          success: bool, capability_content: Dict[str, Any], 
+                          success: bool, capability_name: str, capability_definition: str, 
                           task_name: str):
         """
         Record a task execution result for an agent
@@ -169,11 +171,12 @@ class JudgeMemory(Memory):
             agent_name: Name of the agent
             agent_url: URL of the agent
             success: Whether the task was successful
-            capability_content: Capability content dictionary
+            capability_name: Capability name
+            capability_definition: Capability definition
             task_name: Name of the task
         """
-        content_str = json.dumps(capability_content, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(content_str)
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector, metadata = self.get_by_content(capability_content_str)
         
         if not metadata:
             metadata = {}
@@ -205,21 +208,22 @@ class JudgeMemory(Memory):
             metadata['task_history'][agent_key]['success_count'] += 1
         
         # Update the content in memory with new metadata
-        self.delete_by_content(content_str)
-        self.add(content_str, vector=vector, metadata=metadata)
+        self.delete_by_content(capability_content_str)
+        self.add(capability_content_str, vector=vector, metadata=metadata)
     
-    def get_agent_performance_info(self, capability_content: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def get_agent_performance_info(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
         """
         Get performance information for all agents that can perform a capability
         
         Args:
-            capability_content: Capability content dictionary
+            capability_name: Capability name
+            capability_definition: Capability definition
             
         Returns:
             List of agent performance information dictionaries
         """
-        content_str = json.dumps(capability_content, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(content_str)
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector, metadata = self.get_by_content(capability_content_str)
         
         agent_performance = []
         
@@ -241,33 +245,35 @@ class JudgeMemory(Memory):
         from datetime import datetime
         return datetime.now().isoformat()
     
-    def get_capability_with_metadata(self, capability_content: Dict[str, Any]) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    def get_capability_with_metadata(self, capability_name: str, capability_definition: str) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
         """
         Get capability content with its metadata
         
         Args:
-            capability_content: Capability content dictionary
+            capability_name: Capability name
+            capability_definition: Capability definition
             
         Returns:
             Tuple of (capability_content, metadata) or None if not found
         """
-        content_str = json.dumps(capability_content, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(content_str)
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector, metadata = self.get_by_content(capability_content_str)
         
         if vector is not None:
-            return capability_content, metadata
+            return {'name': capability_name, 'definition': capability_definition}, metadata
         return None
     
-    async def update_capability_agents(self, capability_content: Dict[str, Any], agents: List[Dict[str, Any]]):
+    async def update_capability_agents(self, capability_name: str, capability_definition: str, agents: List[Dict[str, Any]]):
         """
         Update the agents list for a capability
         
         Args:
-            capability_content: Capability content dictionary
+            capability_name: Capability name
+            capability_definition: Capability definition
             agents: New list of agents
         """
-        content_str = json.dumps(capability_content, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(content_str)
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector, metadata = self.get_by_content(capability_content_str)
         
         if vector is not None:
             if not metadata:
@@ -275,8 +281,8 @@ class JudgeMemory(Memory):
             metadata['agents'] = agents
             
             # Update the content in memory
-            self.delete_by_content(content_str)
-            self.add(content_str, vector=vector, metadata=metadata)
+            self.delete_by_content(capability_content_str)
+            self.add(capability_content_str, vector=vector, metadata=metadata)
     
     def delete_agent_task_history(self, agent_name: str, agent_url: str):
         """
@@ -289,17 +295,17 @@ class JudgeMemory(Memory):
         agent_key = f"{agent_name}_{agent_url}"
         all_items = self.get_all()
         
-        for content_str, vector, metadata in all_items:
+        for capability_content_str, vector, metadata in all_items:
             if metadata and 'task_history' in metadata:
                 if agent_key in metadata['task_history']:
                     # Remove the agent's task history
                     del metadata['task_history'][agent_key]
                     
                     # Update the content in memory
-                    self.delete_by_content(content_str)
-                    self.add(content_str, vector=vector, metadata=metadata)
+                    self.delete_by_content(capability_content_str)
+                    self.add(capability_content_str, vector=vector, metadata=metadata)
                     
-                    logger.info(f"Deleted task history for agent {agent_name} from capability {json.loads(content_str)['name']}")
+                    logger.info(f"Deleted task history for agent {agent_name} from capability {json.loads(capability_content_str)['name']}")
     
     def delete_all_task_history(self):
         """
@@ -307,16 +313,16 @@ class JudgeMemory(Memory):
         """
         all_items = self.get_all()
         
-        for content_str, vector, metadata in all_items:
+        for capability_content_str, vector, metadata in all_items:
             if metadata and 'task_history' in metadata:
                 # Remove all task history
                 del metadata['task_history']
                 
                 # Update the content in memory
-                self.delete_by_content(content_str)
-                self.add(content_str, vector=vector, metadata=metadata)
+                self.delete_by_content(capability_content_str)
+                self.add(capability_content_str, vector=vector, metadata=metadata)
                 
-                logger.info(f"Deleted all task history from capability {json.loads(content_str)['name']}")
+                logger.info(f"Deleted all task history from capability {json.loads(capability_content_str)['name']}")
     
     def get_all_agents(self) -> List[Dict[str, str]]:
         """
@@ -328,7 +334,7 @@ class JudgeMemory(Memory):
         all_agents = set()
         all_items = self.get_all()
         
-        for content_str, vector, metadata in all_items:
+        for capability_content_str, vector, metadata in all_items:
             if metadata and 'agents' in metadata:
                 for agent in metadata['agents']:
                     agent_key = (agent['name'], agent['url'])
