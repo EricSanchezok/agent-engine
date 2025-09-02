@@ -285,3 +285,14 @@ async def send_message_to_a2a_agent_streaming(
         async for chunk in client.send_message_streaming(message, message_id, role):
             yield chunk
 
+if __name__ == "__main__":
+    from pprint import pprint
+    message = "Hello, how are you?"
+    response = asyncio.run(send_message_to_a2a_agent(
+        base_url="http://10.12.16.139:9900",
+        message=message,
+        message_id=None,
+        role="user",
+        timeout=30.0
+    ))
+    pprint(response)
