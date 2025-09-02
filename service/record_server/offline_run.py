@@ -52,7 +52,7 @@ async def run(memory: RecordMemory, agent: Dict[str, Any], capability: Dict[str,
             success = await fast_judger.invoke(task_content, response)
             logger.info(f"Task {task_content} was judged as {success}")
 
-            await memory.record_task_result(
+            await memory.add_task_result(
                 agent_name=agent.get("name"),
                 agent_url=agent.get("url"),
                 capability_name=capability.get("name"),

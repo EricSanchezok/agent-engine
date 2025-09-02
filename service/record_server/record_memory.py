@@ -116,6 +116,41 @@ class RecordMemory(Memory):
                 similar_capabilities.append(capability_content)
         
         return similar_capabilities
+
+    async def get_all_agents(self) -> List[Dict[str, str]]:
+        """
+        Get all unique agents from all capabilities
+        
+        Returns:
+            List of unique agent dictionaries with name and url
+        """
+        all_agents = set()
+        all_items = self.get_all()
+        
+        for capability_content_str, vector, metadata in all_items:
+            if metadata and 'agents' in metadata:
+                for agent in metadata['agents']:
+                    agent_key = (agent['name'], agent['url'])
+                    all_agents.add(agent_key)
+        
+        return [{'name': name, 'url': url} for name, url in all_agents]
+
+    async def get_all_capabilities(self) -> List[Dict[str, Any]]:
+        capabilities = []
+        all_items = self.get_all()
+        
+        for content_str, vector, metadata in all_items:
+            content = json.loads(content_str)
+            
+            # Combine content with metadata
+            capability = {
+                'name': content['name'],
+                'definition': content['definition'],
+                'alias': metadata.get('alias', []),
+                'agents': metadata.get('agents', [])
+            }
+            capabilities.append(capability)
+        return capabilities
     
     async def get_agents_for_capability(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
         """
@@ -163,11 +198,11 @@ class RecordMemory(Memory):
         
         return agent_capabilities
     
-    async def record_task_result(self, agent_name: str, agent_url: str, 
+    async def add_task_result(self, agent_name: str, agent_url: str, 
                           capability_name: str, capability_definition: str, 
                           success: bool, task_content: str, task_result: str):
         """
-        Record a task execution result for an agent
+        Add a task execution result for an agent to the memory
         
         Args:
             agent_name: Name of the agent
@@ -215,21 +250,110 @@ class RecordMemory(Memory):
         self.delete_by_content(capability_content_str)
         self.add(capability_content_str, vector=vector, metadata=metadata)
 
-    async def get_capability_history(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
+    async def delete_task_result(self, agent_name: str, agent_url: str, 
+                           capability_name: str, capability_definition: str, 
+                           task_content: str, task_result: str, timestamp: str = None):
         """
-        Get history information for a specific capability
+        Delete a specific task execution result for an agent from the memory
+        
+        Args:
+            agent_name: Name of the agent
+            agent_url: URL of the agent
+            capability_name: Capability name
+            capability_definition: Capability definition
+            task_content: Content of the task to delete
+            task_result: Result of the task to delete
+            timestamp: Optional timestamp to match specific task record
         """
         capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
         vector, metadata = self.get_by_content(capability_content_str)
-        return metadata['task_history']
+        
+        if not metadata or 'task_history' not in metadata:
+            logger.warning(f"No task history found for capability: {capability_name}")
+            return
+        
+        agent_key = f"{agent_name}_{agent_url}"
+        if agent_key not in metadata['task_history']:
+            logger.warning(f"No task history found for agent: {agent_name}")
+            return
+        
+        # Find and remove the specific task record
+        tasks = metadata['task_history'][agent_key]['tasks']
+        original_count = len(tasks)
+        
+        # Filter out the matching task record
+        filtered_tasks = []
+        removed_success_count = 0
+        
+        for task in tasks:
+            # Match by task_content and task_result, optionally by timestamp
+            if (task['task_content'] == task_content and 
+                task['task_result'] == task_result and
+                (timestamp is None or task['timestamp'] == timestamp)):
+                # This is the task to remove
+                if task['success']:
+                    removed_success_count += 1
+                continue
+            filtered_tasks.append(task)
+        
+        # Update the task history
+        metadata['task_history'][agent_key]['tasks'] = filtered_tasks
+        metadata['task_history'][agent_key]['total_count'] = len(filtered_tasks)
+        metadata['task_history'][agent_key]['success_count'] -= removed_success_count
+        
+        # Ensure counts don't go negative
+        if metadata['task_history'][agent_key]['success_count'] < 0:
+            metadata['task_history'][agent_key]['success_count'] = 0
+        
+        # Update the content in memory with new metadata
+        self.delete_by_content(capability_content_str)
+        self.add(capability_content_str, vector=vector, metadata=metadata)
+        
+        removed_count = original_count - len(filtered_tasks)
+        if removed_count > 0:
+            logger.info(f"Successfully deleted {removed_count} task record(s) for agent {agent_name} in capability {capability_name}")
+        else:
+            logger.warning(f"No matching task record found for deletion")
 
-    async def get_agent_performance(self, agent_name: str, agent_url: str) -> List[Dict[str, Any]]:
+    async def delete_agent_task_history(self, agent_name: str, agent_url: str):
         """
-        Get performance information for a specific agent
+        Delete task history for a specific agent from all capabilities from the memory
+        
+        Args:
+            agent_name: Name of the agent
+            agent_url: URL of the agent
         """
         agent_key = f"{agent_name}_{agent_url}"
         all_items = self.get_all()
-        return [metadata['task_history'][agent_key] for metadata in all_items if 'task_history' in metadata]
+        
+        for capability_content_str, vector, metadata in all_items:
+            if metadata and 'task_history' in metadata:
+                if agent_key in metadata['task_history']:
+                    # Remove the agent's task history
+                    del metadata['task_history'][agent_key]
+                    
+                    # Update the content in memory
+                    self.delete_by_content(capability_content_str)
+                    self.add(capability_content_str, vector=vector, metadata=metadata)
+                    
+                    logger.info(f"Deleted task history for agent {agent_name} from capability {json.loads(capability_content_str)['name']}")
+    
+    async def delete_all_task_history(self):
+        """
+        Delete all task history from all capabilities from the memory
+        """
+        all_items = self.get_all()
+        
+        for capability_content_str, vector, metadata in all_items:
+            if metadata and 'task_history' in metadata:
+                # Remove all task history
+                del metadata['task_history']
+                
+                # Update the content in memory
+                self.delete_by_content(capability_content_str)
+                self.add(capability_content_str, vector=vector, metadata=metadata)
+                
+                logger.info(f"Deleted all task history from capability {json.loads(capability_content_str)['name']}")
     
     async def get_capability_performance(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
         """
@@ -259,6 +383,14 @@ class RecordMemory(Memory):
                 agent_performance.append(performance_info)
         
         return agent_performance
+
+    async def get_capability_history(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
+        """
+        Get history information for a specific capability
+        """
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector, metadata = self.get_by_content(capability_content_str)
+        return metadata['task_history']
     
     def _get_current_timestamp(self) -> str:
         """Get current timestamp string"""
@@ -282,85 +414,10 @@ class RecordMemory(Memory):
         if vector is not None:
             return {'name': capability_name, 'definition': capability_definition}, metadata
         return None
-    
-    async def delete_agent_task_history(self, agent_name: str, agent_url: str):
-        """
-        Delete task history for a specific agent from all capabilities
-        
-        Args:
-            agent_name: Name of the agent
-            agent_url: URL of the agent
-        """
-        agent_key = f"{agent_name}_{agent_url}"
-        all_items = self.get_all()
-        
-        for capability_content_str, vector, metadata in all_items:
-            if metadata and 'task_history' in metadata:
-                if agent_key in metadata['task_history']:
-                    # Remove the agent's task history
-                    del metadata['task_history'][agent_key]
-                    
-                    # Update the content in memory
-                    self.delete_by_content(capability_content_str)
-                    self.add(capability_content_str, vector=vector, metadata=metadata)
-                    
-                    logger.info(f"Deleted task history for agent {agent_name} from capability {json.loads(capability_content_str)['name']}")
-    
-    async def delete_all_task_history(self):
-        """
-        Delete all task history from all capabilities
-        """
-        all_items = self.get_all()
-        
-        for capability_content_str, vector, metadata in all_items:
-            if metadata and 'task_history' in metadata:
-                # Remove all task history
-                del metadata['task_history']
-                
-                # Update the content in memory
-                self.delete_by_content(capability_content_str)
-                self.add(capability_content_str, vector=vector, metadata=metadata)
-                
-                logger.info(f"Deleted all task history from capability {json.loads(capability_content_str)['name']}")
-    
-    async def get_all_agents(self) -> List[Dict[str, str]]:
-        """
-        Get all unique agents from all capabilities
-        
-        Returns:
-            List of unique agent dictionaries with name and url
-        """
-        all_agents = set()
-        all_items = self.get_all()
-        
-        for capability_content_str, vector, metadata in all_items:
-            if metadata and 'agents' in metadata:
-                for agent in metadata['agents']:
-                    agent_key = (agent['name'], agent['url'])
-                    all_agents.add(agent_key)
-        
-        return [{'name': name, 'url': url} for name, url in all_agents]
-
-    async def get_all_capabilities(self) -> List[Dict[str, Any]]:
-        capabilities = []
-        all_items = self.get_all()
-        
-        for content_str, vector, metadata in all_items:
-            content = json.loads(content_str)
-            
-            # Combine content with metadata
-            capability = {
-                'name': content['name'],
-                'definition': content['definition'],
-                'alias': metadata.get('alias', []),
-                'agents': metadata.get('agents', [])
-            }
-            capabilities.append(capability)
-        return capabilities
 
 
 if __name__ == "__main__":
     from pprint import pprint
     memory = RecordMemory()
 
-    pprint(asyncio.run(memory.get_capability_history("Chat with Conversational AI Assistant", "This service enables users to engage in a natural language conversation with a conversational AI assistant. It accepts text queries and provides concise, clear, and helpful responses that may include answers, explanations, summaries, or clarifications. It supports multi-turn dialogues and handling of complex topics.")))
+    print(asyncio.run(memory.get_capability_history("Chat with Conversational AI Assistant", "This service enables users to engage in a natural language conversation with a conversational AI assistant. It accepts text queries and provides concise, clear, and helpful responses that may include answers, explanations, summaries, or clarifications. It supports multi-turn dialogues and handling of complex topics.")))
