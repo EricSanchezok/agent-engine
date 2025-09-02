@@ -42,7 +42,7 @@ async def run(memory: RecordMemory, agent: Dict[str, Any], capability: Dict[str,
             response = await send_message_to_a2a_agent(
                 base_url = agent.get("url"),
                 message = task_content,
-                proxy_url = PROXY_URL
+                proxy_url = None
             )
             logger.info(f"Response: {response}")
         except Exception as e:

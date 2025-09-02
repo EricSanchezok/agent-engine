@@ -1,10 +1,11 @@
 [
     {
-        "name": "Chat with Conversational AI Assistant",
-        "definition": "This service enables users to engage in a natural language conversation with a conversational AI assistant. It accepts text queries and provides concise, clear, and helpful responses that may include answers, explanations, summaries, or clarifications. It supports multi-turn dialogues and handling of complex topics.",
+        "name": "Chat with Assistant",
+        "definition": "This capability offers a conversational AI assistant service that enables multi-turn dialogue. It accepts plain text queries and provides detailed, context-aware responses, including explanations, definitions, clarifications, and summaries. It combines the strengths of both implementations by supporting interactive, natural language communication across a wide range of topics.",
         "alias": [
             "Chat with Assistant",
-            "Provide Conversational Assistance"
+            "Provide Conversational Assistance",
+            "Chat with Gaia Assistant"
         ],
         "agents": [
             {
@@ -14,31 +15,6 @@
             {
                 "name": "OpenManus Agent",
                 "url": "http://10.245.133.169:10003/"
-            }
-        ],
-        "tasks": [
-            "Can you explain in simple terms what quantum computing is and how it works?",
-            "我想了解一下中国传统节日的起源和意义，可以帮我解释吗？",
-            "Please provide a clear summary of the main differences between renewable and non-renewable energy sources.",
-            "能否用简单的话解释一下什么是人工智能以及它在日常生活中的应用？",
-            "I need an explanation on how climate change impacts global weather patterns. Could you clarify?",
-            "请用简洁的语言解释一下什么是区块链技术以及它的主要应用场景。",
-            "Could you summarize the main plot points of the novel '1984' by George Orwell?",
-            "可以向我解释一下量子力学的基本概念和常见的误解吗？",
-            "I want to understand the concept of mindfulness and its benefits for mental health. Can you help?",
-            "请解释一下什么是大数据，并举例说明它在商业中的具体应用。"
-        ]
-    },
-    {
-        "name": "Answer Questions",
-        "definition": "This capability allows users to ask natural language questions and receive text-based responses. It covers both general inquiries and Gaia-related topics by leveraging the appropriate task agent (such as an OWL-based general AI assistant or a Gaia Task Agent) to provide accurate answers.",
-        "alias": [
-            "Answer Questions"
-        ],
-        "agents": [
-            {
-                "name": "General Task Agent",
-                "url": "http://10.244.21.160:10003/"
             },
             {
                 "name": "Gaia Task Agent",
@@ -46,23 +22,23 @@
             }
         ],
         "tasks": [
-            "What is the capital of Italy?",
-            "请告诉我关于地球环境保护的最新研究进展。",
-            "How does the Gaia Task Agent ensure accurate answers for astronomical queries?",
-            "你能解释一下自然语言处理在回答问题中的作用吗？",
-            "What are the main challenges in current space exploration missions?",
-            "请问Gaia任务代理如何应对复杂的用户查询？",
-            "Can you provide a brief overview of the history of artificial intelligence?",
-            "近年来，新能源的发展有哪些显著成就？",
-            "What is the relationship between Gaia and exoplanet discoveries?",
-            "Could you explain the process of data analysis in a modern AI system?"
+            "Can you explain the concept of multi-turn dialogue in conversational AI?",
+            "请解释一下什么是多轮对话以及它在聊天机器人中的作用。",
+            "How does context-aware response generation work in an AI assistant?",
+            "能否阐述一下在对话中如何保持上下文连贯性的技术原理？",
+            "What are the benefits of using a conversational AI for customer service?",
+            "请详细说明一下对话式人工智能在改善客户服务方面的优势。",
+            "Can you provide a step-by-step explanation on how to ask follow-up questions in a conversation with an AI assistant?",
+            "如何在与聊天机器人对话时提出有效的补充问题？",
+            "Describe how this assistant can handle definitions and clarifications effectively during a conversation.",
+            "请举例说明该聊天助手如何在对话中处理解释、定义和澄清问题。"
         ]
     },
     {
         "name": "Search Academic Papers",
-        "definition": "This capability accepts a natural language query or a structured JSON query to search academic papers across multiple databases, such as arXiv and Semantic Scholar. It processes the input using natural language processing and returns a formatted list of relevant papers with metadata including titles, authors (with publication year), a truncated abstract, source information, and available links, such as those to the full paper and PDF.",
+        "definition": "This capability accepts natural language search queries or structured JSON query objects related to academic topics and retrieves relevant research papers from academic repositories (including, but not limited to, arXiv and Semantic Scholar). The output is provided in a formatted JSON structure that includes essential paper metadata such as title, authors with publication year, source, a truncated abstract if necessary, and direct links to both the paper and its PDF.",
         "alias": [
-            "Search academic papers",
+            "Search Arxiv Papers",
             "Search Academic Papers"
         ],
         "agents": [
@@ -76,16 +52,16 @@
             }
         ],
         "tasks": [
-            "Search for academic papers on the impact of climate change on marine biodiversity, including details such as titles, authors with publication year, truncated abstracts, and available links.",
-            "请查找关于气候变化对海洋生物多样性影响的学术论文，并返回论文标题、作者（含发表年份）、摘要和链接的相关信息。",
-            "Find recent academic articles (published after 2018) on deep neural networks for image recognition across multiple databases with metadata details.",
-            "查询2019年之后发表的关于深度神经网络在图像识别中的应用的学术论文，并显示论文的标题、作者、年份、摘要概要及相关链接。",
-            "Using a structured JSON query, search for papers related to the integration of machine learning in healthcare diagnostics. Return a formatted list with each paper's title, authors along with publication year, a truncated abstract, and available links.",
-            "请使用结构化JSON查询方式查找关于机器学习在医疗诊断中应用的学术论文，返回格式化结果列表，包括每篇论文的标题、作者（附发表年份）、摘要（部分内容）及链接信息。",
-            "List academic papers discussing quantum computing algorithms with an emphasis on their theoretical foundations, including all metadata like title, authors with publication year, truncated abstract, and source information.",
-            "查找探讨量子计算算法及其理论基础的学术论文，要求提供论文标题、作者（含发表年份）、摘要及来源和链接的详细信息。",
-            "Search for interdisciplinary studies that combine neuroscience and artificial intelligence, returning a formatted list with key metadata such as paper titles, authors (with publication year), truncated abstracts, and relevant links.",
-            "请搜索关于神经科学与人工智能交叉研究的学术论文，并以格式化列表的形式返回论文标题、作者（附发表年份）、摘要概要及链接信息。"
+            "Find academic papers on deep reinforcement learning advancements in robotics published after 2020.",
+            "搜索关于人工智能在医疗影像分析中最新应用的学术论文，并返回摘要信息。",
+            "Retrieve papers on climate change effects on marine biodiversity, focusing on studies published in reputable journals.",
+            "查找量子计算在化学反应模拟中的应用研究文献，重点关注最近5年的论文。",
+            "Search for research articles on blockchain technology in supply chain management and provide essential metadata.",
+            "请搜索关于自然语言处理在社交媒体情感分析中应用的学术论文，返回论文标题、作者和链接。",
+            "Look for academic research on renewable energy solutions in urban planning, including truncated abstracts if available.",
+            "帮我查询一篇关于大数据在金融风险评估中的应用的论文，要求论文包含作者、出版年份以及直接链接。",
+            "Find research papers analyzing the impact of dietary habits on cognitive function in the elderly, with a focus on recent studies.",
+            "搜索近年来关于无监督学习在图像识别领域中的研究论文，提供相应的论文元数据。"
         ]
     }
 ]
