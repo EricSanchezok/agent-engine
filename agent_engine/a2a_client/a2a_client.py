@@ -262,7 +262,8 @@ async def send_message_to_a2a_agent(
     message: str, 
     message_id: Optional[str] = None,
     role: str = "user",
-    timeout: float = 30.0
+    timeout: float = 30.0,
+    proxy_url: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Simple function to send a message to an A2A agent without creating a client instance.
@@ -273,11 +274,13 @@ async def send_message_to_a2a_agent(
         message_id: Optional message ID (will generate one if not provided)
         role: The role of the message sender (default: "user")
         timeout: Request timeout in seconds (default: 30.0)
+        proxy_url: Optional proxy URL to use for the A2A agent service
         
     Returns:
         Dictionary containing the response from the agent
     """
-    async with A2AClientWrapper(base_url, timeout) as client:
+    url = base_url if not proxy_url else proxy_url + base_url
+    async with A2AClientWrapper(url, timeout) as client:
         return await client.send_message(message, message_id, role)
 
 
@@ -286,7 +289,8 @@ async def send_message_to_a2a_agent_streaming(
     message: str, 
     message_id: Optional[str] = None,
     role: str = "user",
-    timeout: float = 30.0
+    timeout: float = 30.0,
+    proxy_url: Optional[str] = None
 ):
     """
     Simple function to send a streaming message to an A2A agent without creating a client instance.
@@ -297,10 +301,12 @@ async def send_message_to_a2a_agent_streaming(
         message_id: Optional message ID (will generate one if not provided)
         role: The role of the message sender (default: "user")
         timeout: Request timeout in seconds (default: 30.0)
-        
+        proxy_url: Optional proxy URL to use for the A2A agent service
+
     Yields:
         Dictionary containing streaming response chunks from the agent
     """
+    url = base_url if not proxy_url else proxy_url + base_url
     async with A2AClientWrapper(base_url, timeout) as client:
         async for chunk in client.send_message_streaming(message, message_id, role):
             yield chunk

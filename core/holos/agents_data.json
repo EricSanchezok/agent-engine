@@ -9,6 +9,152 @@
                     "extensions": null,
                     "pushNotifications": false,
                     "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "Just a hello world agent",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Hello World Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": null,
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "just returns hello world",
+                        "examples": [
+                            "hi",
+                            "hello world"
+                        ],
+                        "id": "hello_world",
+                        "inputModes": null,
+                        "name": "Returns hello world",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "hello world"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "https://nat-notebook-inspire.sii.edu.cn/ws-6e6ba362-e98e-45b2-9c5a-311998e93d65/project-034ec99f-f57a-4c71-9f7e-1654d2c430c8/user-dc5518ff-a2c5-45ed-a36f-3931cb726d94/vscode/58e7bda6-88fd-4361-8e8d-e7501006e24c/71c07c0f-b551-4b65-a4d4-c87c63ba8b72/proxy/9999",
+                "version": "1.0.0",
+                "id": "dJJ2CZkBIR0L7JeZ19Kn",
+                "created_at": "2025-09-02T08:06:47.461445Z",
+                "updated_at": "2025-09-02T08:06:47.461445Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": true,
+                    "stateTransitionHistory": false,
+                    "streaming": true
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "description": "A simple test agent for development and testing purposes. This agent provides basic functionality for testing the A2A framework and agent communication protocols.",
+                "documentationUrl": null,
+                "iconUrl": null,
+                "name": "Simple Test Agent",
+                "preferredTransport": "JSONRPC",
+                "protocolVersion": "0.3.0",
+                "provider": {
+                    "organization": "Holos Development Team",
+                    "url": "https://github.com/holos-team/simple-test-agent"
+                },
+                "security": null,
+                "securitySchemes": null,
+                "signatures": null,
+                "skills": [
+                    {
+                        "description": "Basic conversational AI assistant that can respond to text queries and provide helpful information using LLM capabilities",
+                        "examples": [
+                            "Ask questions and get helpful responses",
+                            "Have a conversation about any topic",
+                            "Get assistance with general queries",
+                            "Receive clear and concise explanations"
+                        ],
+                        "id": "conversational_assistant",
+                        "inputModes": null,
+                        "name": "Conversational Assistant",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "conversation",
+                            "assistant",
+                            "chat",
+                            "llm",
+                            "text"
+                        ]
+                    },
+                    {
+                        "description": "Can receive and acknowledge file uploads, displaying file metadata including name, type, and size",
+                        "examples": [
+                            "Upload files and get file information",
+                            "View file metadata (name, type, size)",
+                            "Process uploaded documents"
+                        ],
+                        "id": "file_processing",
+                        "inputModes": null,
+                        "name": "File Processing",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "file",
+                            "upload",
+                            "metadata",
+                            "processing"
+                        ]
+                    },
+                    {
+                        "description": "Create and manage long-running tasks with progress tracking, artifact generation, and cancellation support",
+                        "examples": [
+                            "Create tasks with /task command",
+                            "Monitor task progress in real-time",
+                            "Generate markdown, HTML, and image artifacts",
+                            "Cancel running tasks",
+                            "Track multi-step task execution"
+                        ],
+                        "id": "task_management",
+                        "inputModes": null,
+                        "name": "Task Management",
+                        "outputModes": null,
+                        "security": null,
+                        "tags": [
+                            "task",
+                            "management",
+                            "progress",
+                            "artifacts",
+                            "async"
+                        ]
+                    }
+                ],
+                "supportsAuthenticatedExtendedCard": true,
+                "url": "http://10.245.134.199:10001",
+                "version": "1.0.0",
+                "id": "c5JuCZkBIR0L7JeZPNL5",
+                "created_at": "2025-09-02T07:57:23.575430Z",
+                "updated_at": "2025-09-02T07:57:23.575430Z"
+            },
+            {
+                "additionalInterfaces": null,
+                "capabilities": {
+                    "extensions": null,
+                    "pushNotifications": false,
+                    "stateTransitionHistory": false,
                     "streaming": false
                 },
                 "defaultInputModes": [
@@ -501,104 +647,6 @@
                 "id": "aZLk_ZgBIR0L7JeZHNJC",
                 "created_at": "2025-08-31T02:10:41.857407Z",
                 "updated_at": "2025-08-31T02:10:41.857407Z"
-            },
-            {
-                "additionalInterfaces": null,
-                "capabilities": {
-                    "extensions": null,
-                    "pushNotifications": true,
-                    "stateTransitionHistory": false,
-                    "streaming": true
-                },
-                "defaultInputModes": [
-                    "text"
-                ],
-                "defaultOutputModes": [
-                    "text"
-                ],
-                "description": "A simple test agent for development and testing purposes. This agent provides basic functionality for testing the A2A framework and agent communication protocols.",
-                "documentationUrl": null,
-                "iconUrl": null,
-                "name": "Simple Test Agent",
-                "preferredTransport": "JSONRPC",
-                "protocolVersion": "0.3.0",
-                "provider": {
-                    "organization": "Holos Development Team",
-                    "url": "https://github.com/holos-team/simple-test-agent"
-                },
-                "security": null,
-                "securitySchemes": null,
-                "signatures": null,
-                "skills": [
-                    {
-                        "description": "Basic conversational AI assistant that can respond to text queries and provide helpful information using LLM capabilities",
-                        "examples": [
-                            "Ask questions and get helpful responses",
-                            "Have a conversation about any topic",
-                            "Get assistance with general queries",
-                            "Receive clear and concise explanations"
-                        ],
-                        "id": "conversational_assistant",
-                        "inputModes": null,
-                        "name": "Conversational Assistant",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "conversation",
-                            "assistant",
-                            "chat",
-                            "llm",
-                            "text"
-                        ]
-                    },
-                    {
-                        "description": "Can receive and acknowledge file uploads, displaying file metadata including name, type, and size",
-                        "examples": [
-                            "Upload files and get file information",
-                            "View file metadata (name, type, size)",
-                            "Process uploaded documents"
-                        ],
-                        "id": "file_processing",
-                        "inputModes": null,
-                        "name": "File Processing",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "file",
-                            "upload",
-                            "metadata",
-                            "processing"
-                        ]
-                    },
-                    {
-                        "description": "Create and manage long-running tasks with progress tracking, artifact generation, and cancellation support",
-                        "examples": [
-                            "Create tasks with /task command",
-                            "Monitor task progress in real-time",
-                            "Generate markdown, HTML, and image artifacts",
-                            "Cancel running tasks",
-                            "Track multi-step task execution"
-                        ],
-                        "id": "task_management",
-                        "inputModes": null,
-                        "name": "Task Management",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "task",
-                            "management",
-                            "progress",
-                            "artifacts",
-                            "async"
-                        ]
-                    }
-                ],
-                "supportsAuthenticatedExtendedCard": true,
-                "url": "http://10.245.130.134:10001",
-                "version": "1.0.0",
-                "id": "Z5L5-ZgBIR0L7JeZMtLP",
-                "created_at": "2025-08-30T07:55:15.021303Z",
-                "updated_at": "2025-08-30T07:55:15.021303Z"
             },
             {
                 "additionalInterfaces": null,
@@ -1290,104 +1338,6 @@
                 "id": "V5J465gBIR0L7JeZ7tIN",
                 "created_at": "2025-08-27T12:20:27.786636Z",
                 "updated_at": "2025-08-27T12:20:27.786636Z"
-            },
-            {
-                "additionalInterfaces": null,
-                "capabilities": {
-                    "extensions": null,
-                    "pushNotifications": true,
-                    "stateTransitionHistory": false,
-                    "streaming": true
-                },
-                "defaultInputModes": [
-                    "text"
-                ],
-                "defaultOutputModes": [
-                    "text"
-                ],
-                "description": "A simple test agent for development and testing purposes. This agent provides basic functionality for testing the A2A framework and agent communication protocols.",
-                "documentationUrl": null,
-                "iconUrl": null,
-                "name": "Simple Test Agent",
-                "preferredTransport": "JSONRPC",
-                "protocolVersion": "0.3.0",
-                "provider": {
-                    "organization": "Holos Development Team",
-                    "url": "https://github.com/holos-team/simple-test-agent"
-                },
-                "security": null,
-                "securitySchemes": null,
-                "signatures": null,
-                "skills": [
-                    {
-                        "description": "Basic conversational AI assistant that can respond to text queries and provide helpful information using LLM capabilities",
-                        "examples": [
-                            "Ask questions and get helpful responses",
-                            "Have a conversation about any topic",
-                            "Get assistance with general queries",
-                            "Receive clear and concise explanations"
-                        ],
-                        "id": "conversational_assistant",
-                        "inputModes": null,
-                        "name": "Conversational Assistant",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "conversation",
-                            "assistant",
-                            "chat",
-                            "llm",
-                            "text"
-                        ]
-                    },
-                    {
-                        "description": "Can receive and acknowledge file uploads, displaying file metadata including name, type, and size",
-                        "examples": [
-                            "Upload files and get file information",
-                            "View file metadata (name, type, size)",
-                            "Process uploaded documents"
-                        ],
-                        "id": "file_processing",
-                        "inputModes": null,
-                        "name": "File Processing",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "file",
-                            "upload",
-                            "metadata",
-                            "processing"
-                        ]
-                    },
-                    {
-                        "description": "Create and manage long-running tasks with progress tracking, artifact generation, and cancellation support",
-                        "examples": [
-                            "Create tasks with /task command",
-                            "Monitor task progress in real-time",
-                            "Generate markdown, HTML, and image artifacts",
-                            "Cancel running tasks",
-                            "Track multi-step task execution"
-                        ],
-                        "id": "task_management",
-                        "inputModes": null,
-                        "name": "Task Management",
-                        "outputModes": null,
-                        "security": null,
-                        "tags": [
-                            "task",
-                            "management",
-                            "progress",
-                            "artifacts",
-                            "async"
-                        ]
-                    }
-                ],
-                "supportsAuthenticatedExtendedCard": true,
-                "url": "http://10.245.132.142:10001",
-                "version": "1.0.0",
-                "id": "VZLF6pgBIR0L7JeZstLC",
-                "created_at": "2025-08-27T09:04:41.664364Z",
-                "updated_at": "2025-08-27T09:04:41.664364Z"
             },
             {
                 "additionalInterfaces": null,

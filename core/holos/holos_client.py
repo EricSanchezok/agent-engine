@@ -12,8 +12,8 @@ import os
 # AgentEngine imports
 from agent_engine.agent_logger import AgentLogger
 
-# Config imports
-from core.holos.config import BASE_URL
+# Core imports
+from core.holos.config import BASE_URL, PROXY_URL, USE_PROXY
 
 logger = AgentLogger(__name__)
 
@@ -28,7 +28,7 @@ class HolosClient:
         Args:
             base_url: Base URL for the Holos API service
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip('/') if not USE_PROXY else PROXY_URL + base_url.rstrip('/')
         self.session = requests.Session()
         
         # Set default headers
