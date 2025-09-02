@@ -4,9 +4,11 @@ Record Memory Server 是一个基于 FastAPI 的 REST API 服务器，提供对 
 
 ## 服务器信息
 
-- **服务器地址**: http://localhost:5050
-- **API 文档**: http://localhost:5050/docs
-- **健康检查**: http://localhost:5050/health
+- **服务器地址**: http://10.244.9.104:5050
+- **API 文档**: http://10.244.9.104:5050/docs
+- **健康检查**: http://10.244.9.104:5050/health
+
+- **代理地址**: http://76358938.r8.cpolar.top/
 
 ## API 接口文档
 
@@ -16,7 +18,7 @@ Record Memory Server 是一个基于 FastAPI 的 REST API 服务器，提供对 
 
 **请求：**
 ```http
-GET http://localhost:5050/capabilities
+GET http://10.244.9.104:5050/capabilities
 ```
 
 **响应：**
@@ -42,7 +44,7 @@ GET http://localhost:5050/capabilities
 
 **请求：**
 ```http
-POST http://localhost:5050/capabilities/search
+POST http://10.244.9.104:5050/capabilities/search
 Content-Type: application/json
 
 {
@@ -74,7 +76,7 @@ Content-Type: application/json
 
 **请求：**
 ```http
-POST http://localhost:5050/capabilities/agents
+POST http://10.244.9.104:5050/capabilities/agents
 Content-Type: application/json
 
 {
@@ -103,7 +105,7 @@ Content-Type: application/json
 
 **请求：**
 ```http
-GET http://localhost:5050/agents/ChatAgent/capabilities?agent_url=http://localhost:8001
+GET http://10.244.9.104:5050/agents/ChatAgent/capabilities?agent_url=http://localhost:8001
 ```
 
 **响应：**
@@ -128,7 +130,7 @@ GET http://localhost:5050/agents/ChatAgent/capabilities?agent_url=http://localho
 
 **请求：**
 ```http
-POST http://localhost:5050/task-result
+POST http://10.244.9.104:5050/task-result
 Content-Type: application/json
 
 {
@@ -166,7 +168,7 @@ Content-Type: application/json
 
 **请求：**
 ```http
-DELETE http://localhost:5050/task-result
+DELETE http://10.244.9.104:5050/task-result
 Content-Type: application/json
 
 {
@@ -196,47 +198,13 @@ Content-Type: application/json
 }
 ```
 
-### 6.1. 删除代理任务历史 (DELETE /agents/{agent_name}/task-history)
-
-删除特定代理的所有任务历史记录。
-
-**请求：**
-```http
-DELETE http://localhost:5050/agents/ChatAgent/task-history?agent_url=http://localhost:8001
-```
-
-**响应：**
-```json
-{
-  "message": "Task history deleted successfully for agent ChatAgent",
-  "success": true
-}
-```
-
-### 6.2. 删除所有任务历史 (DELETE /task-history)
-
-删除所有代理的所有任务历史记录。
-
-**请求：**
-```http
-DELETE http://localhost:5050/task-history
-```
-
-**响应：**
-```json
-{
-  "message": "All task history deleted successfully",
-  "success": true
-}
-```
-
 ### 7. 获取能力表现 (POST /capabilities/performance)
 
 获取执行特定能力的所有代理的表现统计。
 
 **请求：**
 ```http
-POST http://localhost:5050/capabilities/performance
+POST http://10.244.9.104:5050/capabilities/performance
 Content-Type: application/json
 
 {
@@ -265,13 +233,13 @@ Content-Type: application/json
 ]
 ```
 
-### 9. 获取能力历史 (POST /capabilities/history)
+### 8. 获取能力历史 (POST /capabilities/history)
 
 获取特定能力的所有相关代理的历史记录。
 
 **请求：**
 ```http
-POST http://localhost:5050/capabilities/history
+POST http://10.244.9.104:5050/capabilities/history
 Content-Type: application/json
 
 {
@@ -300,13 +268,13 @@ Content-Type: application/json
 }
 ```
 
-### 10. 获取所有代理 (GET /agents)
+### 9. 获取所有代理 (GET /agents)
 
 获取系统中所有唯一的代理。
 
 **请求：**
 ```http
-GET http://localhost:5050/agents
+GET http://10.244.9.104:5050/agents
 ```
 
 **响应：**
@@ -348,14 +316,18 @@ import requests
 import json
 
 # 服务器地址
-BASE_URL = "http://localhost:5050"
+BASE_URL = "http://76358938.r8.cpolar.top/http://10.244.9.104:5050"
 
-# 获取所有能力
+# 1. 获取所有能力
+print("=== 获取所有能力 ===")
 response = requests.get(f"{BASE_URL}/capabilities")
 capabilities = response.json()
-print("All capabilities:", capabilities)
+print(f"Found {len(capabilities)} capabilities:")
+for cap in capabilities:
+    print(f"- {cap.get('name')}")
 
-# 搜索相似能力
+# 2. 搜索相似能力
+print("\n=== 搜索相似能力 ===")
 search_data = {
     "name": "Chat Assistant",
     "definition": "A conversational AI service",
@@ -364,9 +336,44 @@ search_data = {
 }
 response = requests.post(f"{BASE_URL}/capabilities/search", json=search_data)
 similar_capabilities = response.json()
-print("Similar capabilities:", similar_capabilities)
+print(f"Found {len(similar_capabilities)} similar capabilities:")
+for cap in similar_capabilities:
+    print(f"- {cap.get('name')} (similarity: {cap.get('similarity_score', 'N/A')})")
 
-# 添加任务结果
+# 3. 获取能力的代理
+print("\n=== 获取能力的代理 ===")
+if capabilities:
+    capability = capabilities[-2]
+    agent_data = {
+        "name": capability.get("name"),
+        "definition": capability.get("definition")
+    }
+    response = requests.post(f"{BASE_URL}/capabilities/agents", json=agent_data)
+    agents = response.json()
+    print(f"Agents for capability '{capability.get('name')}':" )
+    for agent in agents:
+        print(f"- {agent.get('name')} ({agent.get('url')})")
+
+# 4. 获取所有代理
+print("\n=== 获取所有代理 ===")
+response = requests.get(f"{BASE_URL}/agents")
+all_agents = response.json()
+print(f"All agents in system:")
+for agent in all_agents:
+    print(f"- {agent.get('name')} ({agent.get('url')})")
+
+# 5. 获取代理的能力
+print("\n=== 获取代理的能力 ===")
+if all_agents:
+    agent = all_agents[0]  # 使用第一个代理作为示例
+    response = requests.get(f"{BASE_URL}/agents/{agent['name']}/capabilities?agent_url={agent['url']}")
+    agent_capabilities = response.json()
+    print(f"Capabilities for agent '{agent.get('name')}':" )
+    for cap in agent_capabilities:
+        print(f"- {cap.get('name')}")
+
+# 6. 添加任务结果
+print("\n=== 添加任务结果 ===")
 task_data = {
     "agent_name": "ChatAgent",
     "agent_url": "http://localhost:8001",
@@ -378,34 +385,73 @@ task_data = {
 }
 response = requests.post(f"{BASE_URL}/task-result", json=task_data)
 result = response.json()
-print("Task result added:", result["message"])
-print("Operation successful:", result["success"])
+print(f"Task result: {result.get('message')}")
+print(f"Success: {result.get('success')}")
 
-# 删除代理任务历史
-response = requests.delete(f"{BASE_URL}/agents/ChatAgent/task-history?agent_url=http://localhost:8001")
-result = response.json()
-print("Agent task history deleted:", result["message"])
-print("Operation successful:", result["success"])
+# 7. 获取能力表现
+print("\n=== 获取能力表现 ===")
+if capabilities:
+    performance_data = {
+        "name": capability.get("name"),
+        "definition": capability.get("definition")
+    }
+    response = requests.post(f"{BASE_URL}/capabilities/performance", json=performance_data)
+    performance = response.json()
+    print(f"Performance for capability '{capability.get('name')}':" )
+    for perf in performance:
+        print(f"- {perf['name']}: {perf.get('success_count')}/{perf.get('total_count')} ({perf.get('success_rate'):.2%})")
+
+# 8. 获取能力历史
+print("\n=== 获取能力历史 ===")
+if capabilities:
+    history_data = {
+        "name": capability.get("name"),
+        "definition": capability.get("definition")
+    }
+    response = requests.post(f"{BASE_URL}/capabilities/history", json=history_data)
+    history = response.json()
+    print(f"History for capability '{capability.get('name')}':" )
+    print(history)
 ```
 
 ### cURL 示例
 
 ```bash
-# 获取所有能力
-curl -X GET "http://localhost:5050/capabilities"
+# 1. 获取所有能力
+echo "=== 获取所有能力 ==="
+curl -X GET "http://10.244.9.104:5050/capabilities" | jq '.'
 
-# 搜索相似能力
-curl -X POST "http://localhost:5050/capabilities/search" \
+# 2. 搜索相似能力
+echo -e "\n=== 搜索相似能力 ==="
+curl -X POST "http://10.244.9.104:5050/capabilities/search" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Chat Assistant",
     "definition": "A conversational AI service",
     "top_k": 3,
     "threshold": 0.6
-  }'
+  }' | jq '.'
 
-# 添加任务结果
-curl -X POST "http://localhost:5050/task-result" \
+# 3. 获取能力的代理
+echo -e "\n=== 获取能力的代理 ==="
+curl -X POST "http://10.244.9.104:5050/capabilities/agents" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Chat with Conversational AI Assistant",
+    "definition": "This service enables users to engage in natural language conversation..."
+  }' | jq '.'
+
+# 4. 获取所有代理
+echo -e "\n=== 获取所有代理 ==="
+curl -X GET "http://10.244.9.104:5050/agents" | jq '.'
+
+# 5. 获取代理的能力
+echo -e "\n=== 获取代理的能力 ==="
+curl -X GET "http://10.244.9.104:5050/agents/ChatAgent/capabilities?agent_url=http://localhost:8001" | jq '.'
+
+# 6. 添加任务结果
+echo -e "\n=== 添加任务结果 ==="
+curl -X POST "http://10.244.9.104:5050/task-result" \
   -H "Content-Type: application/json" \
   -d '{
     "agent_name": "ChatAgent",
@@ -415,13 +461,40 @@ curl -X POST "http://localhost:5050/task-result" \
     "success": true,
     "task_content": "User asked: Hello",
     "task_result": "Hello! How can I help you today?"
-  }'
+  }' | jq '.'
 
-# 删除代理任务历史
-curl -X DELETE "http://localhost:5050/agents/ChatAgent/task-history?agent_url=http://localhost:8001"
+# 7. 获取能力表现
+echo -e "\n=== 获取能力表现 ==="
+curl -X POST "http://10.244.9.104:5050/capabilities/performance" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Chat with Conversational AI Assistant",
+    "definition": "This service enables users to engage in natural language conversation..."
+  }' | jq '.'
 
-# 删除所有任务历史
-curl -X DELETE "http://localhost:5050/task-history"
+# 8. 获取能力历史
+echo -e "\n=== 获取能力历史 ==="
+curl -X POST "http://10.244.9.104:5050/capabilities/history" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Chat with Conversational AI Assistant",
+    "definition": "This service enables users to engage in natural language conversation..."
+  }' | jq '.'
+
+# 9. 删除任务结果（可选）
+echo -e "\n=== 删除任务结果 ==="
+curl -X DELETE "http://10.244.9.104:5050/task-result" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_name": "ChatAgent",
+    "agent_url": "http://localhost:8001",
+    "capability_name": "Chat with Conversational AI Assistant",
+    "capability_definition": "This service enables users to engage in natural language conversation...",
+    "task_content": "User asked: Hello",
+    "task_result": "Hello! How can I help you today?"
+  }' | jq '.'
+
+# 注意：如果没有安装 jq，可以移除 | jq '.' 来查看原始 JSON 输出
 ```
 
 ## 注意事项
@@ -429,3 +502,6 @@ curl -X DELETE "http://localhost:5050/task-history"
 1. 服务器支持 CORS，允许跨域请求
 2. 所有 API 接口都是异步的，支持高并发访问
 3. 请确保在发送请求前服务器已经启动并正常运行
+4. 对于任务结果操作，系统会严格验证能力和代理的存在性
+5. 删除操作会返回布尔值 `success` 字段，表示操作是否成功
+6. 时间戳格式为 ISO 8601 标准（如：`2024-01-15T10:30:00`）
