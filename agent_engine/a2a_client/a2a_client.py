@@ -99,6 +99,17 @@ class A2AClientWrapper:
             # Fetch public agent card
             public_card = await self.resolver.get_agent_card()
             logger.info("Successfully fetched public agent card")
+            
+            # Fix: Update the agent card URL to use our proxy base_url
+            # This ensures all subsequent requests go through the proxy
+            if hasattr(public_card, 'url') and public_card.url:
+                # Extract the path from the original URL and append to our base_url
+                from urllib.parse import urlparse
+                original_url = urlparse(public_card.url)
+                new_url = self.base_url.rstrip('/') + original_url.path
+                public_card.url = new_url
+                logger.info(f"Updated agent card URL from {public_card.url} to {new_url}")
+            
             self.agent_card = public_card
             
             # Try to fetch extended card if supported
@@ -113,6 +124,15 @@ class A2AClientWrapper:
                         http_kwargs={'headers': auth_headers_dict},
                     )
                     logger.info("Successfully fetched authenticated extended agent card")
+                    
+                    # Fix: Update the extended agent card URL as well
+                    if hasattr(extended_card, 'url') and extended_card.url:
+                        from urllib.parse import urlparse
+                        original_url = urlparse(extended_card.url)
+                        new_url = self.base_url.rstrip('/') + original_url.path
+                        extended_card.url = new_url
+                        logger.info(f"Updated extended agent card URL from {extended_card.url} to {new_url}")
+                    
                     self.agent_card = extended_card
                 except Exception as e:
                     logger.warning(f"Failed to fetch extended agent card: {e}. Using public card.")
