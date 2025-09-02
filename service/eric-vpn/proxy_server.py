@@ -164,8 +164,8 @@ def health_check():
 def index():
     return {
         'message': 'Enhanced Dynamic Proxy Server',
-        'usage': 'Use /full_target_url_with_http',
-        'example_2': 'base_url/http://10.245.134.199:8000/api/users',
+        'usage': '(base_url)/(full_target_url_with_http)',
+        'example': '(base_url)/http://10.245.134.199:8000/api/v1/holos/agents',
         'health': '/health'
     }
 
