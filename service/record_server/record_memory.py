@@ -1,10 +1,11 @@
 """
-JudgeMemory class for multi-armed bandit algorithm in agent capability selection.
+RecordMemory class for multi-armed bandit algorithm in agent capability selection.
 
 This class extends the base Memory class to provide specialized methods for
 capability-agent matching and performance tracking.
 """
 
+import asyncio
 import json
 import os
 from typing import List, Dict, Any, Optional, Tuple
@@ -21,25 +22,25 @@ logger = AgentLogger(__name__)
 load_dotenv()
 
 
-class JudgeMemory(Memory):
-    """Extended memory class for judge agent with capability-agent matching capabilities"""
+class RecordMemory(Memory):
+    """Extended memory class for record server with capability-agent matching capabilities"""
     
-    def __init__(self, name: str = 'judge_memory', db_path: Optional[str] = None):
+    def __init__(self, name: str = 'record_memory', db_path: Optional[str] = None):
         """
-        Initialize JudgeMemory
+        Initialize RecordMemory
         
         Args:
             name: Name of the memory database
             db_path: Path to the database file
         """
         if db_path is None:
-            db_path = get_current_file_dir() / 'database' / 'judge_memory.db'
+            db_path = 'database/record_memory.sqlite'
         self.llm_client = AzureClient(api_key=os.getenv('AZURE_API_KEY'))
         super().__init__(name=name, db_path=str(db_path))
     
     async def add_capability(self, name: str, definition: str, alias: List[str] = None, agents: List[Dict] = None):
         """
-        Add a capability with proper structure for judge memory
+        Add a capability with proper structure for record memory
         
         Args:
             name: Capability name
@@ -97,6 +98,7 @@ class JudgeMemory(Memory):
             capability_name: Capability name
             capability_definition: Capability definition
             top_k: Number of top similar capabilities to return
+            threshold: Threshold for similarity score
             
         Returns:
             List of capability content dictionaries
@@ -115,7 +117,7 @@ class JudgeMemory(Memory):
         
         return similar_capabilities
     
-    def get_agents_for_capability(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
+    async def get_agents_for_capability(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
         """
         Get all agents that can perform a specific capability
         
@@ -133,7 +135,7 @@ class JudgeMemory(Memory):
             return metadata['agents']
         return []
     
-    def get_agent_capabilities(self, agent_name: str, agent_url: str) -> List[Dict[str, Any]]:
+    async def get_agent_capabilities(self, agent_name: str, agent_url: str) -> List[Dict[str, Any]]:
         """
         Get all capabilities that a specific agent can perform
         
@@ -162,18 +164,19 @@ class JudgeMemory(Memory):
         return agent_capabilities
     
     async def record_task_result(self, agent_name: str, agent_url: str, 
-                          success: bool, capability_name: str, capability_definition: str, 
-                          task_name: str):
+                          capability_name: str, capability_definition: str, 
+                          success: bool, task_content: str, task_result: str):
         """
         Record a task execution result for an agent
         
         Args:
             agent_name: Name of the agent
             agent_url: URL of the agent
-            success: Whether the task was successful
             capability_name: Capability name
             capability_definition: Capability definition
-            task_name: Name of the task
+            success: Whether the task was successful
+            task_content: Content of the task
+            task_result: Result of the task
         """
         capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
         vector, metadata = self.get_by_content(capability_content_str)
@@ -197,7 +200,8 @@ class JudgeMemory(Memory):
         
         # Update task history
         task_record = {
-            'task_name': task_name,
+            'task_content': task_content,
+            'task_result': task_result,
             'success': success,
             'timestamp': self._get_current_timestamp()
         }
@@ -210,8 +214,24 @@ class JudgeMemory(Memory):
         # Update the content in memory with new metadata
         self.delete_by_content(capability_content_str)
         self.add(capability_content_str, vector=vector, metadata=metadata)
+
+    async def get_capability_history(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
+        """
+        Get history information for a specific capability
+        """
+        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
+        vector, metadata = self.get_by_content(capability_content_str)
+        return metadata['task_history']
+
+    async def get_agent_performance(self, agent_name: str, agent_url: str) -> List[Dict[str, Any]]:
+        """
+        Get performance information for a specific agent
+        """
+        agent_key = f"{agent_name}_{agent_url}"
+        all_items = self.get_all()
+        return [metadata['task_history'][agent_key] for metadata in all_items if 'task_history' in metadata]
     
-    def get_agent_performance_info(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
+    async def get_capability_performance(self, capability_name: str, capability_definition: str) -> List[Dict[str, Any]]:
         """
         Get performance information for all agents that can perform a capability
         
@@ -245,7 +265,7 @@ class JudgeMemory(Memory):
         from datetime import datetime
         return datetime.now().isoformat()
     
-    def get_capability_with_metadata(self, capability_name: str, capability_definition: str) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    async def get_capability_with_metadata(self, capability_name: str, capability_definition: str) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
         """
         Get capability content with its metadata
         
@@ -263,28 +283,7 @@ class JudgeMemory(Memory):
             return {'name': capability_name, 'definition': capability_definition}, metadata
         return None
     
-    async def update_capability_agents(self, capability_name: str, capability_definition: str, agents: List[Dict[str, Any]]):
-        """
-        Update the agents list for a capability
-        
-        Args:
-            capability_name: Capability name
-            capability_definition: Capability definition
-            agents: New list of agents
-        """
-        capability_content_str = json.dumps({'name': capability_name, 'definition': capability_definition}, ensure_ascii=False, indent=4)
-        vector, metadata = self.get_by_content(capability_content_str)
-        
-        if vector is not None:
-            if not metadata:
-                metadata = {}
-            metadata['agents'] = agents
-            
-            # Update the content in memory
-            self.delete_by_content(capability_content_str)
-            self.add(capability_content_str, vector=vector, metadata=metadata)
-    
-    def delete_agent_task_history(self, agent_name: str, agent_url: str):
+    async def delete_agent_task_history(self, agent_name: str, agent_url: str):
         """
         Delete task history for a specific agent from all capabilities
         
@@ -307,7 +306,7 @@ class JudgeMemory(Memory):
                     
                     logger.info(f"Deleted task history for agent {agent_name} from capability {json.loads(capability_content_str)['name']}")
     
-    def delete_all_task_history(self):
+    async def delete_all_task_history(self):
         """
         Delete all task history from all capabilities
         """
@@ -324,7 +323,7 @@ class JudgeMemory(Memory):
                 
                 logger.info(f"Deleted all task history from capability {json.loads(capability_content_str)['name']}")
     
-    def get_all_agents(self) -> List[Dict[str, str]]:
+    async def get_all_agents(self) -> List[Dict[str, str]]:
         """
         Get all unique agents from all capabilities
         
@@ -341,3 +340,27 @@ class JudgeMemory(Memory):
                     all_agents.add(agent_key)
         
         return [{'name': name, 'url': url} for name, url in all_agents]
+
+    async def get_all_capabilities(self) -> List[Dict[str, Any]]:
+        capabilities = []
+        all_items = self.get_all()
+        
+        for content_str, vector, metadata in all_items:
+            content = json.loads(content_str)
+            
+            # Combine content with metadata
+            capability = {
+                'name': content['name'],
+                'definition': content['definition'],
+                'alias': metadata.get('alias', []),
+                'agents': metadata.get('agents', [])
+            }
+            capabilities.append(capability)
+        return capabilities
+
+
+if __name__ == "__main__":
+    from pprint import pprint
+    memory = RecordMemory()
+
+    pprint(asyncio.run(memory.get_capability_performance("Chat with Conversational AI Assistant", "This service enables users to engage in a natural language conversation with a conversational AI assistant. It accepts text queries and provides concise, clear, and helpful responses that may include answers, explanations, summaries, or clarifications. It supports multi-turn dialogues and handling of complex topics.")))

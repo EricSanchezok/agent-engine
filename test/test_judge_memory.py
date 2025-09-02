@@ -1,5 +1,5 @@
 """
-Test script for JudgeMemory class functionality
+Test script for RecordMemory class functionality
 """
 
 import asyncio
@@ -12,18 +12,18 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agents.JudgeAgent.judge_memory import JudgeMemory
+from agents.JudgeAgent.judge_memory import RecordMemory
 from agent_engine.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
 
 
 async def test_judge_memory_basic_operations():
-    """Test basic operations of JudgeMemory"""
+    """Test basic operations of RecordMemory"""
     print("Testing basic operations...")
     
-    # Initialize JudgeMemory
-    judge_memory = JudgeMemory(name='test_judge_memory')
+    # Initialize RecordMemory
+    judge_memory = RecordMemory(name='test_judge_memory')
     
     # Clear any existing data
     judge_memory.clear()
@@ -188,7 +188,7 @@ async def test_judge_memory_edge_cases():
     """Test edge cases and error handling"""
     print("\nTesting edge cases...")
     
-    judge_memory = JudgeMemory(name='test_edge_cases')
+    judge_memory = RecordMemory(name='test_edge_cases')
     judge_memory.clear()
     
     # Test 1: Empty capability search
@@ -240,7 +240,7 @@ async def test_judge_memory_edge_cases():
 
 def main():
     """Main test function"""
-    print("Starting JudgeMemory tests...")
+    print("Starting RecordMemory tests...")
     print("=" * 50)
     
     try:

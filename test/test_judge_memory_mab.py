@@ -1,5 +1,5 @@
 """
-Test script for JudgeMemory multi-armed bandit algorithm functionality
+Test script for RecordMemory multi-armed bandit algorithm functionality
 """
 
 import asyncio
@@ -14,7 +14,7 @@ from typing import List, Dict, Any
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agents.JudgeAgent.judge_memory import JudgeMemory
+from agents.JudgeAgent.judge_memory import RecordMemory
 from agent_engine.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
@@ -24,7 +24,7 @@ class MultiArmedBanditTester:
     """Test class for multi-armed bandit algorithm functionality"""
     
     def __init__(self):
-        self.judge_memory = JudgeMemory(name='test_mab_memory')
+        self.judge_memory = RecordMemory(name='test_mab_memory')
         self.capabilities_with_tasks = []
         self.simulation_results = []
     
@@ -274,7 +274,7 @@ class MultiArmedBanditTester:
     
     async def run_all_tests(self):
         """Run all tests"""
-        print("Starting Multi-Armed Bandit Tests for JudgeMemory")
+        print("Starting Multi-Armed Bandit Tests for RecordMemory")
         print("=" * 80)
         
         # Load capabilities with tasks

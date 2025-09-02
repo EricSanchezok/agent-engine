@@ -1,0 +1,91 @@
+[
+    {
+        "name": "Chat with Conversational AI Assistant",
+        "definition": "This service enables users to engage in a natural language conversation with a conversational AI assistant. It accepts text queries and provides concise, clear, and helpful responses that may include answers, explanations, summaries, or clarifications. It supports multi-turn dialogues and handling of complex topics.",
+        "alias": [
+            "Chat with Assistant",
+            "Provide Conversational Assistance"
+        ],
+        "agents": [
+            {
+                "name": "Simple Test Agent",
+                "url": "http://10.245.134.199:10001"
+            },
+            {
+                "name": "OpenManus Agent",
+                "url": "http://10.245.133.169:10003/"
+            }
+        ],
+        "tasks": [
+            "Can you explain in simple terms what quantum computing is and how it works?",
+            "我想了解一下中国传统节日的起源和意义，可以帮我解释吗？",
+            "Please provide a clear summary of the main differences between renewable and non-renewable energy sources.",
+            "能否用简单的话解释一下什么是人工智能以及它在日常生活中的应用？",
+            "I need an explanation on how climate change impacts global weather patterns. Could you clarify?",
+            "请用简洁的语言解释一下什么是区块链技术以及它的主要应用场景。",
+            "Could you summarize the main plot points of the novel '1984' by George Orwell?",
+            "可以向我解释一下量子力学的基本概念和常见的误解吗？",
+            "I want to understand the concept of mindfulness and its benefits for mental health. Can you help?",
+            "请解释一下什么是大数据，并举例说明它在商业中的具体应用。"
+        ]
+    },
+    {
+        "name": "Answer Questions",
+        "definition": "This capability allows users to ask natural language questions and receive text-based responses. It covers both general inquiries and Gaia-related topics by leveraging the appropriate task agent (such as an OWL-based general AI assistant or a Gaia Task Agent) to provide accurate answers.",
+        "alias": [
+            "Answer Questions"
+        ],
+        "agents": [
+            {
+                "name": "General Task Agent",
+                "url": "http://10.244.21.160:10003/"
+            },
+            {
+                "name": "Gaia Task Agent",
+                "url": "http://10.244.21.160:10005/"
+            }
+        ],
+        "tasks": [
+            "What is the capital of Italy?",
+            "请告诉我关于地球环境保护的最新研究进展。",
+            "How does the Gaia Task Agent ensure accurate answers for astronomical queries?",
+            "你能解释一下自然语言处理在回答问题中的作用吗？",
+            "What are the main challenges in current space exploration missions?",
+            "请问Gaia任务代理如何应对复杂的用户查询？",
+            "Can you provide a brief overview of the history of artificial intelligence?",
+            "近年来，新能源的发展有哪些显著成就？",
+            "What is the relationship between Gaia and exoplanet discoveries?",
+            "Could you explain the process of data analysis in a modern AI system?"
+        ]
+    },
+    {
+        "name": "Search Academic Papers",
+        "definition": "This capability accepts a natural language query or a structured JSON query to search academic papers across multiple databases, such as arXiv and Semantic Scholar. It processes the input using natural language processing and returns a formatted list of relevant papers with metadata including titles, authors (with publication year), a truncated abstract, source information, and available links, such as those to the full paper and PDF.",
+        "alias": [
+            "Search academic papers",
+            "Search Academic Papers"
+        ],
+        "agents": [
+            {
+                "name": "ArxivSearchAgent",
+                "url": "http://10.244.9.104:9900/"
+            },
+            {
+                "name": "Paper Search Agent",
+                "url": "http://10.245.131.167:9999/"
+            }
+        ],
+        "tasks": [
+            "Search for academic papers on the impact of climate change on marine biodiversity, including details such as titles, authors with publication year, truncated abstracts, and available links.",
+            "请查找关于气候变化对海洋生物多样性影响的学术论文，并返回论文标题、作者（含发表年份）、摘要和链接的相关信息。",
+            "Find recent academic articles (published after 2018) on deep neural networks for image recognition across multiple databases with metadata details.",
+            "查询2019年之后发表的关于深度神经网络在图像识别中的应用的学术论文，并显示论文的标题、作者、年份、摘要概要及相关链接。",
+            "Using a structured JSON query, search for papers related to the integration of machine learning in healthcare diagnostics. Return a formatted list with each paper's title, authors along with publication year, a truncated abstract, and available links.",
+            "请使用结构化JSON查询方式查找关于机器学习在医疗诊断中应用的学术论文，返回格式化结果列表，包括每篇论文的标题、作者（附发表年份）、摘要（部分内容）及链接信息。",
+            "List academic papers discussing quantum computing algorithms with an emphasis on their theoretical foundations, including all metadata like title, authors with publication year, truncated abstract, and source information.",
+            "查找探讨量子计算算法及其理论基础的学术论文，要求提供论文标题、作者（含发表年份）、摘要及来源和链接的详细信息。",
+            "Search for interdisciplinary studies that combine neuroscience and artificial intelligence, returning a formatted list with key metadata such as paper titles, authors (with publication year), truncated abstracts, and relevant links.",
+            "请搜索关于神经科学与人工智能交叉研究的学术论文，并以格式化列表的形式返回论文标题、作者（附发表年份）、摘要概要及链接信息。"
+        ]
+    }
+]

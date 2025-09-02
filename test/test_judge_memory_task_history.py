@@ -1,5 +1,5 @@
 """
-Test script for JudgeMemory task history deletion functionality
+Test script for RecordMemory task history deletion functionality
 """
 
 import asyncio
@@ -14,7 +14,7 @@ from typing import List, Dict, Any
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agents.JudgeAgent.judge_memory import JudgeMemory
+from agents.JudgeAgent.judge_memory import RecordMemory
 from agent_engine.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
@@ -24,7 +24,7 @@ class TaskHistoryTester:
     """Test class for task history deletion functionality"""
     
     def __init__(self):
-        self.judge_memory = JudgeMemory(name='test_task_history_memory')
+        self.judge_memory = RecordMemory(name='test_task_history_memory')
         self.capabilities_with_tasks = []
     
     def load_capabilities_with_tasks(self):
@@ -226,7 +226,7 @@ class TaskHistoryTester:
     
     async def run_all_tests(self):
         """Run all tests"""
-        print("Starting Task History Deletion Tests for JudgeMemory")
+        print("Starting Task History Deletion Tests for RecordMemory")
         print("=" * 80)
         
         # Load capabilities with tasks

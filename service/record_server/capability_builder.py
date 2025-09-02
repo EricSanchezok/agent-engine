@@ -16,7 +16,7 @@ from agent_engine.utils import get_relative_path_from_current_file, get_current_
 from core.holos import get_all_agent_cards
 
 # Local imports
-from agents.JudgeAgent.judge_memory import JudgeMemory
+from service.record_server.record_memory import RecordMemory
 
 logger = AgentLogger(__name__)
 
@@ -26,11 +26,11 @@ class CapabilityBuilder:
     def __init__(self):
         self.llm_client = AzureClient(api_key=os.getenv('AZURE_API_KEY'))
         self.prompt_loader = PromptLoader(get_relative_path_from_current_file('prompts.yaml'))
-        self.capability_memory = JudgeMemory(name='judge_memory', db_path=get_current_file_dir() / 'database' / 'judge_memory.db')
+        self.capability_memory = RecordMemory(name='record_memory', db_path='database/record_memory.sqlite')
         self.semaphore = asyncio.Semaphore(32)
 
     async def invoke(self):
-        capabilities = await self.run_capability_extractor(load=True)
+        capabilities = await self.run_capability_extractor(load=False)
         self.capability_memory.clear()
 
         async def add_capability(capability: Dict[str, Any]):
@@ -334,4 +334,4 @@ class CapabilityBuilder:
 if __name__ == '__main__':
     builder = CapabilityBuilder()
     asyncio.run(builder.invoke())
-    # asyncio.run(builder.run_task_generator())
+    asyncio.run(builder.run_task_generator())
