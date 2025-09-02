@@ -35,14 +35,14 @@ def random_choose():
 async def run(task, agent):
     message = {
         "test_task": {
-            "task_description": task,
+            "task_description": "昨天人工智能领域有哪些新论文",
             "depends_on": [],
-            "agent": agent.get("name"),
-            "agent_url": agent.get("url")
+            "agent": "General Task Agent",
+            "agent_url": ""
         }
     }
     response = await send_message_to_a2a_agent(
-        base_url = ROUTING_AGENT_BASE_URL,
+        base_url = "http://10.244.9.104:9900/",
         message = json.dumps(message, ensure_ascii=False, indent=4),
         proxy_url = PROXY_URL
     )

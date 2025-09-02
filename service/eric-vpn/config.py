@@ -5,7 +5,7 @@ HOST = '0.0.0.0'  # Listen on all interfaces
 PORT = 3000       # Default port
 
 # Request settings
-REQUEST_TIMEOUT = 30  # Timeout in seconds for forwarded requests
+REQUEST_TIMEOUT = 600  # Timeout in seconds for forwarded requests (10 minutes)
 MAX_REDIRECTS = 5     # Maximum number of redirects to follow
 
 # Logging settings
