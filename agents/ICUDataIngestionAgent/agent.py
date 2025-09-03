@@ -117,7 +117,6 @@ class ICUDataIngestionAgent:
 
         # Anchor event
         anchor = self._sequence[self._cursor]
-        anchor_ts = anchor.get("timestamp")
         anchor_type = anchor.get("event_type")
         anchor_subtype = anchor.get("sub_type")
 
@@ -129,8 +128,7 @@ class ICUDataIngestionAgent:
         while self._cursor < len(self._sequence):
             nxt = self._sequence[self._cursor]
             if (
-                nxt.get("timestamp") == anchor_ts
-                and nxt.get("event_type") == anchor_type
+                nxt.get("event_type") == anchor_type
                 and nxt.get("sub_type") == anchor_subtype
             ):
                 batch.append(self._wrap_envelope(nxt))
@@ -141,3 +139,10 @@ class ICUDataIngestionAgent:
         return batch
 
 
+if __name__ == "__main__":
+    agent = ICUDataIngestionAgent()
+    agent.load_patient("database/icu_patients/1125112810.json")
+    test_count = 10
+    for _ in range(test_count):
+        print("*"*100)
+        print(agent.update())
