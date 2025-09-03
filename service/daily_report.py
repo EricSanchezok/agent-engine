@@ -259,5 +259,5 @@ def schedule_daily():
 
 
 if __name__ == "__main__":
-    # run_for_date("20250901")
+    # run_for_date("20250902")
     schedule_daily()
