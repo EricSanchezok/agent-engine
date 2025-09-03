@@ -1,0 +1,406 @@
+import os
+import threading
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
+from dotenv import load_dotenv
+
+from agent_engine.agent_logger.agent_logger import AgentLogger
+from agent_engine.llm_client import AzureClient
+from agent_engine.memory import ScalableMemory
+
+
+class _AsyncRunner:
+    """Run async coroutine in background loop and wait synchronously.
+
+    This mirrors the minimal behavior we need from ScalableMemory's internal runner
+    without importing private internals.
+    """
+
+    def __init__(self) -> None:
+        import asyncio
+
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._started = threading.Event()
+        self._thread.start()
+        self._started.wait(timeout=5)
+
+    def _run(self) -> None:
+        import asyncio
+
+        asyncio.set_event_loop(self._loop)
+        self._started.set()
+        self._loop.run_forever()
+
+    def run(self, coro):
+        import asyncio
+
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return fut.result()
+
+
+class ICUMemoryAgent:
+    """ICU Memory Agent for patient-specific and global vector memories.
+
+    Capabilities:
+    - For each patient, create a dedicated scalable vector DB named by patient_id.
+    - Maintain a global vector cache DB to avoid repeated embedding cost per event_id.
+    - Add events with custom item_id = event_id for easy lookup.
+    - Provide time-based utilities: events within N hours, and latest N events.
+
+    Notes:
+    - Embedding service: AzureClient with model 'text-embedding-3-large'.
+    - API key is read from environment variable 'AZURE_API_KEY'.
+    - We try to reuse vectors from the global cache by event_id before calling embeddings.
+    - Metadata stored for each event includes at least: patient_id, timestamp, event_type, sub_type.
+    """
+
+    def __init__(self) -> None:
+        load_dotenv()
+        self.logger = AgentLogger(self.__class__.__name__)
+
+        # Azure client configuration via environment variables
+        api_key = os.getenv("AZURE_API_KEY", "")
+        base_url = os.getenv("AZURE_BASE_URL", "https://gpt.yunstorm.com/")
+        api_version = os.getenv("AZURE_API_VERSION", "2025-04-01-preview")
+        if not api_key:
+            self.logger.error("AZURE_API_KEY not found in environment variables")
+            raise ValueError("AZURE_API_KEY is required")
+
+        self.llm_client = AzureClient(api_key=api_key, base_url=base_url, api_version=api_version)
+        # Explicitly choose embedding model
+        self.embed_model: str = os.getenv("AGENT_ENGINE_EMBED_MODEL", "text-embedding-3-large")
+
+        # Global vector cache: id = event_id, content is a small marker, vector stored
+        self._vector_cache = ScalableMemory(
+            name="icu_vector_cache",
+            llm_client=self.llm_client,
+            embed_model=self.embed_model,
+        )
+
+        # Patient memory cache in process
+        self._patient_memories: Dict[str, ScalableMemory] = {}
+        self._lock = threading.Lock()
+        self._runner = _AsyncRunner()
+
+        self.logger.info("ICUMemoryAgent initialized with Azure embeddings and ScalableMemory backends")
+
+    # ----------------------- Public APIs -----------------------
+    def add_event(self, patient_id: str, event: Dict[str, Any]) -> str:
+        """Add a single ICU event into the patient's memory and the global vector cache.
+
+        The item's id is the event's id.
+        We reuse vector from the global cache by event_id when available to avoid embedding cost.
+
+        Args:
+            patient_id: Unique patient identifier (also used as memory name).
+            event: Event dict or envelope. Prefer keys: 'event_id', 'timestamp', 'event_type', 'sub_type',
+                   'event_content', 'raw'. If not enveloped, supports 'id' as event id.
+
+        Returns:
+            The event_id used as item id.
+        """
+        event_id = self._extract_event_id(event)
+        if not event_id:
+            raise ValueError("Event is missing 'event_id' or 'id'")
+
+        timestamp = self._extract_timestamp(event)
+        event_type = self._get_nested(event, ["event_type"]) or self._get_nested(event, ["raw", "event_type"]) or ""
+        sub_type = self._get_nested(event, ["sub_type"]) or self._get_nested(event, ["raw", "sub_type"]) or ""
+        content = self._event_to_text(event)
+
+        # Try reuse vector from global cache
+        _, vector, _ = self._vector_cache.get_by_id(event_id)
+        if vector is None:
+            # Embed once via Azure
+            vector = self._embed_text(content)
+            self._vector_cache.add(
+                content=f"ICU_EVENT_VECTOR::{event_id}",
+                vector=vector,
+                metadata={"patient_id": patient_id},
+                item_id=event_id,
+            )
+
+        # Upsert into patient's memory using provided vector and custom id
+        md = {
+            "patient_id": patient_id,
+            "timestamp": timestamp,
+            "event_type": event_type,
+            "sub_type": sub_type,
+        }
+        patient_mem = self._get_patient_memory(patient_id)
+        patient_mem.add(content=content, vector=vector, metadata=md, item_id=event_id)
+        return event_id
+
+    def add_events(self, patient_id: str, events: List[Dict[str, Any]]) -> List[str]:
+        """Batch add events. Reuses cached vectors when available and embeds only uncached ones.
+
+        Args:
+            patient_id: Unique patient identifier.
+            events: List of event dicts.
+
+        Returns:
+            List of event_ids added.
+        """
+        if not events:
+            return []
+
+        # Prepare items with vectors (reuse cache when present)
+        items: List[Dict[str, Any]] = []
+        to_embed_indices: List[int] = []
+        texts_to_embed: List[str] = []
+
+        for idx, ev in enumerate(events):
+            event_id = self._extract_event_id(ev)
+            if not event_id:
+                continue
+            content = self._event_to_text(ev)
+            _, cached_vec, _ = self._vector_cache.get_by_id(event_id)
+            if cached_vec is not None:
+                items.append({
+                    "id": event_id,
+                    "content": content,
+                    "vector": cached_vec,
+                    "metadata": self._build_metadata(patient_id, ev),
+                })
+            else:
+                items.append({
+                    "id": event_id,
+                    "content": content,
+                    "vector": None,
+                    "metadata": self._build_metadata(patient_id, ev),
+                })
+                to_embed_indices.append(idx)
+                texts_to_embed.append(content)
+
+        # Embed missing vectors once (batch)
+        if texts_to_embed:
+            vectors = self._embed_batch(texts_to_embed)
+            # Write them into cache and into items
+            v_i = 0
+            for idx in to_embed_indices:
+                ev = events[idx]
+                event_id = self._extract_event_id(ev)
+                vec = vectors[v_i]
+                v_i += 1
+                # Cache
+                self._vector_cache.add(
+                    content=f"ICU_EVENT_VECTOR::{event_id}",
+                    vector=vec,
+                    metadata={"patient_id": patient_id},
+                    item_id=event_id,
+                )
+                # Assign to items (find the corresponding placeholder)
+                # items list is aligned with events order, find by id
+                for it in items:
+                    if it["id"] == event_id and it["vector"] is None:
+                        it["vector"] = vec
+                        break
+
+        # Persist to patient's memory in batch
+        patient_mem = self._get_patient_memory(patient_id)
+        ids = patient_mem.add_many(items)
+        return ids
+
+    def get_event_by_id(self, patient_id: str, event_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch a single stored event from the patient's memory by id."""
+        mem = self._get_patient_memory(patient_id)
+        content, vector, metadata = mem.get_by_id(event_id)
+        if content is None:
+            return None
+        out = {"id": event_id, "content": content, "metadata": metadata}
+        return out
+
+    def get_events_within_hours(
+        self,
+        patient_id: str,
+        ref_time: Optional[str | datetime],
+        hours: int,
+        include_vectors: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Return events within [ref_time - hours, ref_time].
+
+        Args:
+            patient_id: Unique patient id.
+            ref_time: Reference time (ISO string or datetime). If None, uses now (UTC).
+            hours: Window size in hours.
+            include_vectors: Whether to include vectors in results.
+
+        Returns:
+            List of events sorted by timestamp ascending within the window.
+        """
+        if hours <= 0:
+            return []
+        ref_dt = self._to_datetime(ref_time) if ref_time is not None else datetime.now(timezone.utc)
+        start_dt = ref_dt - timedelta(hours=hours)
+
+        mem = self._get_patient_memory(patient_id)
+        results = []
+        for content, vector, md in mem.get_all():
+            ts_str = md.get("timestamp")
+            ts = self._to_datetime(ts_str)
+            if ts is None:
+                continue
+            if start_dt <= ts <= ref_dt:
+                item = {
+                    "id": md.get("id"),
+                    "timestamp": ts_str,
+                    "event_type": md.get("event_type"),
+                    "sub_type": md.get("sub_type"),
+                    "content": content,
+                    "metadata": md,
+                }
+                if include_vectors:
+                    item["vector"] = vector
+                results.append(item)
+
+        results.sort(key=lambda x: self._to_datetime(x.get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc))
+        return results
+
+    def get_recent_events(
+        self,
+        patient_id: str,
+        n: int,
+        include_vectors: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Return the most recent N events by timestamp (descending)."""
+        if n <= 0:
+            return []
+        mem = self._get_patient_memory(patient_id)
+        items = []
+        for content, vector, md in mem.get_all():
+            ts_str = md.get("timestamp")
+            ts = self._to_datetime(ts_str)
+            if ts is None:
+                continue
+            item = {
+                "id": md.get("id"),
+                "timestamp": ts_str,
+                "event_type": md.get("event_type"),
+                "sub_type": md.get("sub_type"),
+                "content": content,
+                "metadata": md,
+            }
+            if include_vectors:
+                item["vector"] = vector
+            items.append((ts, item))
+
+        items.sort(key=lambda x: x[0], reverse=True)
+        return [it[1] for it in items[:n]]
+
+    def get_patient_memory_info(self, patient_id: str) -> Dict[str, Any]:
+        """Return basic info of the patient's memory (backend/index/stats)."""
+        return self._get_patient_memory(patient_id).get_info()
+
+    def get_vector_from_cache(self, event_id: str) -> Optional[List[float]]:
+        """Get a cached vector by event_id from the global cache."""
+        _, vector, _ = self._vector_cache.get_by_id(event_id)
+        return vector
+
+    # ----------------------- Internal helpers -----------------------
+    def _get_patient_memory(self, patient_id: str) -> ScalableMemory:
+        """Get or create a ScalableMemory instance for a patient.
+
+        Memory name is exactly the patient_id, as required.
+        """
+        with self._lock:
+            if patient_id in self._patient_memories:
+                return self._patient_memories[patient_id]
+
+            mem = ScalableMemory(
+                name=str(patient_id),
+                llm_client=self.llm_client,
+                embed_model=self.embed_model,
+            )
+            self._patient_memories[patient_id] = mem
+            return mem
+
+    def _extract_event_id(self, event: Dict[str, Any]) -> Optional[str]:
+        return (
+            self._get_nested(event, ["event_id"]) or
+            self._get_nested(event, ["id"]) or
+            self._get_nested(event, ["raw", "id"]) or
+            None
+        )
+
+    def _extract_timestamp(self, event: Dict[str, Any]) -> Optional[str]:
+        return (
+            self._get_nested(event, ["timestamp"]) or
+            self._get_nested(event, ["raw", "timestamp"]) or
+            None
+        )
+
+    def _build_metadata(self, patient_id: str, event: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "patient_id": patient_id,
+            "timestamp": self._extract_timestamp(event),
+            "event_type": self._get_nested(event, ["event_type"]) or self._get_nested(event, ["raw", "event_type"]) or "",
+            "sub_type": self._get_nested(event, ["sub_type"]) or self._get_nested(event, ["raw", "sub_type"]) or "",
+        }
+
+    def _event_to_text(self, event: Dict[str, Any]) -> str:
+        """Create a concise, deterministic text representation for embedding and storage."""
+        eid = self._extract_event_id(event) or ""
+        ts = self._extract_timestamp(event) or ""
+        et = self._get_nested(event, ["event_type"]) or self._get_nested(event, ["raw", "event_type"]) or ""
+        st = self._get_nested(event, ["sub_type"]) or self._get_nested(event, ["raw", "sub_type"]) or ""
+        content = self._get_nested(event, ["event_content"]) or self._get_nested(event, ["raw", "event_content"]) or ""
+        try:
+            import json
+
+            content_str = content if isinstance(content, str) else json.dumps(content, ensure_ascii=False, sort_keys=True)
+        except Exception:
+            content_str = str(content)
+        return f"event_id={eid} | time={ts} | type={et}/{st} | content={content_str}"
+
+    def _get_nested(self, d: Dict[str, Any], keys: List[str]) -> Optional[Any]:
+        cur: Any = d
+        for k in keys:
+            if not isinstance(cur, dict) or k not in cur:
+                return None
+            cur = cur[k]
+        return cur
+
+    def _to_datetime(self, ts: Optional[str | datetime]) -> Optional[datetime]:
+        if ts is None:
+            return None
+        if isinstance(ts, datetime):
+            return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+        s = str(ts).strip()
+        # Normalize 'Z' suffix to +00:00
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(s)
+        except Exception:
+            # Best-effort parse: try without timezone
+            try:
+                dt = datetime.fromisoformat(s.split(".")[0])
+            except Exception:
+                return None
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+    def _embed_text(self, text: str) -> List[float]:
+        vec = self._runner.run(self.llm_client.embedding(text, model_name=self.embed_model))
+        if not isinstance(vec, list):
+            raise RuntimeError("Embedding returned unexpected type")
+        if vec and isinstance(vec[0], list):
+            # Should not happen for single string input, pick the first
+            vec = vec[0]
+        return [float(x) for x in vec]
+
+    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+        if not texts:
+            return []
+        res = self._runner.run(self.llm_client.embedding(texts, model_name=self.embed_model))
+        # Expected: list[list[float]] with same length as texts
+        if isinstance(res, list) and res and isinstance(res[0], list):
+            if len(res) != len(texts):
+                # Fallback to per-item calls
+                return [self._embed_text(t) for t in texts]
+            return [[float(x) for x in vec] for vec in res]
+        # If a single vector was returned or unexpected type, fallback to per-item calls
+        return [self._embed_text(t) for t in texts]
+
+
