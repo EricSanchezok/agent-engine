@@ -92,6 +92,42 @@ class ICUMemoryAgent:
         self.logger.info("ICUMemoryAgent initialized with Azure embeddings and ScalableMemory backends")
 
     # ----------------------- Public APIs -----------------------
+    def delete_patient_memory(self, patient_id: str) -> bool:
+        """Delete the persistent database and index for a given patient_id.
+
+        Steps:
+        - If the memory is loaded in-process, drop it from cache.
+        - Remove the directory under .memory/{patient_id}/ including DB and index files.
+        - Return True if removal succeeds or directory not found; False on errors.
+        """
+        try:
+            # Remove from in-memory cache so no open handles remain
+            with self._lock:
+                mem = self._patient_memories.pop(patient_id, None)
+            # Best-effort: try to close DB connection if accessible
+            if mem is not None:
+                try:
+                    mem.db.close()
+                except Exception:
+                    pass
+
+            # Compute directory path mirroring ScalableMemory
+            from agent_engine.utils.project_root import get_project_root
+            from pathlib import Path
+
+            base_dir = Path(get_project_root()) / ".memory" / str(patient_id)
+            if not base_dir.exists():
+                return True
+
+            # Remove files
+            import shutil
+
+            shutil.rmtree(base_dir, ignore_errors=True)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to delete patient memory '{patient_id}': {e}")
+            return False
+
     def add_event(self, patient_id: str, event: Dict[str, Any]) -> str:
         """Add a single ICU event into the patient's memory and the global vector cache.
 
