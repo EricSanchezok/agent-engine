@@ -1,502 +1,146 @@
-# ICU多Agent系统蓝图
-
-## 1. 数据分析和理解
-
-### 1.1 ICU患者数据结构分析
-
-通过对`database/icu_patients/`文件夹中的患者数据进行分析，发现以下关键特征：
-
-#### 1.1.1 数据格式
-- **文件命名**: 以患者ID命名（如`1125200959.json`）
-- **数据结构**: JSON格式，包含`patient_id`、`meta_id`、`sequence`、`static`、`error_event`等字段
-
-#### 1.1.2 事件序列（sequence）
-每个患者的事件序列包含以下关键信息：
-- **事件ID**: 唯一标识符
-- **时间戳**: ISO格式时间
-- **事件类型**: `surgery`、`order`、`lab`、`history`、`nursing`等
-- **子类型**: 具体的事件分类
-- **事件内容**: 详细的医疗信息
-- **风险标记**: 当前为空数组，可用于风险标注
-- **标志位**: 用于事件状态标记
-- **元数据**: 额外信息
-
-#### 1.1.3 事件类型分析
-1. **手术事件** (`surgery`): 如"经导管颅内血管弹簧圈栓塞术"
-2. **医嘱事件** (`order`): 包括临时医嘱和长期医嘱
-3. **实验室检查** (`lab`): 各种检验结果
-4. **病史记录** (`history`): 病程记录、诊断等
-5. **护理事件** (`nursing`): 护理措施、生命体征监测等
-
-#### 1.1.4 静态信息
-- **诊断记录**: ICD-10编码和诊断名称
-- **病史**: 患者既往病史
-
-### 1.2 风险分类体系
-
-基于`risks_table.json`，ICU风险分为以下主要系统：
-
-1. **循环系统**: 休克、心律失常、急性缺血、高血压并发症等
-2. **呼吸系统**: 氧合/通气衰竭、下呼吸道感染、气道事件等
-3. **消化系统**: 消化道出血、肝胆胰疾病、胃肠疾病等
-4. **泌尿系统**: 感染、肾功能损伤、泌尿系统疾病等
-5. **神经系统**: 脑血管事件、颅压与脑疝、癫痫等
-6. **内分泌与免疫**: 血糖异常、甲状腺疾病、电解质紊乱等
-7. **妇产科**: 产科急症、妇科疾病等
-8. **血液/凝血系统**: 出凝血异常、血小板疾病、贫血等
-9. **创伤与感染**: 创伤、骨与四肢疾病、感染等
-
-## 2. 系统需求分析
-
-### 2.1 核心功能需求
-
-#### 2.1.1 风险预测功能
-- **实时风险监测**: 每更新一个事件或定期进行风险预测
-- **风险趋势分析**: 识别风险上升、降低或新发风险
-- **死亡率预测**: 基于当前状态预测患者死亡率
-- **出院时间预测**: 预测患者预期出院时间
-- **风险预警**: 及时向医生提供风险预警信息
-
-#### 2.1.2 诊疗建议功能
-- **主动问答交互**: 医生可主动询问诊疗建议
-- **基于当前状态**: 基于患者最新状态提供建议
-- **多维度建议**: 涵盖诊断、治疗、护理、用药等方面
-- **循证医学支持**: 基于医学证据和指南提供建议
-
-### 2.2 技术挑战
-
-#### 2.2.1 数据规模挑战
-- **事件数量庞大**: 单个患者可能有数千个事件
-- **实时性要求**: 需要实时处理新事件
-- **上下文限制**: 无法将所有历史事件放入LLM上下文
-
-#### 2.2.2 专业性挑战
-- **医疗知识要求**: 需要深厚的医学专业知识
-- **准确性要求**: 医疗建议必须高度准确
-- **安全性要求**: 避免错误的医疗建议
-
-## 3. 系统架构设计
-
-### 3.1 整体架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    ICU多Agent系统                           │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ 风险预测Agent│  │ 诊疗建议Agent│  │ 记忆管理Agent│        │
-│  └─────────────┘  └─────────────┘  └─────────────┘        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ 事件处理器  │  │ 知识库管理  │  │ 向量数据库  │        │
-│  └─────────────┘  └─────────────┘  └─────────────┘        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ LLM客户端   │  │ 医疗知识库  │  │ 风险评估引擎│        │
-│  └─────────────┘  └─────────────┘  └─────────────┘        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 3.2 Agent角色设计
-
-#### 3.2.1 风险预测Agent
-- **职责**: 实时监测患者风险状态
-- **输入**: 患者事件序列、生命体征、实验室检查等
-- **输出**: 风险评分、风险趋势、死亡率预测、出院时间预测
-- **触发**: 新事件到达或定时触发
-
-#### 3.2.2 诊疗建议Agent
-- **职责**: 提供专业诊疗建议
-- **输入**: 医生查询、患者当前状态、相关医学知识
-- **输出**: 诊疗建议、用药建议、护理建议
-- **触发**: 医生主动查询
-
-#### 3.2.3 记忆管理Agent
-- **职责**: 管理患者历史信息
-- **功能**: 事件压缩、重要信息提取、上下文管理
-- **策略**: 分层记忆、重要性排序、时间衰减
-
-### 3.3 核心组件设计
-
-#### 3.3.1 事件处理器
-```python
-class EventProcessor:
-    def __init__(self):
-        self.event_parsers = {
-            'surgery': SurgeryEventParser(),
-            'order': OrderEventParser(),
-            'lab': LabEventParser(),
-            'nursing': NursingEventParser(),
-            'history': HistoryEventParser()
-        }
-    
-    def process_event(self, event):
-        """处理单个事件，提取关键信息"""
-        parser = self.event_parsers.get(event['event_type'])
-        return parser.parse(event)
-    
-    def extract_risks(self, event):
-        """从事件中提取风险信息"""
-        # 基于事件内容和风险分类体系提取风险
-        pass
-```
-
-#### 3.3.2 记忆管理系统
-```python
-class MemoryManager:
-    def __init__(self):
-        self.vector_db = VectorDatabase()
-        self.summary_chain = SummaryChain()
-    
-    def add_event(self, patient_id, event):
-        """添加新事件到记忆系统"""
-        # 1. 向量化事件
-        # 2. 存储到向量数据库
-        # 3. 更新摘要
-        pass
-    
-    def get_relevant_context(self, patient_id, query, limit=10):
-        """获取相关上下文信息"""
-        # 基于查询检索相关事件
-        pass
-    
-    def generate_summary(self, patient_id, time_window):
-        """生成时间窗口内的摘要"""
-        pass
-```
-
-#### 3.3.3 风险评估引擎
-```python
-class RiskAssessmentEngine:
-    def __init__(self):
-        self.risk_categories = self.load_risk_categories()
-        self.risk_models = self.load_risk_models()
-    
-    def assess_risks(self, patient_state):
-        """评估患者当前风险状态"""
-        risks = {}
-        for category, risks_list in self.risk_categories.items():
-            for risk in risks_list:
-                score = self.calculate_risk_score(risk, patient_state)
-                if score > threshold:
-                    risks[risk] = score
-        return risks
-    
-    def predict_mortality(self, patient_state):
-        """预测死亡率"""
-        # 基于APACHE II、SOFA等评分系统
-        pass
-    
-    def predict_discharge_time(self, patient_state):
-        """预测出院时间"""
-        pass
-```
-
-## 4. 实现方案
-
-### 4.1 数据预处理和Bench构建
-
-#### 4.1.1 数据清洗
-```python
-def clean_patient_data(patient_data):
-    """清洗患者数据"""
-    # 1. 移除错误事件
-    # 2. 标准化时间格式
-    # 3. 提取关键信息
-    # 4. 构建事件向量
-    pass
-```
-
-#### 4.1.2 风险标注
-```python
-def annotate_risks(events, risk_table):
-    """为事件标注风险"""
-    for event in events:
-        event['risks'] = extract_risks_from_event(event, risk_table)
-    return events
-```
-
-#### 4.1.3 Bench构建
-```python
-def build_icu_bench():
-    """构建ICU测试基准"""
-    # 1. 选择代表性患者
-    # 2. 构建测试场景
-    # 3. 定义评估指标
-    # 4. 创建测试用例
-    pass
-```
-
-### 4.2 记忆系统实现
-
-#### 4.2.1 分层记忆策略
-```python
-class HierarchicalMemory:
-    def __init__(self):
-        self.short_term = ShortTermMemory()  # 最近事件
-        self.medium_term = MediumTermMemory()  # 重要事件
-        self.long_term = LongTermMemory()  # 摘要信息
-    
-    def add_event(self, event):
-        """添加事件到相应层级"""
-        # 根据重要性分配到不同层级
-        pass
-    
-    def get_context(self, query):
-        """获取相关上下文"""
-        # 从各层级检索相关信息
-        pass
-```
-
-#### 4.2.2 事件重要性评估
-```python
-def calculate_event_importance(event):
-    """计算事件重要性"""
-    factors = {
-        'event_type_weight': get_event_type_weight(event['event_type']),
-        'content_complexity': calculate_content_complexity(event['event_content']),
-        'time_recency': calculate_time_recency(event['timestamp']),
-        'risk_indicator': len(event.get('risks', [])),
-        'medical_impact': assess_medical_impact(event)
-    }
-    return weighted_sum(factors)
-```
-
-### 4.3 风险预测实现
-
-#### 4.3.1 实时风险监测
-```python
-class RiskMonitor:
-    def __init__(self):
-        self.risk_engine = RiskAssessmentEngine()
-        self.alert_system = AlertSystem()
-    
-    def monitor_patient(self, patient_id):
-        """实时监测患者风险"""
-        # 1. 获取最新状态
-        # 2. 评估风险
-        # 3. 检测变化
-        # 4. 发送预警
-        pass
-    
-    def detect_risk_changes(self, current_risks, previous_risks):
-        """检测风险变化"""
-        changes = {
-            'increased': [],
-            'decreased': [],
-            'new': [],
-            'resolved': []
-        }
-        # 比较风险变化
-        return changes
-```
-
-#### 4.3.2 预测模型
-```python
-class PredictionModels:
-    def __init__(self):
-        self.mortality_model = MortalityPredictionModel()
-        self.discharge_model = DischargePredictionModel()
-        self.risk_trend_model = RiskTrendModel()
-    
-    def predict_mortality(self, patient_state):
-        """预测死亡率"""
-        # 基于APACHE II、SOFA、GCS等评分
-        apache_score = calculate_apache_score(patient_state)
-        sofa_score = calculate_sofa_score(patient_state)
-        return self.mortality_model.predict(apache_score, sofa_score)
-    
-    def predict_discharge(self, patient_state):
-        """预测出院时间"""
-        # 基于当前状态和恢复趋势
-        pass
-```
-
-### 4.4 诊疗建议实现
-
-#### 4.4.1 知识库构建
-```python
-class MedicalKnowledgeBase:
-    def __init__(self):
-        self.guidelines = load_clinical_guidelines()
-        self.drug_database = load_drug_database()
-        self.procedure_database = load_procedure_database()
-    
-    def search_relevant_knowledge(self, query, patient_state):
-        """搜索相关知识"""
-        # 基于查询和患者状态检索相关知识
-        pass
-```
-
-#### 4.4.2 建议生成
-```python
-class TreatmentAdvisor:
-    def __init__(self):
-        self.knowledge_base = MedicalKnowledgeBase()
-        self.llm_client = LLMClient()
-    
-    def generate_advice(self, query, patient_context):
-        """生成诊疗建议"""
-        # 1. 理解查询意图
-        # 2. 检索相关知识
-        # 3. 分析患者状态
-        # 4. 生成建议
-        # 5. 验证建议合理性
-        pass
-```
-
-## 5. 技术实现细节
-
-### 5.1 向量数据库设计
-
-#### 5.1.1 事件向量化
-```python
-def vectorize_event(event):
-    """将事件转换为向量"""
-    # 1. 提取文本内容
-    # 2. 使用医疗领域预训练模型编码
-    # 3. 添加元数据特征
-    # 4. 生成向量表示
-    pass
-```
-
-#### 5.1.2 相似性搜索
-```python
-def find_similar_events(query, patient_events, top_k=10):
-    """查找相似事件"""
-    # 使用向量相似性搜索
-    pass
-```
-
-### 5.2 LLM集成
-
-#### 5.2.1 提示工程
-```python
-class PromptBuilder:
-    def __init__(self):
-        self.templates = load_prompt_templates()
-    
-    def build_risk_assessment_prompt(self, patient_context):
-        """构建风险评估提示"""
-        template = self.templates['risk_assessment']
-        return template.format(
-            patient_context=patient_context,
-            risk_categories=self.risk_categories
-        )
-    
-    def build_treatment_advice_prompt(self, query, patient_context):
-        """构建诊疗建议提示"""
-        template = self.templates['treatment_advice']
-        return template.format(
-            query=query,
-            patient_context=patient_context
-        )
-```
-
-#### 5.2.2 输出解析
-```python
-def parse_llm_response(response, task_type):
-    """解析LLM响应"""
-    if task_type == 'risk_assessment':
-        return parse_risk_assessment(response)
-    elif task_type == 'treatment_advice':
-        return parse_treatment_advice(response)
-    else:
-        return response
-```
-
-### 5.3 系统集成
-
-#### 5.3.1 事件流处理
-```python
-class EventStreamProcessor:
-    def __init__(self):
-        self.memory_manager = MemoryManager()
-        self.risk_monitor = RiskMonitor()
-        self.treatment_advisor = TreatmentAdvisor()
-    
-    def process_new_event(self, patient_id, event):
-        """处理新事件"""
-        # 1. 更新记忆系统
-        self.memory_manager.add_event(patient_id, event)
-        
-        # 2. 触发风险评估
-        risks = self.risk_monitor.assess_risks(patient_id)
-        
-        # 3. 发送预警（如有必要）
-        if self.should_alert(risks):
-            self.send_alert(patient_id, risks)
-    
-    def handle_doctor_query(self, patient_id, query):
-        """处理医生查询"""
-        # 1. 获取患者上下文
-        context = self.memory_manager.get_context(patient_id, query)
-        
-        # 2. 生成诊疗建议
-        advice = self.treatment_advisor.generate_advice(query, context)
-        
-        return advice
-```
-
-## 6. 评估和测试
-
-### 6.1 评估指标
-
-#### 6.1.1 风险预测评估
-- **准确性**: 风险预测的准确性
-- **及时性**: 风险检测的及时性
-- **敏感性**: 对真实风险的敏感性
-- **特异性**: 对非风险的识别能力
-
-#### 6.1.2 诊疗建议评估
-- **相关性**: 建议与查询的相关性
-- **准确性**: 医学建议的准确性
-- **实用性**: 建议的实用性
-- **安全性**: 建议的安全性
-
-### 6.2 测试场景
-
-#### 6.2.1 风险预测测试
-```python
-def test_risk_prediction():
-    """测试风险预测功能"""
-    # 1. 使用历史数据测试
-    # 2. 验证预测准确性
-    # 3. 测试实时性能
-    pass
-```
-
-#### 6.2.2 诊疗建议测试
-```python
-def test_treatment_advice():
-    """测试诊疗建议功能"""
-    # 1. 模拟医生查询
-    # 2. 验证建议质量
-    # 3. 测试响应时间
-    pass
-```
-
-## 7. 部署和运维
-
-### 7.1 系统部署
-- **容器化部署**: 使用Docker容器化各个组件
-- **微服务架构**: 将不同功能模块独立部署
-- **负载均衡**: 处理多患者并发访问
-- **监控告警**: 实时监控系统状态
-
-### 7.2 数据安全
-- **数据加密**: 患者数据加密存储
-- **访问控制**: 严格的权限管理
-- **审计日志**: 完整的操作审计
-- **合规性**: 符合医疗数据保护法规
-
-## 8. 总结
-
-本ICU多Agent系统设计充分考虑了ICU环境的特殊性和复杂性，通过分层记忆管理、实时风险监测和专业诊疗建议，为ICU医生提供智能化的决策支持。系统的核心优势在于：
-
-1. **鲁棒的记忆系统**: 能够处理大量历史事件数据
-2. **专业的医疗知识**: 集成丰富的医学知识库
-3. **实时响应能力**: 支持实时事件处理和风险预警
-4. **可扩展的架构**: 支持功能模块的独立扩展
-
-通过这个系统，ICU医生可以获得更全面的患者信息，提前识别风险，获得专业的诊疗建议，从而提高医疗质量和患者安全性。
+# ICU多智能体（Multi-Agent）监护系统构建方案
+
+## 1. 项目背景与核心目标
+
+### 1.1. 背景
+
+ICU（重症监护室）环境中的病人数据具有高密度、多模态、强时序性的特点。单个病人在ICU期间会产生海量的诊疗事件（Event），包括病程记录、医嘱、护理记录、检验检查结果等。如何有效利用这些数据，为临床医生提供实时、智能的决策支持，是本项目旨在解决的核心问题。
+
+主要挑战包括：
+
+- **数据处理挑战**: 难以将病人海量的历史事件一次性载入大型语言模型（LLM）的上下文进行分析。
+- **专业性挑战**: 系统必须具备高度专业的医学知识，并能结合具体病人的情况进行推理。
+- **验证性挑战**: 缺乏现成的、标准化的数据集来训练和验证系统的有效性。
+
+### 1.2. 核心目标
+
+本方案旨在构建一个基于多智能体（Multi-Agent）架构的ICU监护系统，实现以下两大核心功能：
+
+- **自动化风险预测 (Automated Risk Prediction)**:
+    - 在病人诊疗事件持续更新的过程中，系统能够实时、动态地评估病人的潜在风险。
+    - 明确指出风险的变化趋势（哪些在上升，哪些在下降）。
+    - 量化关键预后指标，如死亡率和预期ICU住院时长。
+
+- **交互式诊疗建议 (Interactive Clinical Suggestion)**:
+    - 在医生需要时，能够通过自然语言问答的方式与系统互动。
+    - 系统基于病人当前最全面的情况和外部权威医学知识，提供有理有据的诊疗分析和建议。
+
+## 2. 系统整体架构
+
+为实现上述目标，我们设计一个模块化、可扩展的多智能体协同系统。每个Agent专注于一项特定任务，通过事件总线和共享的记忆系统进行通信与协作。
+
+**核心组件说明:**
+
+- **事件总线 (Event Bus)**: 负责接收来自HIS/CIS系统的实时病人事件数据，并将其分发给相应的Agent处理，实现系统各模块的解耦。
+- **Agent集群**: 包括数据接入、记忆管理、风险预测、诊疗建议等多个专用Agent。
+- **记忆系统 (Memory System)**: 为每个病人构建一个动态、分层的记忆库，是整个系统的大脑。
+- **外部工具 (Tools)**: 集成外部权威医学知识库（如UpToDate, PubMed）和专业模型，为系统提供专业知识支持。
+
+## 3. 各Agent详细设计
+
+### 3.1. 数据接入与预处理 Agent
+
+**核心职责**: 作为系统的数据入口，负责实时接收、解析和标准化所有传入的病人事件。
+
+**工作流程:**
+
+1.  **监听 (Listen)**: 从事件总线消费原始的JSON格式事件数据。
+2.  **解析 (Parse)**: 识别事件类型 (`event_type`) 和子类型 (`sub_type`)。
+3.  **标准化 (Standardize)**:
+    - 结构化数据 (如 `lab`, `nursing`): 提取关键字段（指标名称、值、单位、参考范围），统一格式。
+    - 非结构化文本 (如 `history`, `exam`): 进行初步的NLP处理，例如使用命名实体识别（NER）技术提取出疾病、症状、药物、手术等关键医学实体。
+4.  **分发 (Dispatch)**: 将处理后的标准化事件再次推送到内部事件总线，供其他Agent使用。
+
+### 3.2. 动态记忆 Agent (Memory Agent)
+
+**核心职责**: 解决长下文限制，为每个病人构建一个高效、多层次的记忆系统。
+
+**设计方案 (分层记忆):**
+
+-   **🧠 短期记忆 (Short-term Memory)**:
+    - **技术选型**: 内存数据库，如 Redis。
+    - **存储内容**: 存储最近24小时内的完整原始事件。这部分数据被访问最频繁，用于快速响应实时查询。
+    - **作用**: 提供即时的、高保真的病人近期状态。
+
+-   **📚 长期记忆 (Long-term Memory)**:
+    - **向量化记忆 (Vector Memory)**:
+        - **技术选型**: 向量数据库。
+        - **存储内容**: 将所有事件的文本内容（尤其是病程、报告结论等）通过Embedding模型（text-embedding-ada-002）转换为高维向量进行存储。
+        - **作用**: 实现基于语义相似度的快速检索。例如，当医生询问“病人有无感染迹象”时，可以快速检索到所有与“感染”、“发热”、“白细胞升高等”相关的历史记录。
+    - **结构化记忆 (Structured Memory)**:
+        - **技术选型**: 时序数据库（如InfluxDB）或关系型数据库（如PostgreSQL）。
+        - **存储内容**: 按时间序列存储所有结构化数据，如生命体征、检验指标数值等。
+        - **作用**: 便于进行趋势分析、统计计算和可视化。
+    - **摘要式记忆 (Summarization Memory)**:
+        - **实现方式**: 定期（如每24小时）或在重大事件（如手术、转科）后，调用一个专用的LLM Agent对近期的事件进行总结，生成一段摘要。
+        - **存储内容**: 存储这些阶段性的摘要文本。
+        - **作用**: 形成对病人病程的“快照”，帮助模型快速掌握病人的宏观演变过程。
+
+### 3.3. 风险预测 Agent (Risk Prediction Agent)
+
+**核心职责**: 自动、持续地评估病人的风险状态。
+
+**触发机制:**
+
+- **事件驱动**: 当接收到关键事件（如新的危急值报告、生命体征剧烈波动）时立即触发。
+- **时间驱动**: 按固定频率（如每小时）进行一次全面评估。
+
+**工作流程:**
+
+1.  **信息获取**: 从记忆Agent获取最新的短期事件和相关的长期记忆（如生命体征趋势、历史摘要）。
+2.  **风险匹配**: 对照 `risks_table.json` 中的风险清单，逐一进行评估。
+3.  **评估模型**:
+    - **规则引擎**: 对于有明确标准定义的风险（如根据Braden评分评估压疮风险），直接应用规则。
+    - **机器学习模型**: 对于复杂的预测（如死亡率），可集成或训练专门的模型（如基于SOFA, APACHE II评分并结合时序数据的动态预测模型）。
+4.  **结果输出**: 生成一份结构化的风险报告，包含：
+    - 当前高风险项: `‘脓毒性休克‘`, `‘急性肾损伤‘`
+    - 风险趋势: `{"急性肾损伤": "上升", "呼吸机相关性肺炎": "下降"}`
+    - SOFA评分: `12`
+    - 预测死亡率: `35%`
+    - 预期ICU停留时间: `8 天`
+
+### 3.4. 诊疗建议 Agent (Clinical Suggestion Agent)
+
+**核心职责**: 作为医生的智能助手，提供交互式问答决策支持。
+
+**技术架构**: 检索增强生成 (Retrieval-Augmented Generation, RAG)。
+
+**工作流程:**
+
+1.  **问题理解**: 医生输入问题，如：“病人目前心率偏快，血压偏低，考虑哪些可能的原因？”
+2.  **信息检索 (Retrieval)**:
+    - **内部检索**: 并行向记忆Agent发起多个查询：
+        - 向量检索: 查找与“心动过速”、“低血压”相关的历史病程记录。
+        - 结构化查询: 检索近12小时的生命体征、出入量、血管活性药物使用情况。
+        - 摘要检索: 获取最近的病程摘要。
+    - **外部检索**: 将问题中的核心概念（如“心动过速”、“低血压”）作为关键词，通过外部工具查询权威医学指南（如UpToDate API）。
+3.  **信息增强与生成 (Augmented Generation)**:
+    - **构建上下文 (Prompt Engineering)**: 将医生的问题、内部检索到的病人信息、外部检索到的医学知识，整合成一个丰富的Prompt。
+    - **调用LLM**: 将构建好的Prompt提交给一个强大的LLM（如GPT-4, Gemini等）。
+    - **生成答案**: LLM基于全面的上下文，生成一段有条理、有依据的回答，并明确标注信息来源。
+
+    > “根据病人近6小时数据，血压持续偏低(收缩压<90mmHg)，伴随心率上升(>110bpm)，同时今日血常规提示白细胞升高(15.2 * 10^9/L)，应高度警惕脓毒症休克的可能... `来源: 病人检验报告, 2024-05-22`
+    > ... 根据UpToDate指南，处理策略包括液体复苏、经验性抗生素应用... `来源: UpToDate: Sepsis Management`”
+
+## 4. 开发与验证策略
+
+- **构建模拟环境**:
+    - **数据生成**: 以 `1125112810.json` 为模板，与临床专家合作，设计多种ICU典型场景（如ARDS、心梗、多发伤等），生成一批高质量的模拟病人事件序列数据。
+    - **事件回放系统**: 开发一个可以按设定速度“播放”病人事件序列的工具，模拟真实ICU的数据更新流程，用于对系统进行端到端的测试。
+- **人机协同评估 (Human-in-the-loop)**:
+    - 邀请ICU医生深度参与系统测试。
+    - 对于风险预测功能，让医生评估预测结果的准确性、及时性和临床价值。
+    - 对于诊疗建议功能，让医生以日常工作中的疑问进行提问，并对回答的专业性、相关性和可靠性进行打分。
+    - 收集医生的反馈，持续迭代优化Agent的逻辑和Prompt。
+
+## 5. 技术选型建议
+
+| 模块               | 建议技术栈                          | 备注                               |
+| ------------------ | ----------------------------------- | ---------------------------------- |
+| 后端框架           | Python (FastAPI / Django)           | 便于集成各类AI/ML库               |
+| 事件总线           | Kafka / RabbitMQ                    | 处理高并发的实时数据流             |
+| 数据库             | PostgreSQL, InfluxDB, Milvus/Pinecone, Neo4j | 分别用于结构化、时序、向量和图谱数据存储 |
+| AI/LLM框架         | LangChain / LlamaIndex, Hugging Face Transformers | 快速构建和编排Agent及RAG流程       |
+| 外部知识库         | UpToDate, PubMed, DrugBank等 (通过API接入) | 保证系统的专业性和权威性           |
+| 前端交互界面       | React / Vue.js                      | 为医生提供友好的风险监控和问答界面 |
+
