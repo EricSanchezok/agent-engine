@@ -114,8 +114,12 @@ class ArxivSearchAgent(BaseA2AAgent):
             await self._task_failed(context, event_queue, f"ArXiv fetcher error: {e}")
             return
 
-        json_content = json.dumps([paper.info for paper in papers], ensure_ascii=False, indent=4)
-        parts = [Part(root=TextPart(text=json_content))]
+        if "PaperFilterAgent" not in user_input:
+            json_content = json.dumps([paper.info for paper in papers], ensure_ascii=False, indent=4)
+            parts = [Part(root=TextPart(text=json_content))]
+        else:
+            json_content = json.dumps([paper.info.get("id") for paper in papers], ensure_ascii=False, indent=4)
+            parts = [Part(root=TextPart(text=json_content))]     
 
         artifact = Artifact(
             artifact_id=str(uuid4()),
