@@ -74,7 +74,7 @@ def save_history():
         print("="*100)
         history.append(asyncio.run(memory.get_capability_history(capability["name"], capability["definition"])))
     
-    with open("database/history.json", "w", encoding="utf-8") as f:
+    with open("database/tasks_history.json", "w", encoding="utf-8") as f:
         json.dump(history, f, ensure_ascii=False, indent=4)
 
 
