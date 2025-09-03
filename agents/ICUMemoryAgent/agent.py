@@ -5,9 +5,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
 
+# Agent Engine imports
 from agent_engine.agent_logger.agent_logger import AgentLogger
 from agent_engine.llm_client import AzureClient
 from agent_engine.memory import ScalableMemory
+from agent_engine.utils import get_current_file_dir
+
 
 
 class _AsyncRunner:
@@ -71,12 +74,14 @@ class ICUMemoryAgent:
         self.llm_client = AzureClient(api_key=api_key, base_url=base_url, api_version=api_version)
         # Explicitly choose embedding model
         self.embed_model: str = os.getenv("AGENT_ENGINE_EMBED_MODEL", "text-embedding-3-large")
+        self.persist_dir: str = get_current_file_dir() / 'database'
 
         # Global vector cache: id = event_id, content is a small marker, vector stored
         self._vector_cache = ScalableMemory(
             name="icu_vector_cache",
             llm_client=self.llm_client,
             embed_model=self.embed_model,
+            persist_dir=self.persist_dir,
         )
 
         # Patient memory cache in process
@@ -312,6 +317,7 @@ class ICUMemoryAgent:
                 name=str(patient_id),
                 llm_client=self.llm_client,
                 embed_model=self.embed_model,
+                persist_dir=self.persist_dir,
             )
             self._patient_memories[patient_id] = mem
             return mem
@@ -341,10 +347,6 @@ class ICUMemoryAgent:
 
     def _event_to_text(self, event: Dict[str, Any]) -> str:
         """Create a concise, deterministic text representation for embedding and storage."""
-        eid = self._extract_event_id(event) or ""
-        ts = self._extract_timestamp(event) or ""
-        et = self._get_nested(event, ["event_type"]) or self._get_nested(event, ["raw", "event_type"]) or ""
-        st = self._get_nested(event, ["sub_type"]) or self._get_nested(event, ["raw", "sub_type"]) or ""
         content = self._get_nested(event, ["event_content"]) or self._get_nested(event, ["raw", "event_content"]) or ""
         try:
             import json
@@ -352,7 +354,7 @@ class ICUMemoryAgent:
             content_str = content if isinstance(content, str) else json.dumps(content, ensure_ascii=False, sort_keys=True)
         except Exception:
             content_str = str(content)
-        return f"event_id={eid} | time={ts} | type={et}/{st} | content={content_str}"
+        return content_str
 
     def _get_nested(self, d: Dict[str, Any], keys: List[str]) -> Optional[Any]:
         cur: Any = d
