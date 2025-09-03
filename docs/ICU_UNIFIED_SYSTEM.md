@@ -16,9 +16,9 @@
   - 提供 `load/reset/update(n)` 等接口；
   - 输出 “最小封装事件（envelope）”：`patient_id/event_id/timestamp/event_type/sub_type/event_content/raw`。
 
-- MemoryAgent（记忆）
+- ICUMemoryAgent（记忆）
   - 短期记忆：近 N 条或近 6h/24h 事件窗口（内存环形缓冲）。
-  - 向量记忆：仅索引文本类片段（history/护理自由文本/exam 结论），用 `agent_engine.memory.Memory`（SQLite + sentence-transformers: all-MiniLM-L6-v2）。
+  - 向量记忆：仅索引文本类片段（history/护理自由文本/exam 结论），用 `agent_engine.memory.ScalableMemory`。
   - 检索：6h 优先、24h 补充，TopK 固定、去重合并、确定性排序（先时间后相关度）。
 
 - ICURiskPredictionAgent（风险预测，见 `docs/ICU_RISK_AGENT.md`）
@@ -28,16 +28,16 @@
   - 不回喂历史概率给 LLM，仅在数值层保存与平滑；
   - 输出：含 `top_evidence_event_ids` 与英文 rationale 的结构化 JSON。
 
-- ClinicalSuggestionAgent（诊疗建议，见 `docs/ICU_CLINICAL_SUGGESTION_AGENT.md`）
+- ICUClinicalSuggestionAgent（诊疗建议，见 `docs/ICU_CLINICAL_SUGGESTION_AGENT.md`）
   - 多步 LLM：问题理解（Q）→ 证据表（A）→ 结构化建议（B）→ 自检（C）；
   - 依赖 MemoryAgent 检索与风险组 `meta`（仅名称/notes/top evidence ids）；
   - 输出：结构化 JSON（工作诊断/鉴别/管理计划/用药/监测/禁忌/随访/引用/限制）。
 
-- SummarizationAgent（可选）
+- ICUSummarizationAgent（可选）
   - 周期/触发生成阶段摘要，压缩长程上下文；
   - 摘要进入向量记忆，RAG 时固定纳入。
 
-- Evaluator（线下评估）
+- ICUEvaluator（线下评估）
   - 弱金标准自动构造（量表阈值、lab 阈值/变化、干预时间锚、文本关键词）；
   - 风险：AUPRC/ROC、Brier、提前量；证据：Evidence Recall@K；
   - 问答：事实 EM/容差、证据召回、医师评分/一致性。
