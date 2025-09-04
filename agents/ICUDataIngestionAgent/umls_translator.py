@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-import threading
-from typing import Optional, Tuple
+from typing import Optional
+from dotenv import load_dotenv
 
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.llm_client import AzureClient
@@ -10,32 +10,7 @@ from agent_engine.memory import ScalableMemory
 from agent_engine.prompt import PromptLoader
 from agent_engine.utils import get_current_file_dir
 
-
-class _AsyncRunner:
-    """Run async coroutines in a background event loop and wait synchronously."""
-
-    def __init__(self) -> None:
-        import asyncio
-
-        self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._ready = threading.Event()
-        self._thread.start()
-        self._ready.wait(timeout=5)
-
-    def _run(self) -> None:
-        import asyncio
-
-        asyncio.set_event_loop(self._loop)
-        self._ready.set()
-        self._loop.run_forever()
-
-    def run(self, coro):
-        import asyncio
-
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
+load_dotenv()
 
 class UMLSClinicalTranslator:
     """UMLS-oriented professional translator with persistent cache.
@@ -77,8 +52,7 @@ class UMLSClinicalTranslator:
             enable_vectors=False,
         )
 
-        # Runner for async LLM
-        self._runner = _AsyncRunner()
+        # No runner; use async methods directly
 
     def clear_cache(self) -> None:
         """Delete all cached translations."""
@@ -88,7 +62,7 @@ class UMLSClinicalTranslator:
         except Exception as e:
             self.logger.error(f"Failed to clear translation cache: {e}")
 
-    def translate_event_content(self, event_id: Optional[str], text_cn: str, overwrite: bool = False) -> Optional[str]:
+    async def translate_event_content(self, event_id: Optional[str], text_cn: str, overwrite: bool = False) -> Optional[str]:
         """Get or create an English translation for the given Chinese text.
 
         - If event_id is provided and overwrite=False, try cache first
@@ -117,13 +91,13 @@ class UMLSClinicalTranslator:
                 prompt_type="user",
                 event_content_cn=text_cn,
             )
-            translated = self._runner.run(self._llm.chat(
+            translated = await self._llm.chat(
                 system_prompt=sys_p,
                 user_prompt=usr_p,
                 model_name=self._translate_model,
                 max_tokens=8192,
                 temperature=0.2,
-            ))
+            )
         except Exception as e:
             self.logger.error(f"Translation failed: {e}")
             return None
@@ -135,7 +109,7 @@ class UMLSClinicalTranslator:
         if event_id:
             try:
                 # Upsert translation into cache
-                self._mem.add(
+                await self._mem.add(
                     content=content_en,
                     item_id=event_id,
                 )
@@ -145,5 +119,10 @@ class UMLSClinicalTranslator:
         return content_en
 
     # Alias
-    def get_translation(self, event_id: Optional[str], text_cn: str, overwrite: bool = False) -> Optional[str]:
-        return self.translate_event_content(event_id, text_cn, overwrite=overwrite)
+    async def get_translation(self, event_id: Optional[str], text_cn: str, overwrite: bool = False) -> Optional[str]:
+        return await self.translate_event_content(event_id, text_cn, overwrite=overwrite)
+
+
+if __name__ == '__main__':
+    translator = UMLSClinicalTranslator()
+    print(translator._mem.count())

@@ -1,12 +1,12 @@
 import json
 import os
+import asyncio
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 # Agent Engine imports
 from agent_engine.agent_logger import AgentLogger
-from agent_engine.utils import get_current_file_dir
 
 # Local imports
 from agents.ICUDataIngestionAgent.umls_translator import UMLSClinicalTranslator
@@ -88,13 +88,15 @@ class ICUDataIngestionAgent:
         self._cursor = 0
         self.logger.info("Cursor reset to the beginning of sequence")
 
-    def _wrap_envelope(self, ev: Dict[str, Any]) -> Dict[str, Any]:
+    async def _wrap_envelope(self, ev: Dict[str, Any]) -> Dict[str, Any]:
         ev_id = ev.get("id")
         content_cn = ev.get("event_content")
         content_en = None
         if isinstance(content_cn, str) and content_cn.strip():
-            # default: no overwrite
-            content_en = self._translator.get_translation(ev_id, content_cn, overwrite=False)
+            try:
+                content_en = await self._translator.get_translation(ev_id, content_cn, overwrite=False)
+            except RuntimeError:
+                pass
 
         return {
             "patient_id": self._patient_id,
@@ -111,15 +113,15 @@ class ICUDataIngestionAgent:
     def clear_translation_cache(self) -> None:
         self._translator.clear_cache()
 
-    def next_event(self) -> Optional[Dict[str, Any]]:
+    async def next_event(self) -> Optional[Dict[str, Any]]:
         """Return the next single event (enveloped)."""
         if self._cursor >= len(self._sequence):
             return None
         ev = self._sequence[self._cursor]
         self._cursor += 1
-        return self._wrap_envelope(ev)
+        return await self._wrap_envelope(ev)
 
-    def update(self) -> List[Dict[str, Any]]:
+    async def update(self) -> List[Dict[str, Any]]:
         """
         Return a list of events for the next update step.
 
@@ -141,7 +143,7 @@ class ICUDataIngestionAgent:
         anchor_subtype = anchor.get("sub_type")
 
         # Always consume at least the anchor
-        batch.append(self._wrap_envelope(anchor))
+        batch.append(await self._wrap_envelope(anchor))
         self._cursor += 1
 
         # Greedy consume following events that match grouping key
@@ -151,18 +153,20 @@ class ICUDataIngestionAgent:
                 nxt.get("event_type") == anchor_type
                 and nxt.get("sub_type") == anchor_subtype
             ):
-                batch.append(self._wrap_envelope(nxt))
+                batch.append(await self._wrap_envelope(nxt))
                 self._cursor += 1
                 continue
             break
 
         return batch
 
-
-if __name__ == "__main__":
+async def test():
     agent = ICUDataIngestionAgent()
     agent.load_patient("database/icu_patients/1125112810.json")
     test_count = 10
     for _ in range(test_count):
         print("*"*100)
-        print(agent.update())
+        print(await agent.update())
+
+if __name__ == "__main__":
+    asyncio.run(test())

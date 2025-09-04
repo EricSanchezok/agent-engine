@@ -37,7 +37,7 @@ class BaseSearchAlgorithm:
     list of dicts with scores and reasons.
     """
 
-    def search_related_events(
+    async def search_related_events(
         self,
         *,
         patient_mem,

@@ -101,31 +101,7 @@ def _from_blob(blob: bytes) -> List[float]:
     return np.frombuffer(blob, dtype=np.float32).tolist()
 
 
-class _AsyncRunner:
-    """Run async coroutines from sync code using a background event loop."""
-
-    def __init__(self) -> None:
-        self._loop = asyncio.new_event_loop()
-        self._ready = threading.Event()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
-        self._ready.wait(timeout=5)
-
-    def _run(self) -> None:
-        asyncio.set_event_loop(self._loop)
-        self._ready.set()
-        self._loop.run_forever()
-
-    def run(self, coro):
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
-    def shutdown(self) -> None:
-        try:
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            self._thread.join(timeout=2)
-        except Exception:
-            pass
+# NOTE: Async runner removed. Async methods will be used directly.
 
 
 class _DB:
@@ -501,7 +477,7 @@ class ScalableMemory:
         # Optional external LLM client embedding
         self._llm_client: Optional[Any] = llm_client
         self._embed_model: Optional[str] = embed_model or os.getenv("AGENT_ENGINE_EMBED_MODEL")
-        self._async_runner: Optional[_AsyncRunner] = None
+        # Async runner removed; use native async methods
         # Whether vector storage and ANN search are enabled
         self._enable_vectors: bool = bool(enable_vectors)
 
@@ -546,47 +522,35 @@ class ScalableMemory:
     def _use_llm(self) -> bool:
         return self._llm_client is not None
 
-    def _ensure_async_runner(self) -> None:
-        if self._async_runner is None:
-            self._async_runner = _AsyncRunner()
-
-    def _embed_text(self, text: str) -> List[float]:
+    async def _embed_text_async(self, text: str) -> List[float]:
         if self._use_llm():
-            self._ensure_async_runner()
-            vec = self._async_runner.run(self._llm_client.embedding(text, model_name=self._embed_model))
+            vec = await self._llm_client.embedding(text, model_name=self._embed_model)
             if vec is None:
                 raise RuntimeError("LLM client returned None embedding")
-            # Ensure list[float]
             if isinstance(vec, list) and vec and isinstance(vec[0], (float, int)):
                 return [float(x) for x in vec]
-            # Unexpected type
             raise RuntimeError("LLM client returned unexpected embedding shape for single text")
         else:
             return self._get_embedder().embed(text)
 
-    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+    async def _embed_batch_async(self, texts: List[str]) -> List[List[float]]:
         if not texts:
             return []
         if self._use_llm():
-            self._ensure_async_runner()
-            res = self._async_runner.run(self._llm_client.embedding(texts, model_name=self._embed_model))
+            res = await self._llm_client.embedding(texts, model_name=self._embed_model)
             if res is None:
                 raise RuntimeError("LLM client returned None embeddings")
-            # Handle various possible shapes
             if isinstance(res, list) and res and isinstance(res[0], list):
-                # list of vectors
                 if len(res) != len(texts):
-                    # Fallback: some clients return only first vector; requery one-by-one
                     out: List[List[float]] = []
                     for t in texts:
-                        out.append(self._embed_text(t))
+                        out.append(await self._embed_text_async(t))
                     return out
                 return [[float(x) for x in vec] for vec in res]
             elif isinstance(res, list) and (not res or isinstance(res[0], (float, int))):
-                # single vector returned; expand via per-item calls
-                out = []
+                out: List[List[float]] = []
                 for t in texts:
-                    out.append(self._embed_text(t))
+                    out.append(await self._embed_text_async(t))
                 return out
             else:
                 raise RuntimeError("LLM client returned unexpected embeddings shape for batch")
@@ -606,10 +570,12 @@ class ScalableMemory:
         dim: Optional[int] = None
         if self._use_llm():
             try:
-                probe_vec = self._embed_text(" ")
+                # Do a small synchronous assumption when vectors disabled or embedder available
+                # If vectors enabled with LLM, caller should set AGENT_ENGINE_EMBED_MODEL dimension via first add
+                probe_vec = self._get_embedder().embed(" ")
                 dim = len(probe_vec)
             except Exception as e:
-                logger.warning(f"Failed to probe vector dimension via llm_client: {e}")
+                logger.warning(f"Failed to infer vector dimension: {e}")
         if dim is None:
             emb = self._get_embedder()
             dim = int(emb.get_vector_dimension())
@@ -764,7 +730,7 @@ class ScalableMemory:
         return int(row[0]) if row else None
 
     # ---------- Public APIs ----------
-    def add(
+    async def add(
         self,
         content: str,
         vector: Optional[List[float]] = None,
@@ -787,8 +753,7 @@ class ScalableMemory:
 
         if self._enable_vectors:
             if vector is None:
-                emb = self._get_embedder()
-                vector = emb.embed(content)
+                vector = await self._embed_text_async(content)
             if not vector:
                 raise ValueError("Vector generation failed")
         else:
@@ -814,7 +779,7 @@ class ScalableMemory:
 
         return item_id
 
-    def add_many(self, items: List[Dict[str, Any]]) -> List[str]:
+    async def add_many(self, items: List[Dict[str, Any]]) -> List[str]:
         """Batch add items.
 
         Each item: {"content": str, "vector": Optional[List[float]], "metadata": Optional[dict], "id": Optional[str]}
@@ -827,9 +792,8 @@ class ScalableMemory:
         need_embed_idx = [i for i, it in enumerate(items) if it.get("vector") is None]
 
         if need_embed_idx and self._enable_vectors:
-            emb = self._get_embedder()
             texts = [contents[i] or "" for i in need_embed_idx]
-            vectors_batch = emb.embed_batch(texts)
+            vectors_batch = await self._embed_batch_async(texts)
             for idx, vec in zip(need_embed_idx, vectors_batch):
                 items[idx]["vector"] = vec
 
@@ -877,11 +841,11 @@ class ScalableMemory:
 
         return ids
 
-    def upsert(self, item_id: str, content: Optional[str] = None, vector: Optional[List[float]] = None, metadata: Optional[Dict[str, Any]] = None) -> str:
+    async def upsert(self, item_id: str, content: Optional[str] = None, vector: Optional[List[float]] = None, metadata: Optional[Dict[str, Any]] = None) -> str:
         """Upsert by id. If vector is None and content provided, compute embedding."""
         if self._enable_vectors:
             if vector is None and content is not None:
-                vector = self._get_embedder().embed(content)
+                vector = await self._embed_text_async(content)
             if vector is None:
                 # Try to reuse stored vector if exists
                 old = self.get_by_id(item_id)
@@ -930,11 +894,11 @@ class ScalableMemory:
         _, vector, metadata = self.get_by_id(content_id)
         return vector, metadata
 
-    def get_by_vector(self, vector: List[float], threshold: float = 0.9) -> Tuple[Optional[str], Dict[str, Any]]:
+    async def get_by_vector(self, vector: List[float], threshold: float = 0.9) -> Tuple[Optional[str], Dict[str, Any]]:
         if not self._enable_vectors:
             logger.warning("get_by_vector is not supported: vectors disabled")
             return None, {}
-        res = self.search(vector, top_k=1, threshold=threshold)
+        res = await self.search(vector, top_k=1, threshold=threshold)
         if not res:
             return None, {}
         return res[0][0], res[0][2]
@@ -960,11 +924,11 @@ class ScalableMemory:
         item_id = hashlib.md5(content.encode("utf-8")).hexdigest()
         return self.delete_by_id(item_id)
 
-    def delete_by_vector(self, vector: List[float], threshold: float = 0.9) -> bool:
+    async def delete_by_vector(self, vector: List[float], threshold: float = 0.9) -> bool:
         if not self._enable_vectors:
             logger.warning("delete_by_vector is not supported: vectors disabled")
             return False
-        res = self.search(vector, top_k=1, threshold=threshold)
+        res = await self.search(vector, top_k=1, threshold=threshold)
         if not res:
             return False
         item_id = res[0][3]["id"] if "id" in res[0][3] else None
@@ -972,7 +936,7 @@ class ScalableMemory:
             return False
         return self.delete_by_id(item_id)
 
-    def search(
+    async def search(
         self,
         query: Any,
         top_k: int = 5,
@@ -990,7 +954,7 @@ class ScalableMemory:
         if isinstance(query, list) and all(isinstance(x, (int, float)) for x in query):
             q_vec = query  # type: ignore
         else:
-            q_vec = self._get_embedder().embed(str(query))
+            q_vec = await self._embed_text_async(str(query))
 
         with self._rw.read_locked():
             assert self._index is not None

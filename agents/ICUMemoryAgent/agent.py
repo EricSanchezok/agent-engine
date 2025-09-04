@@ -115,14 +115,14 @@ class ICUMemoryAgent:
         else:
             raise ValueError(f"Unsupported search version: {version}")
 
-        results = algo.search_related_events(
+        results = self._runner.run(algo.search_related_events(
             patient_mem=patient_mem,
             query_event_id=event_id,
             top_k=top_k,
             window_hours=window_hours,
             weights=weights,
             tau_hours=tau_hours,
-        )
+        ))
         return results
 
         

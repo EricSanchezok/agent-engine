@@ -20,7 +20,7 @@ class SearchV1(BaseSearchAlgorithm):
     - time_score: exp(-|Δt|/τ)
     """
 
-    def search_related_events(
+    async def search_related_events(
         self,
         *,
         patient_mem: ScalableMemory,
@@ -46,7 +46,7 @@ class SearchV1(BaseSearchAlgorithm):
 
         # 2) Vector recall (TopN)
         topn_vec = max(top_k * 5, 50)
-        vec_hits = patient_mem.search(q_vec, top_k=topn_vec)  # (content, sim, md)
+        vec_hits = await patient_mem.search(q_vec, top_k=topn_vec)  # (content, sim, md)
 
         # 3) Temporal window recall
         candidates_by_id: Dict[str, Dict[str, Any]] = {}
