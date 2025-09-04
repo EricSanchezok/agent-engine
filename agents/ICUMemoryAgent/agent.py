@@ -92,6 +92,40 @@ class ICUMemoryAgent:
         self.logger.info("ICUMemoryAgent initialized with Azure embeddings and ScalableMemory backends")
 
     # ----------------------- Public APIs -----------------------
+    def search_related_events(
+        self,
+        patient_id: str,
+        event_id: str,
+        top_k: int = 20,
+        window_hours: int = 24,
+        weights: Optional[Dict[str, float]] = None,
+        tau_hours: float = 6.0,
+        version: str = "v1",
+    ) -> List[Dict[str, Any]]:
+        """Search related events using pluggable algorithm versions.
+
+        Currently v1 implements sim_vec + time_score only.
+        """
+        patient_mem = self._get_patient_memory(patient_id)
+
+        if version == "v1":
+            from .search.v1 import SearchV1
+
+            algo = SearchV1()
+        else:
+            raise ValueError(f"Unsupported search version: {version}")
+
+        results = algo.search_related_events(
+            patient_mem=patient_mem,
+            query_event_id=event_id,
+            top_k=top_k,
+            window_hours=window_hours,
+            weights=weights,
+            tau_hours=tau_hours,
+        )
+        return results
+
+        
     def delete_patient_memory(self, patient_id: str) -> bool:
         """Delete the persistent database and index for a given patient_id.
 

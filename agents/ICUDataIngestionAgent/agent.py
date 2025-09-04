@@ -1,9 +1,15 @@
 import json
+import os
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# Agent Engine imports
 from agent_engine.agent_logger import AgentLogger
+from agent_engine.utils import get_current_file_dir
 
+# Local imports
+from agents.ICUDataIngestionAgent.umls_translator import UMLSClinicalTranslator
 
 class ICUDataIngestionAgent:
     """
@@ -28,6 +34,9 @@ class ICUDataIngestionAgent:
         self._meta_id: Optional[str] = None
         self._sequence: List[Dict[str, Any]] = []
         self._cursor: int = 0
+
+        # Translator module encapsulating prompts, LLM, and cache
+        self._translator = UMLSClinicalTranslator()
 
     @property
     def patient_id(self) -> Optional[str]:
@@ -80,16 +89,27 @@ class ICUDataIngestionAgent:
         self.logger.info("Cursor reset to the beginning of sequence")
 
     def _wrap_envelope(self, ev: Dict[str, Any]) -> Dict[str, Any]:
+        ev_id = ev.get("id")
+        content_cn = ev.get("event_content")
+        content_en = None
+        if isinstance(content_cn, str) and content_cn.strip():
+            # default: no overwrite
+            content_en = self._translator.get_translation(ev_id, content_cn, overwrite=False)
+
         return {
             "patient_id": self._patient_id,
             "meta_id": self._meta_id,
-            "event_id": ev.get("id"),
+            "event_id": ev_id,
             "timestamp": ev.get("timestamp"),
             "event_type": ev.get("event_type"),
             "sub_type": ev.get("sub_type"),
-            "event_content": ev.get("event_content"),
+            "event_content": content_en if content_en else content_cn,
             "raw": ev,
         }
+
+    # Expose translator maintenance ops
+    def clear_translation_cache(self) -> None:
+        self._translator.clear_cache()
 
     def next_event(self) -> Optional[Dict[str, Any]]:
         """Return the next single event (enveloped)."""

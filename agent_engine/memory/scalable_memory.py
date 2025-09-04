@@ -490,6 +490,7 @@ class ScalableMemory:
         persist_dir: Optional[str] = None,
         llm_client: Optional[Any] = None,
         embed_model: Optional[str] = None,
+        enable_vectors: bool = True,
     ) -> None:
         if not name:
             raise ValueError("Memory name is required")
@@ -501,6 +502,8 @@ class ScalableMemory:
         self._llm_client: Optional[Any] = llm_client
         self._embed_model: Optional[str] = embed_model or os.getenv("AGENT_ENGINE_EMBED_MODEL")
         self._async_runner: Optional[_AsyncRunner] = None
+        # Whether vector storage and ANN search are enabled
+        self._enable_vectors: bool = bool(enable_vectors)
 
         # Paths
         project_root = get_project_root()
@@ -516,9 +519,9 @@ class ScalableMemory:
         # Index backend preference: hnswlib -> annoy -> brute
         ib = (index_backend or os.getenv("AGENT_ENGINE_MEMORY_INDEX", "hnswlib")).lower()
         self._preferred_index_backend = ib
-        self._index: _BaseANNIndex
-        self._index_path: Path
-        self._index_backend: str
+        self._index: Optional[_BaseANNIndex] = None
+        self._index_path: Optional[Path] = None
+        self._index_backend: str = "disabled" if not self._enable_vectors else "unknown"
         self._index_params = index_params or {}
 
         # Locks
@@ -526,7 +529,8 @@ class ScalableMemory:
 
         # Init schema and index
         self._ensure_schema_initialized()
-        self._ensure_index_initialized()
+        if self._enable_vectors:
+            self._ensure_index_initialized()
 
     # ---------- Initialization ----------
     def _get_embedder(self) -> Embedder:
@@ -642,7 +646,7 @@ class ScalableMemory:
                     id VARCHAR PRIMARY KEY,
                     content VARCHAR NOT NULL,
                     metadata VARCHAR,
-                    vector BLOB NOT NULL
+                    vector BLOB
                 )
                 """
             )
@@ -669,7 +673,7 @@ class ScalableMemory:
                     id TEXT PRIMARY KEY,
                     content TEXT NOT NULL,
                     metadata TEXT,
-                    vector BLOB NOT NULL
+                    vector BLOB
                 )
                 """
             )
@@ -781,11 +785,15 @@ class ScalableMemory:
 
             item_id = hashlib.md5(base.encode("utf-8")).hexdigest()
 
-        if vector is None:
-            emb = self._get_embedder()
-            vector = emb.embed(content)
-        if not vector:
-            raise ValueError("Vector generation failed")
+        if self._enable_vectors:
+            if vector is None:
+                emb = self._get_embedder()
+                vector = emb.embed(content)
+            if not vector:
+                raise ValueError("Vector generation failed")
+        else:
+            # In non-vector mode, ignore provided vectors and store None
+            vector = None
 
         meta_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
 
@@ -793,15 +801,16 @@ class ScalableMemory:
             # Upsert DB
             self.db.execute(
                 "INSERT OR REPLACE INTO items(id, content, metadata, vector) VALUES(?, ?, ?, ?)",
-                (item_id, content, meta_json, _to_blob(vector)),
+                (item_id, content, meta_json, _to_blob(vector) if (self._enable_vectors and vector is not None) else None),
             )
             self.db.commit()
 
-            # Update index
-            label = self._get_or_create_label_for_id(item_id)
-            self._index.add_or_update(label, vector)
-            # Persist index occasionally
-            self._maybe_persist_index()
+            # Update index (vector mode only)
+            if self._enable_vectors:
+                label = self._get_or_create_label_for_id(item_id)
+                assert self._index is not None
+                self._index.add_or_update(label, vector)  # type: ignore[arg-type]
+                self._maybe_persist_index()
 
         return item_id
 
@@ -817,7 +826,7 @@ class ScalableMemory:
         contents = [it.get("content") for it in items]
         need_embed_idx = [i for i, it in enumerate(items) if it.get("vector") is None]
 
-        if need_embed_idx:
+        if need_embed_idx and self._enable_vectors:
             emb = self._get_embedder()
             texts = [contents[i] or "" for i in need_embed_idx]
             vectors_batch = emb.embed_batch(texts)
@@ -841,14 +850,17 @@ class ScalableMemory:
 
                 item_id = hashlib.md5(base.encode("utf-8")).hexdigest()
 
-            if vector is None:
-                raise ValueError("Vector missing after embedding phase")
+            if self._enable_vectors:
+                if vector is None:
+                    raise ValueError("Vector missing after embedding phase")
 
             meta_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
             ids.append(item_id)
-            rows.append((item_id, content, meta_json, _to_blob(vector)))
-            labels.append(self._get_or_create_label_for_id(item_id))
-            vectors.append(vector)
+            rows.append((item_id, content, meta_json, _to_blob(vector) if (self._enable_vectors and vector is not None) else None))
+            if self._enable_vectors:
+                labels.append(self._get_or_create_label_for_id(item_id))
+                assert vector is not None
+                vectors.append(vector)
 
         with self._rw.write_locked():
             # DB upserts
@@ -858,23 +870,25 @@ class ScalableMemory:
             )
             self.db.commit()
 
-            # Index bulk add
-            self._index.add_many(labels, vectors)
-            self._maybe_persist_index()
+            if self._enable_vectors:
+                assert self._index is not None
+                self._index.add_many(labels, vectors)
+                self._maybe_persist_index()
 
         return ids
 
     def upsert(self, item_id: str, content: Optional[str] = None, vector: Optional[List[float]] = None, metadata: Optional[Dict[str, Any]] = None) -> str:
         """Upsert by id. If vector is None and content provided, compute embedding."""
-        if vector is None and content is not None:
-            vector = self._get_embedder().embed(content)
-        if vector is None:
-            # Try to reuse stored vector if exists
-            old = self.get_by_id(item_id)
-            if old[1]:
-                vector = old[1]
-        if vector is None:
-            raise ValueError("Vector is required when neither content nor stored vector exist")
+        if self._enable_vectors:
+            if vector is None and content is not None:
+                vector = self._get_embedder().embed(content)
+            if vector is None:
+                # Try to reuse stored vector if exists
+                old = self.get_by_id(item_id)
+                if old[1]:
+                    vector = old[1]
+            if vector is None:
+                raise ValueError("Vector is required when neither content nor stored vector exist")
 
         if content is None:
             # keep existing content if any
@@ -887,13 +901,15 @@ class ScalableMemory:
         with self._rw.write_locked():
             self.db.execute(
                 "INSERT OR REPLACE INTO items(id, content, metadata, vector) VALUES(?, ?, ?, ?)",
-                (item_id, content, meta_json, _to_blob(vector)),
+                (item_id, content, meta_json, _to_blob(vector) if (self._enable_vectors and vector is not None) else None),
             )
             self.db.commit()
 
-            label = self._get_or_create_label_for_id(item_id)
-            self._index.add_or_update(label, vector)
-            self._maybe_persist_index()
+            if self._enable_vectors:
+                label = self._get_or_create_label_for_id(item_id)
+                assert self._index is not None
+                self._index.add_or_update(label, vector)  # type: ignore[arg-type]
+                self._maybe_persist_index()
         return item_id
 
     def get_by_id(self, item_id: str) -> Tuple[Optional[str], Optional[List[float]], Dict[str, Any]]:
@@ -915,6 +931,9 @@ class ScalableMemory:
         return vector, metadata
 
     def get_by_vector(self, vector: List[float], threshold: float = 0.9) -> Tuple[Optional[str], Dict[str, Any]]:
+        if not self._enable_vectors:
+            logger.warning("get_by_vector is not supported: vectors disabled")
+            return None, {}
         res = self.search(vector, top_k=1, threshold=threshold)
         if not res:
             return None, {}
@@ -922,12 +941,14 @@ class ScalableMemory:
 
     def delete_by_id(self, item_id: str) -> bool:
         with self._rw.write_locked():
-            label = self._label_for_id(item_id)
-            if label is not None:
-                try:
-                    self._index.delete(label)
-                except Exception:
-                    pass
+            if self._enable_vectors:
+                label = self._label_for_id(item_id)
+                if label is not None:
+                    try:
+                        assert self._index is not None
+                        self._index.delete(label)
+                    except Exception:
+                        pass
             cur = self.db.execute("DELETE FROM items WHERE id = ?", (item_id,))
             self.db.commit()
             # Keep labels mapping for potential re-use; do not remove to avoid label collisions
@@ -940,12 +961,14 @@ class ScalableMemory:
         return self.delete_by_id(item_id)
 
     def delete_by_vector(self, vector: List[float], threshold: float = 0.9) -> bool:
+        if not self._enable_vectors:
+            logger.warning("delete_by_vector is not supported: vectors disabled")
+            return False
         res = self.search(vector, top_k=1, threshold=threshold)
         if not res:
             return False
         item_id = res[0][3]["id"] if "id" in res[0][3] else None
         if not item_id:
-            # map via index label -> id
             return False
         return self.delete_by_id(item_id)
 
@@ -961,12 +984,16 @@ class ScalableMemory:
 
         Returns list of (content, similarity, metadata). Metadata contains "id" as well.
         """
+        if not self._enable_vectors:
+            logger.warning("search is not supported: vectors disabled")
+            return []
         if isinstance(query, list) and all(isinstance(x, (int, float)) for x in query):
             q_vec = query  # type: ignore
         else:
             q_vec = self._get_embedder().embed(str(query))
 
         with self._rw.read_locked():
+            assert self._index is not None
             labels, distances = self._index.search(q_vec, top_k=top_k, ef_search=ef_search)
 
             results: List[Tuple[str, float, Dict[str, Any]]] = []
@@ -1017,7 +1044,7 @@ class ScalableMemory:
         rows = self.db.fetchall(cur)
         for row in rows:
             content = row[1]
-            vector = _from_blob(row[2]) if row[2] is not None else []
+            vector = _from_blob(row[2]) if (self._enable_vectors and row[2] is not None) else []
             md = json.loads(row[3]) if row[3] else {}
             md["id"] = row[0]
             items.append((content, vector, md))
@@ -1028,7 +1055,9 @@ class ScalableMemory:
         return [r[0] for r in self.db.fetchall(cur)]
 
     def get_all_vectors(self) -> Dict[str, List[float]]:
-        cur = self.db.execute("SELECT id, vector FROM items")
+        if not self._enable_vectors:
+            return {}
+        cur = self.db.execute("SELECT id, vector FROM items WHERE vector IS NOT NULL")
         rows = self.db.fetchall(cur)
         return {r[0]: _from_blob(r[1]) for r in rows}
 
@@ -1043,14 +1072,14 @@ class ScalableMemory:
         return out
 
     def get_info(self) -> Dict[str, Any]:
-        emb = self._get_embedder()
         info = {
             "name": self.name,
             "path": str(self.base_dir),
             "count": self.count(),
-            "embedder_method": emb.method,
-            "vector_dimension": self._get_vector_dim(),
-            "index": self._index.info(),
+            "vectors_enabled": self._enable_vectors,
+            "embedder_method": (self._get_embedder().method if self._enable_vectors else None),
+            "vector_dimension": (self._get_vector_dim() if self._enable_vectors else None),
+            "index": (self._index.info() if self._enable_vectors and self._index is not None else {"backend": "disabled"}),
             "db_backend": self.db.backend,
         }
         return info
@@ -1059,8 +1088,12 @@ class ScalableMemory:
         # Persist index no more often than every 2 seconds unless forced
         now = time.time()
         last = getattr(self, "_last_index_persist", 0.0)
+        if not self._enable_vectors:
+            return
         if force or (now - last) > 2.0:
             try:
+                assert self._index is not None
+                assert self._index_path is not None
                 self._index.save(self._index_path)
                 self._last_index_persist = now
             except Exception as e:
