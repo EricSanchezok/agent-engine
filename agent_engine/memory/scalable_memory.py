@@ -505,8 +505,8 @@ class ScalableMemory:
 
         # Init schema and index
         self._ensure_schema_initialized()
-        if self._enable_vectors:
-            self._ensure_index_initialized()
+        # Defer index initialization until we know the vector dimension
+        # (from meta or first added vector)
 
     # ---------- Initialization ----------
     def _get_embedder(self) -> Embedder:
@@ -557,7 +557,7 @@ class ScalableMemory:
         else:
             return self._get_embedder().embed_batch(texts)
 
-    def _get_vector_dim(self) -> int:
+    def _get_vector_dim(self) -> Optional[int]:
         # Try DB meta first to avoid loading models unnecessarily
         cur = self.db.execute("SELECT value FROM meta WHERE key = ?", ("vector_dimension",))
         row = self.db.fetchone(cur)
@@ -566,25 +566,16 @@ class ScalableMemory:
                 return int(row[0])
             except Exception:
                 pass
-        # If using external LLM client, probe a dummy text to infer dimension
-        dim: Optional[int] = None
-        if self._use_llm():
-            try:
-                # Do a small synchronous assumption when vectors disabled or embedder available
-                # If vectors enabled with LLM, caller should set AGENT_ENGINE_EMBED_MODEL dimension via first add
-                probe_vec = self._get_embedder().embed(" ")
-                dim = len(probe_vec)
-            except Exception as e:
-                logger.warning(f"Failed to infer vector dimension: {e}")
-        if dim is None:
-            emb = self._get_embedder()
-            dim = int(emb.get_vector_dimension())
-        self.db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", ("vector_dimension", str(dim)))
-        self.db.commit()
-        return int(dim)
+        return None
 
     def _ensure_schema_initialized(self) -> None:
-        cache_key = str(self.base_dir)
+        # Use the absolute DB file path as cache key to avoid collisions between
+        # different memory files under the same directory.
+        try:
+            db_key = str(self.db.db_path)
+        except Exception:
+            db_key = str(self.base_dir)
+        cache_key = db_key
         if ScalableMemory._initialized_paths.get(cache_key):
             return
 
@@ -646,12 +637,15 @@ class ScalableMemory:
             self.db.execute("CREATE INDEX IF NOT EXISTS idx_items_content ON items(content)")
 
         # schema version
-        self.db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", ("schema_version", str(self.SCHEMA_VERSION)))
+        self._upsert_meta("schema_version", str(self.SCHEMA_VERSION))
         self.db.commit()
         ScalableMemory._initialized_paths[cache_key] = True
 
     def _ensure_index_initialized(self) -> None:
-        dim = self._get_vector_dim()
+        dim_opt = self._get_vector_dim()
+        if dim_opt is None:
+            raise RuntimeError("Vector dimension is unknown; cannot initialize index before first add")
+        dim = int(dim_opt)
 
         # Try preferred index backend; fallback chain
         tried: List[str] = []
@@ -690,6 +684,55 @@ class ScalableMemory:
         # Should never reach here
         raise RuntimeError("Failed to initialize any ANN index backend")
 
+    def _init_index_for_dim(self, dim: int) -> None:
+        """Initialize index for a known vector dimension and persist meta."""
+        # Write meta if not set
+        current_dim = self._get_vector_dim()
+        if current_dim is None:
+            self._upsert_meta("vector_dimension", str(dim))
+            self.db.commit()
+        elif int(current_dim) != int(dim):
+            # If no items stored yet, allow updating the dimension
+            if self._get_count_estimate() == 0:
+                self._upsert_meta("vector_dimension", str(dim))
+                self.db.commit()
+            else:
+                raise RuntimeError(f"Vector dimension mismatch: existing={current_dim} new={dim}")
+        # Initialize
+        tried: List[str] = []
+        for backend in [self._preferred_index_backend, "hnswlib", "annoy", "bruteforce"]:
+            if backend in tried:
+                continue
+            tried.append(backend)
+            try:
+                if backend == "hnswlib":
+                    init_cap = max(1024, self._get_count_estimate() * 2)
+                    m = int(self._index_params.get("M", 16))
+                    ef_c = int(self._index_params.get("ef_construction", 200))
+                    self._index = _HNSWIndex(dim=dim, space="cosine", init_capacity=init_cap, m=m, ef_construction=ef_c)
+                    self._index_backend = "hnswlib"
+                    self._index_path = self.base_dir / "index_hnsw.bin"
+                elif backend == "annoy":
+                    n_trees = int(self._index_params.get("n_trees", 10))
+                    self._index = _AnnoyIndex(dim=dim, metric="angular", n_trees=n_trees)
+                    self._index_backend = "annoy"
+                    self._index_path = self.base_dir / "index_annoy.ann"
+                else:
+                    self._index = _BruteForceIndex(dim=dim)
+                    self._index_backend = "bruteforce"
+                    self._index_path = self.base_dir / "index_bruteforce.json"
+
+                # Try to load existing
+                if not self._index.load(self._index_path, dim):
+                    # Rebuild from DB if vectors exist
+                    self._rebuild_index_from_db()
+                logger.info(f"ScalableMemory index ready: backend={self._index_backend}")
+                return
+            except Exception as e:
+                logger.warning(f"Index backend {backend} unavailable: {e}")
+                continue
+        raise RuntimeError("Failed to initialize any ANN index backend")
+
     def _get_count_estimate(self) -> int:
         cur = self.db.execute("SELECT COUNT(*) FROM items")
         row = self.db.fetchone(cur)
@@ -720,7 +763,7 @@ class ScalableMemory:
         cur = self.db.execute("SELECT COALESCE(MAX(label), -1) + 1 FROM labels")
         row = self.db.fetchone(cur)
         next_label = int(row[0]) if row else 0
-        self.db.execute("INSERT OR REPLACE INTO labels(label, id) VALUES(?, ?)", (next_label, item_id))
+        self._upsert_label(next_label, item_id)
         self.db.commit()
         return next_label
 
@@ -756,6 +799,9 @@ class ScalableMemory:
                 vector = await self._embed_text_async(content)
             if not vector:
                 raise ValueError("Vector generation failed")
+            # Ensure index initialized with the correct dimension
+            if self._index is None:
+                self._init_index_for_dim(len(vector))
         else:
             # In non-vector mode, ignore provided vectors and store None
             vector = None
@@ -764,9 +810,11 @@ class ScalableMemory:
 
         with self._rw.write_locked():
             # Upsert DB
-            self.db.execute(
-                "INSERT OR REPLACE INTO items(id, content, metadata, vector) VALUES(?, ?, ?, ?)",
-                (item_id, content, meta_json, _to_blob(vector) if (self._enable_vectors and vector is not None) else None),
+            self._upsert_item(
+                item_id=item_id,
+                content=content,
+                metadata_json=meta_json,
+                vector_blob=_to_blob(vector) if (self._enable_vectors and vector is not None) else None,
             )
             self.db.commit()
 
@@ -828,13 +876,19 @@ class ScalableMemory:
 
         with self._rw.write_locked():
             # DB upserts
-            self.db.executemany(
-                "INSERT OR REPLACE INTO items(id, content, metadata, vector) VALUES(?, ?, ?, ?)",
-                rows,
-            )
+            for (iid, content, meta_json, vec_blob) in rows:
+                self._upsert_item(
+                    item_id=iid,
+                    content=content,
+                    metadata_json=meta_json,
+                    vector_blob=vec_blob,
+                )
             self.db.commit()
 
             if self._enable_vectors:
+                # Initialize index if needed
+                if self._index is None and vectors:
+                    self._init_index_for_dim(len(vectors[0]))
                 assert self._index is not None
                 self._index.add_many(labels, vectors)
                 self._maybe_persist_index()
@@ -863,9 +917,11 @@ class ScalableMemory:
         meta_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
 
         with self._rw.write_locked():
-            self.db.execute(
-                "INSERT OR REPLACE INTO items(id, content, metadata, vector) VALUES(?, ?, ?, ?)",
-                (item_id, content, meta_json, _to_blob(vector) if (self._enable_vectors and vector is not None) else None),
+            self._upsert_item(
+                item_id=item_id,
+                content=content,
+                metadata_json=meta_json,
+                vector_blob=_to_blob(vector) if (self._enable_vectors and vector is not None) else None,
             )
             self.db.commit()
 
@@ -1062,6 +1118,44 @@ class ScalableMemory:
                 self._last_index_persist = now
             except Exception as e:
                 logger.warning(f"Index persistence failed: {e}")
+
+    # ---------- Upsert helpers (handle DuckDB vs SQLite) ----------
+    def _upsert_meta(self, key: str, value: str) -> None:
+        if self.db.backend == "duckdb":
+            self.db.execute(
+                "INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
+        else:
+            self.db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)", (key, value))
+
+    def _upsert_label(self, label: int, item_id: str) -> None:
+        if self.db.backend == "duckdb":
+            self.db.execute(
+                "INSERT INTO labels(label, id) VALUES(?, ?) ON CONFLICT(label) DO UPDATE SET id=excluded.id",
+                (label, item_id),
+            )
+        else:
+            self.db.execute("INSERT OR REPLACE INTO labels(label, id) VALUES(?, ?)", (label, item_id))
+
+    def _upsert_item(self, *, item_id: str, content: str, metadata_json: Optional[str], vector_blob: Optional[bytes]) -> None:
+        if self.db.backend == "duckdb":
+            self.db.execute(
+                """
+                INSERT INTO items(id, content, metadata, vector)
+                VALUES(?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                  content=excluded.content,
+                  metadata=excluded.metadata,
+                  vector=excluded.vector
+                """,
+                (item_id, content, metadata_json, vector_blob),
+            )
+        else:
+            self.db.execute(
+                "INSERT OR REPLACE INTO items(id, content, metadata, vector) VALUES(?, ?, ?, ?)",
+                (item_id, content, metadata_json, vector_blob),
+            )
 
 
 def _match_metadata(md: Dict[str, Any], flt: Dict[str, Any]) -> bool:

@@ -162,7 +162,7 @@ class ICUDataIngestionAgent:
 
 async def test():
     agent = ICUDataIngestionAgent()
-    agent.load_patient("database/icu_patients/1125112810.json")
+    agent.load_patient("database/icu_raw/1125112810.json")
     test_count = 10
     for _ in range(test_count):
         print("*"*100)

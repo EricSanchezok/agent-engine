@@ -12,37 +12,6 @@ from agent_engine.memory import ScalableMemory
 from agent_engine.utils import get_current_file_dir
 
 
-
-class _AsyncRunner:
-    """Run async coroutine in background loop and wait synchronously.
-
-    This mirrors the minimal behavior we need from ScalableMemory's internal runner
-    without importing private internals.
-    """
-
-    def __init__(self) -> None:
-        import asyncio
-
-        self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._started = threading.Event()
-        self._thread.start()
-        self._started.wait(timeout=5)
-
-    def _run(self) -> None:
-        import asyncio
-
-        asyncio.set_event_loop(self._loop)
-        self._started.set()
-        self._loop.run_forever()
-
-    def run(self, coro):
-        import asyncio
-
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
-
 class ICUMemoryAgent:
     """ICU Memory Agent for patient-specific and global vector memories.
 
@@ -81,18 +50,18 @@ class ICUMemoryAgent:
             name="icu_vector_cache",
             llm_client=self.llm_client,
             embed_model=self.embed_model,
-            persist_dir=self.persist_dir,
+            persist_dir=self.persist_dir
         )
 
         # Patient memory cache in process
         self._patient_memories: Dict[str, ScalableMemory] = {}
         self._lock = threading.Lock()
-        self._runner = _AsyncRunner()
+        # Async runner removed
 
         self.logger.info("ICUMemoryAgent initialized with Azure embeddings and ScalableMemory backends")
 
     # ----------------------- Public APIs -----------------------
-    def search_related_events(
+    async def search_related_events(
         self,
         patient_id: str,
         event_id: str,
@@ -115,14 +84,14 @@ class ICUMemoryAgent:
         else:
             raise ValueError(f"Unsupported search version: {version}")
 
-        results = self._runner.run(algo.search_related_events(
+        results = await algo.search_related_events(
             patient_mem=patient_mem,
             query_event_id=event_id,
             top_k=top_k,
             window_hours=window_hours,
             weights=weights,
             tau_hours=tau_hours,
-        ))
+        )
         return results
 
         
@@ -162,7 +131,7 @@ class ICUMemoryAgent:
             self.logger.error(f"Failed to delete patient memory '{patient_id}': {e}")
             return False
 
-    def add_event(self, patient_id: str, event: Dict[str, Any]) -> str:
+    async def add_event(self, patient_id: str, event: Dict[str, Any]) -> str:
         """Add a single ICU event into the patient's memory and the global vector cache.
 
         The item's id is the event's id.
@@ -189,8 +158,8 @@ class ICUMemoryAgent:
         _, vector, _ = self._vector_cache.get_by_id(event_id)
         if vector is None:
             # Embed once via Azure
-            vector = self._embed_text(content)
-            self._vector_cache.add(
+            vector = await self._embed_text_async(content)
+            await self._vector_cache.add(
                 content=f"ICU_EVENT_VECTOR::{event_id}",
                 vector=vector,
                 metadata={"patient_id": patient_id},
@@ -205,10 +174,10 @@ class ICUMemoryAgent:
             "sub_type": sub_type,
         }
         patient_mem = self._get_patient_memory(patient_id)
-        patient_mem.add(content=content, vector=vector, metadata=md, item_id=event_id)
+        await patient_mem.add(content=content, vector=vector, metadata=md, item_id=event_id)
         return event_id
 
-    def add_events(self, patient_id: str, events: List[Dict[str, Any]]) -> List[str]:
+    async def add_events(self, patient_id: str, events: List[Dict[str, Any]]) -> List[str]:
         """Batch add events. Reuses cached vectors when available and embeds only uncached ones.
 
         Args:
@@ -251,7 +220,7 @@ class ICUMemoryAgent:
 
         # Embed missing vectors once (batch)
         if texts_to_embed:
-            vectors = self._embed_batch(texts_to_embed)
+            vectors = await self._embed_batch_async(texts_to_embed)
             # Write them into cache and into items
             v_i = 0
             for idx in to_embed_indices:
@@ -260,7 +229,7 @@ class ICUMemoryAgent:
                 vec = vectors[v_i]
                 v_i += 1
                 # Cache
-                self._vector_cache.add(
+                await self._vector_cache.add(
                     content=f"ICU_EVENT_VECTOR::{event_id}",
                     vector=vec,
                     metadata={"patient_id": patient_id},
@@ -275,7 +244,7 @@ class ICUMemoryAgent:
 
         # Persist to patient's memory in batch
         patient_mem = self._get_patient_memory(patient_id)
-        ids = patient_mem.add_many(items)
+        ids = await patient_mem.add_many(items)
         return ids
 
     def get_event_by_id(self, patient_id: str, event_id: str) -> Optional[Dict[str, Any]]:
@@ -453,26 +422,25 @@ class ICUMemoryAgent:
                 return None
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
-    def _embed_text(self, text: str) -> List[float]:
-        vec = self._runner.run(self.llm_client.embedding(text, model_name=self.embed_model))
+    async def _embed_text_async(self, text: str) -> List[float]:
+        vec = await self.llm_client.embedding(text, model_name=self.embed_model)
         if not isinstance(vec, list):
             raise RuntimeError("Embedding returned unexpected type")
         if vec and isinstance(vec[0], list):
-            # Should not happen for single string input, pick the first
             vec = vec[0]
         return [float(x) for x in vec]
 
-    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+    async def _embed_batch_async(self, texts: List[str]) -> List[List[float]]:
         if not texts:
             return []
-        res = self._runner.run(self.llm_client.embedding(texts, model_name=self.embed_model))
-        # Expected: list[list[float]] with same length as texts
+        res = await self.llm_client.embedding(texts, model_name=self.embed_model)
         if isinstance(res, list) and res and isinstance(res[0], list):
             if len(res) != len(texts):
-                # Fallback to per-item calls
-                return [self._embed_text(t) for t in texts]
+                out: List[List[float]] = []
+                for t in texts:
+                    out.append(await self._embed_text_async(t))
+                return out
             return [[float(x) for x in vec] for vec in res]
-        # If a single vector was returned or unexpected type, fallback to per-item calls
-        return [self._embed_text(t) for t in texts]
+        return [await self._embed_text_async(t) for t in texts]
 
 
