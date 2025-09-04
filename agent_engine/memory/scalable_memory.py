@@ -999,10 +999,21 @@ class ScalableMemory:
         threshold: float = 0.0,
         metadata_filter: Optional[Dict[str, Any]] = None,
         ef_search: Optional[int] = None,
+        near_duplicate_delta: float = 0.0,
     ) -> List[Tuple[str, float, Dict[str, Any]]]:
         """Search by text or vector.
 
         Returns list of (content, similarity, metadata). Metadata contains "id" as well.
+
+        Args:
+            query: Text or vector to search by.
+            top_k: Max number of results to return.
+            threshold: Minimum cosine similarity required to include a result.
+            metadata_filter: Optional exact-match filter on metadata.
+            ef_search: Optional index-specific search breadth parameter.
+            near_duplicate_delta: If > 0, exclude results whose similarity to the query
+                is within `near_duplicate_delta` of 1.0 (i.e., treat as near-duplicates of the query).
+                For example, 0.01 will drop items with sim >= 0.99.
         """
         if not self._enable_vectors:
             logger.warning("search is not supported: vectors disabled")
@@ -1022,6 +1033,13 @@ class ScalableMemory:
                 sim = float(max(-1.0, min(1.0, 1.0 - float(dist))))
                 if sim < threshold:
                     continue
+
+                # Exclude near-duplicates that are almost identical to the query vector
+                # If near_duplicate_delta == 0.0 (default), do nothing
+                if near_duplicate_delta > 0.0:
+                    # If similarity is within delta of 1.0, skip this result
+                    if (1.0 - sim) <= near_duplicate_delta:
+                        continue
 
                 # map label -> id
                 cur = self.db.execute("SELECT id FROM labels WHERE label = ?", (int(lb),))

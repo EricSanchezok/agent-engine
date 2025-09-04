@@ -12,10 +12,7 @@ from agents.ICUDataIngestionAgent.agent import ICUDataIngestionAgent
 from agents.ICUMemoryAgent.agent import ICUMemoryAgent
 
 PATIENT_ID = "1125112810"
-UPDATES = 500
-TOP_K = 10
-WINDOW_HOURS = 24
-TAU_HOURS = 6.0
+UPDATES = 100
 
 
 async def _do_search(memory: ICUMemoryAgent, patient_id: str, last_event_id: Optional[str], *, logger: AgentLogger) -> List[Dict[str, Any]]:
@@ -63,33 +60,11 @@ async def main() -> int:
         total_written += len(ids)
         logger.info(f"Update {i}: wrote {len(ids)} events (total={total_written})")
 
-    events = await ingestion.update()
-    print(events[0])
-    event_id = events[0]["event_id"]
-    results = await _do_search(memory, patient_id, event_id, logger=logger)
-
-    # 4) Write results to JSON file for easy inspection
-    out = {
-        "patient_id": patient_id,
-        "event_id": event_id,
-        "params": {
-            "top_k": TOP_K,
-            "window_hours": WINDOW_HOURS,
-            "tau_hours": TAU_HOURS,
-            "near_duplicate_delta": 0.0,
-        },
-        "results": results,
-    }
-    out_path = Path("agents/ICUAssistantAgent/test_search_v1.json")
-    try:
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
-        logger.info(f"Saved search results to {out_path}")
-    except Exception as e:
-        logger.error(f"Failed to write JSON results: {e}")
-
-    logger.info(f"Replay finished. Total events written={total_written}")
-    return 0
+    # Use the latest event timestamp as reference time instead of 'now'
+    recent = memory.get_recent_events(patient_id, n=1)
+    ref_time = recent[0]["timestamp"] if recent else None
+    events = memory.get_events_within_hours(patient_id, ref_time=ref_time, hours=1)
+    print(events)
 
 
 if __name__ == "__main__":

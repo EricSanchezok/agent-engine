@@ -29,6 +29,7 @@ class SearchV1(BaseSearchAlgorithm):
         window_hours: int = 24,
         weights: Optional[Dict[str, float]] = None,
         tau_hours: float = 6.0,
+        near_duplicate_delta: float = 0.0,
     ) -> List[Dict[str, Any]]:
         if not query_event_id:
             return []
@@ -46,7 +47,11 @@ class SearchV1(BaseSearchAlgorithm):
 
         # 2) Vector recall (TopN)
         topn_vec = max(top_k * 5, 50)
-        vec_hits = await patient_mem.search(q_vec, top_k=topn_vec)  # (content, sim, md)
+        vec_hits = await patient_mem.search(
+            q_vec,
+            top_k=topn_vec,
+            near_duplicate_delta=near_duplicate_delta,
+        )  # (content, sim, md)
 
         # 3) Temporal window recall
         candidates_by_id: Dict[str, Dict[str, Any]] = {}

@@ -12,7 +12,7 @@ from agents.ICUDataIngestionAgent.agent import ICUDataIngestionAgent
 from agents.ICUMemoryAgent.agent import ICUMemoryAgent
 
 PATIENT_ID = "1125112810"
-UPDATES = 500
+UPDATES = 100
 TOP_K = 10
 WINDOW_HOURS = 24
 TAU_HOURS = 6.0

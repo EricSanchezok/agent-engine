@@ -70,6 +70,7 @@ class ICUMemoryAgent:
         weights: Optional[Dict[str, float]] = None,
         tau_hours: float = 6.0,
         version: str = "v1",
+        near_duplicate_delta: float = 0.0,
     ) -> List[Dict[str, Any]]:
         """Search related events using pluggable algorithm versions.
 
@@ -91,6 +92,7 @@ class ICUMemoryAgent:
             window_hours=window_hours,
             weights=weights,
             tau_hours=tau_hours,
+            near_duplicate_delta=near_duplicate_delta,
         )
         return results
 
