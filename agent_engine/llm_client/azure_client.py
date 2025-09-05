@@ -41,7 +41,27 @@ class AzureClient(LLMClient):
         **kwargs
     ) -> Optional[str]:
         """Call Azure OpenAI chat completion API"""
-        self.logger.info(f"🚀 Requesting Azure OpenAI: model={model_name}, max_tokens={max_tokens}")
+        trace_id = None
+        if hasattr(self, "monitor") and self.monitor is not None:
+            try:
+                trace_id = self.monitor.new_trace_id()
+                # Persist start record
+                params_for_record: Dict[str, Any] = {
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                }
+                params_for_record.update(kwargs or {})
+                await self.monitor.start_chat(
+                    trace_id=trace_id,
+                    provider="azure",
+                    model_name=model_name,
+                    messages=messages,
+                    params=params_for_record,
+                )
+            except Exception as e:
+                self.logger.warning(f"LLM monitor start failed: {e}")
+
+        self.logger.info(f"🚀 Requesting Azure OpenAI: model={model_name}, max_tokens={max_tokens}, trace_id={trace_id}")
         
         async def api_call():
             params = self._prepare_chat_params(
@@ -64,11 +84,45 @@ class AzureClient(LLMClient):
             )
             
             content = completion.choices[0].message.content
-            self.logger.info(f"✅ Azure OpenAI response received successfully")
+            self.logger.info(f"✅ Azure OpenAI response received successfully, trace_id={trace_id}")
+
+            # Extract usage if available
+            usage: Optional[Dict[str, Any]] = None
+            try:
+                usage_obj = getattr(completion, "usage", None)
+                if usage_obj is not None:
+                    # OpenAI SDK style: input_tokens, output_tokens, total_tokens
+                    usage = {
+                        "input_tokens": getattr(usage_obj, "prompt_tokens", None) or getattr(usage_obj, "input_tokens", None),
+                        "output_tokens": getattr(usage_obj, "completion_tokens", None) or getattr(usage_obj, "output_tokens", None),
+                        "total_tokens": getattr(usage_obj, "total_tokens", None),
+                    }
+            except Exception:
+                usage = None
+
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.complete_chat(
+                        trace_id=trace_id,
+                        response_text=content,
+                        usage=usage,
+                        raw=None,
+                    )
+                except Exception as e:
+                    self.logger.warning(f"LLM monitor complete failed: {e}")
             return content
             
         except Exception as e:
-            self.logger.error(f"❌ Failed to call Azure OpenAI after all retries: {e}")
+            self.logger.error(f"❌ Failed to call Azure OpenAI after all retries: {e}, trace_id={trace_id}")
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.fail_chat(
+                        trace_id=trace_id,
+                        error_message=str(e),
+                        raw=None,
+                    )
+                except Exception as e2:
+                    self.logger.warning(f"LLM monitor fail record failed: {e2}")
             return None
     
     async def get_embeddings(
@@ -126,19 +180,7 @@ class AzureClient(LLMClient):
             temperature=temperature,
             **kwargs
         )
-        
-        # Save monitoring data if response is successful
-        if response is not None:
-            self._save_chat_monitoring(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                response=response,
-                model_name=model_name,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                **kwargs
-            )
-        
+
         return response
     
     async def embedding(

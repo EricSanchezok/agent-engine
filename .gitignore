@@ -340,3 +340,5 @@ database/
 data/
 
 backup/
+
+.llm_monitoring/
