@@ -119,13 +119,14 @@
       if (!item) return;
       state.tilesSet.add(item.trace_id);
       const idx = state.tiles.findIndex((t) => t.trace_id === item.trace_id);
-      if (idx >= 0) {
-        state.tiles[idx] = { ...state.tiles[idx], ...item };
-      } else {
+      const isNew = idx < 0;
+      if (isNew) {
         state.tiles.push(item);
+      } else {
+        state.tiles[idx] = { ...state.tiles[idx], ...item };
       }
       renderDynamicStrip();
-      if (state.follow && !silent) {
+      if (state.follow && !silent && isNew) {
         state.selectedId = item.trace_id;
         fetchDetail(item.trace_id).catch(console.error);
       }
@@ -181,7 +182,7 @@
             // left list stays static; refresh newest and re-poll existing tiles to update status
             fetch(`${API_BASE}/sessions`).then(r => r.json()).then(d => {
               const newest = (d.items || [])[0];
-              if (newest && newest.trace_id) addTileById(String(newest.trace_id), true);
+              if (newest && newest.trace_id) addTileById(String(newest.trace_id));
             }).catch(() => {});
             refreshTiles();
             updateStats();
