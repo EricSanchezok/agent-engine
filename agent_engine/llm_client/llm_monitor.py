@@ -22,7 +22,7 @@ class LLMChatMonitor:
         self.logger = AgentLogger("LLMMonitor")
         self.name = name
 
-        # Ensure storage under project_root/.llm_monitoring/<name>
+        # Ensure storage under project_root/.llm_monitoring (no extra subfolder)
         project_root = get_project_root()
         persist_dir = project_root / ".llm_monitoring"
 

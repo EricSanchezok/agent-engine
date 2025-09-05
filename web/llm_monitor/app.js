@@ -95,6 +95,25 @@
   async function init() {
     bindUI();
     await fetchSessions();
+    // Subscribe SSE for realtime updates
+    try {
+      const sse = new EventSource(`${API_BASE}/stream`);
+      sse.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data || '{}');
+          if (data && data.type === 'update') {
+            fetchSessions().catch(console.error);
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+      sse.onerror = () => {
+        // Browser will try to reconnect automatically; optional: backoff UI
+      };
+    } catch (e) {
+      // SSE not available; fallback to polling only
+    }
   }
 
   window.LLMMonitorApp = { init };

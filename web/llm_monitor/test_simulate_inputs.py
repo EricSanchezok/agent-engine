@@ -17,14 +17,7 @@ from agent_engine.utils.project_root import get_project_root
 logger = AgentLogger("LLMMonitorInputsTest")
 
 
-def load_env() -> None:
-    try:
-        project_root = get_project_root()
-        env_path = project_root / ".env"
-        load_dotenv(dotenv_path=env_path)
-        logger.info(f"Loaded environment from: {env_path}")
-    except Exception as e:
-        logger.warning(f"Failed to load .env file: {e}")
+load_dotenv()
 
 
 async def simulate_inputs(user_inputs: List[str]) -> None:
@@ -64,8 +57,6 @@ async def simulate_inputs(user_inputs: List[str]) -> None:
 
 
 def main():
-    load_env()
-
     # Start the web server
     web_dir = Path(__file__).parent
     server = subprocess.Popen([sys.executable, str(web_dir / "run.py")])

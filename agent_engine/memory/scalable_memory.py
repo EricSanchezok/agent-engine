@@ -126,7 +126,33 @@ class _DB:
                 self.backend = "duckdb"
                 return
             except Exception as e:
-                logger.warning(f"DuckDB not available or failed to open: {e}. Falling back to SQLite.")
+                # Provide rich diagnostics for decoding-related issues
+                try:
+                    import sys
+                    db_path_str = str(self.db_path)
+                    fsenc = sys.getfilesystemencoding() or "unknown"
+                    if isinstance(e, UnicodeDecodeError):
+                        obj = getattr(e, "object", None)
+                        start = getattr(e, "start", None)
+                        end = getattr(e, "end", None)
+                        reason = getattr(e, "reason", None)
+                        around_hex = None
+                        if isinstance(obj, (bytes, bytearray)) and isinstance(start, int):
+                            lo = max(0, start - 8)
+                            hi = min(len(obj), start + 8)
+                            slice_bytes = obj[lo:hi]
+                            around_hex = " ".join(f"{b:02x}" for b in slice_bytes)
+                        logger.warning(
+                            "DuckDB failed to open (UnicodeDecodeError): encoding=%s start=%s end=%s reason=%s path=%r fsenc=%s around_hex=%s. Falling back to SQLite.",
+                            getattr(e, "encoding", None), start, end, reason, db_path_str, fsenc, around_hex,
+                        )
+                    else:
+                        logger.warning(
+                            "DuckDB failed to open: %s: %r path=%r fsenc=%s. Falling back to SQLite.",
+                            type(e).__name__, e, db_path_str, fsenc,
+                        )
+                except Exception:
+                    logger.warning("DuckDB failed to open and detailed logging also failed. Falling back to SQLite.")
 
         # Fallback to SQLite
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
