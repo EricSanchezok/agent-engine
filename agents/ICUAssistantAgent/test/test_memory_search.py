@@ -14,8 +14,8 @@ from agents.ICUMemoryAgent.agent import ICUMemoryAgent
 PATIENT_ID = "1125112810"
 UPDATES = 100
 TOP_K = 10
-WINDOW_HOURS = 24
 TAU_HOURS = 6.0
+VERSION = "v1"
 
 
 async def _do_search(memory: ICUMemoryAgent, patient_id: str, last_event_id: Optional[str], *, logger: AgentLogger) -> List[Dict[str, Any]]:
@@ -26,9 +26,9 @@ async def _do_search(memory: ICUMemoryAgent, patient_id: str, last_event_id: Opt
         patient_id=patient_id,
         event_id=last_event_id,
         top_k=TOP_K,
-        window_hours=WINDOW_HOURS,
         tau_hours=TAU_HOURS,
-        version="v1",
+        version=VERSION,
+        near_duplicate_delta=0.01,
     )
     for rank, r in enumerate(results, start=1):
         ev_id = r.get("event_id")
@@ -54,6 +54,7 @@ async def main() -> int:
 
     # 3) Replay updates and write into ICUMemoryAgent
     total_written = 0
+    last_event_id = None
     for i in range(1, UPDATES + 1):
         batch = await ingestion.update()
         if not batch:
@@ -62,25 +63,40 @@ async def main() -> int:
         ids = await memory.add_events(patient_id, batch)
         total_written += len(ids)
         logger.info(f"Update {i}: wrote {len(ids)} events (total={total_written})")
+        last_event_id = ids[-1]
 
-    events = await ingestion.update()
-    print(events[0])
-    event_id = events[0]["event_id"]
-    results = await _do_search(memory, patient_id, event_id, logger=logger)
+    results = await _do_search(memory, patient_id, last_event_id, logger=logger)
 
     # 4) Write results to JSON file for easy inspection
+    # enrich result items with stored content
+    enriched_results: List[Dict[str, Any]] = []
+    for r in results:
+        ev_id = r.get("event_id")
+        try:
+            info = memory.get_event_by_id(patient_id, ev_id) if ev_id else None
+            if info and isinstance(info, dict):
+                content = info.get("content")
+                if isinstance(content, str) and content:
+                    r = dict(r)
+                    r["content"] = content
+        except Exception:
+            pass
+        enriched_results.append(r)
+
+    last_event = memory.get_event_by_id(patient_id, last_event_id) if last_event_id else None
     out = {
         "patient_id": patient_id,
-        "event_id": event_id,
+        "event_id": last_event_id,
+        "metadata": last_event.get("metadata") if last_event else None,
+        "event_content": last_event.get("content") if last_event else None,
         "params": {
             "top_k": TOP_K,
-            "window_hours": WINDOW_HOURS,
             "tau_hours": TAU_HOURS,
             "near_duplicate_delta": 0.0,
         },
-        "results": results,
+        "results": enriched_results,
     }
-    out_path = Path("agents/ICUAssistantAgent/test_search_v1.json")
+    out_path = Path(f"agents/ICUAssistantAgent/test/test_search_{VERSION}.json")
     try:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")

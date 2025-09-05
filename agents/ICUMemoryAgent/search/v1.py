@@ -26,7 +26,6 @@ class SearchV1(BaseSearchAlgorithm):
         patient_mem: ScalableMemory,
         query_event_id: str,
         top_k: int = 20,
-        window_hours: int = 24,
         weights: Optional[Dict[str, float]] = None,
         tau_hours: float = 6.0,
         near_duplicate_delta: float = 0.0,
@@ -44,65 +43,45 @@ class SearchV1(BaseSearchAlgorithm):
             logger.warning(f"Query event not found or missing vector: {query_event_id}")
             return []
         q_ts = _parse_dt(q_md.get("timestamp")) if isinstance(q_md, dict) else None
+        logger.info(f"Query time: {q_ts}")
 
         # 2) Vector recall (TopN)
-        topn_vec = max(top_k * 5, 50)
+        # Strategy: recall by vector only, then re-rank with time. No pure time-window recall.
+        topn_vec = max(top_k * 10, 200)
         vec_hits = await patient_mem.search(
             q_vec,
             top_k=topn_vec,
             near_duplicate_delta=near_duplicate_delta,
         )  # (content, sim, md)
 
+        logger.info(f"Vector hits length: {len(vec_hits)}")
+
         # 3) Temporal window recall
         candidates_by_id: Dict[str, Dict[str, Any]] = {}
 
-        if q_ts is not None and window_hours > 0:
-            start_dt = q_ts - timedelta(hours=window_hours)
-            end_dt = q_ts + timedelta(hours=window_hours)
-        else:
-            start_dt = None
-            end_dt = None
-
-        # Add vector hits
+        # Add vector hits with causality
         for content, sim, md in vec_hits:
             ev_id = md.get("id")
             if not ev_id or ev_id == query_event_id:
                 continue
             ts = _parse_dt(md.get("timestamp"))
-            in_window = False
-            if start_dt is None or ts is None:
-                in_window = True
-            else:
-                in_window = (start_dt <= ts <= end_dt)
+            # Enforce causality: keep only events strictly before query time when q_ts is available
+            if q_ts is not None:
+                if ts is None or ts >= q_ts:
+                    logger.info(f"Event {ev_id} is not strictly before query time: {ts} >= {q_ts}")
+                    continue
 
             candidates_by_id.setdefault(ev_id, {
                 "event_id": ev_id,
                 "content": content,
                 "metadata": md,
                 "sim_vec": float(sim),
-                "in_window": in_window,
             })
             # Keep max similarity if duplicates
             if candidates_by_id[ev_id]["sim_vec"] < float(sim):
                 candidates_by_id[ev_id]["sim_vec"] = float(sim)
 
-        # Add all events in the time window as candidates (even if not in vec hits)
-        if start_dt is not None and end_dt is not None:
-            for content, vector, md in patient_mem.get_all():
-                ev_id = md.get("id")
-                if not ev_id or ev_id == query_event_id:
-                    continue
-                ts = _parse_dt(md.get("timestamp"))
-                if ts is None:
-                    continue
-                if start_dt <= ts <= end_dt:
-                    can = candidates_by_id.setdefault(ev_id, {
-                        "event_id": ev_id,
-                        "content": content,
-                        "metadata": md,
-                        "sim_vec": 0.0,
-                        "in_window": True,
-                    })
+        logger.info(f"Candidates length: {len(candidates_by_id)}")
 
         # 4) Re-rank with time_score
         results: List[Dict[str, Any]] = []
@@ -125,7 +104,10 @@ class SearchV1(BaseSearchAlgorithm):
                     "time_score": time_score,
                 },
                 "metadata": md,
+                "content": it.get("content")
             })
+
+        logger.info(f"Results length: {len(results)}")
 
         # 5) Sort and take top_k
         results.sort(key=lambda x: x["score"], reverse=True)

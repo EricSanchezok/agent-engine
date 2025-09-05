@@ -1,6 +1,7 @@
 import os
 import threading
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
@@ -43,7 +44,8 @@ class ICUMemoryAgent:
         self.llm_client = AzureClient(api_key=api_key, base_url=base_url, api_version=api_version)
         # Explicitly choose embedding model
         self.embed_model: str = os.getenv("AGENT_ENGINE_EMBED_MODEL", "text-embedding-3-large")
-        self.persist_dir: str = get_current_file_dir() / 'database'
+        # Accept both Path and str for persist_dir
+        self.persist_dir: str | Path = get_current_file_dir() / 'database'
 
         # Global vector cache: id = event_id, content is a small marker, vector stored
         self._vector_cache = ScalableMemory(
@@ -64,9 +66,8 @@ class ICUMemoryAgent:
     async def search_related_events(
         self,
         patient_id: str,
-        event_id: str,
+        event_id: str,  
         top_k: int = 20,
-        window_hours: int = 24,
         weights: Optional[Dict[str, float]] = None,
         tau_hours: float = 6.0,
         version: str = "v1",
@@ -89,7 +90,6 @@ class ICUMemoryAgent:
             patient_mem=patient_mem,
             query_event_id=event_id,
             top_k=top_k,
-            window_hours=window_hours,
             weights=weights,
             tau_hours=tau_hours,
             near_duplicate_delta=near_duplicate_delta,
@@ -133,6 +133,50 @@ class ICUMemoryAgent:
             self.logger.error(f"Failed to delete patient memory '{patient_id}': {e}")
             return False
 
+    def delete_vector_cache(self) -> bool:
+        """Clear the global vector cache storage (icu_vector_cache).
+
+        Notes:
+        - This only provides the API; do NOT call if you need to preserve existing cache.
+        - Implementation relies on ScalableMemory.clear() to wipe stored items and index.
+        - Physical files are not force-removed here to avoid accidental data loss.
+        """
+        try:
+            try:
+                self._vector_cache.clear()
+            except Exception as e:
+                self.logger.warning(f"Failed to clear vector cache items: {e}")
+            # Best-effort: close DB handle
+            try:
+                self._vector_cache.db.close()
+            except Exception:
+                pass
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to delete vector cache: {e}")
+            return False
+
+    def close_all(self) -> None:
+        """Close all underlying memory backends (patient memories and vector cache)."""
+        # Close patient memories
+        try:
+            with self._lock:
+                mems = list(self._patient_memories.values())
+                self._patient_memories.clear()
+            for mem in mems:
+                try:
+                    mem.db.close()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Close vector cache
+        try:
+            self._vector_cache.db.close()
+        except Exception:
+            pass
+
     async def add_event(self, patient_id: str, event: Dict[str, Any]) -> str:
         """Add a single ICU event into the patient's memory and the global vector cache.
 
@@ -169,12 +213,7 @@ class ICUMemoryAgent:
             )
 
         # Upsert into patient's memory using provided vector and custom id
-        md = {
-            "patient_id": patient_id,
-            "timestamp": timestamp,
-            "event_type": event_type,
-            "sub_type": sub_type,
-        }
+        md = self._build_metadata(patient_id, event)
         patient_mem = self._get_patient_memory(patient_id)
         await patient_mem.add(content=content, vector=vector, metadata=md, item_id=event_id)
         return event_id
@@ -384,6 +423,7 @@ class ICUMemoryAgent:
             "timestamp": self._extract_timestamp(event),
             "event_type": self._get_nested(event, ["event_type"]) or self._get_nested(event, ["raw", "event_type"]) or "",
             "sub_type": self._get_nested(event, ["sub_type"]) or self._get_nested(event, ["raw", "sub_type"]) or "",
+            "raw_content": self._get_nested(event, ["raw", "event_content"]),
         }
 
     def _event_to_text(self, event: Dict[str, Any]) -> str:

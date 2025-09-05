@@ -1,0 +1,70 @@
+{
+  "patient_id": "1125112810",
+  "event_id": "d8ea11a5-1f4e-4b9d-8855-30c94435a69b",
+  "metadata": {
+    "patient_id": "1125112810",
+    "timestamp": "2024-05-27T18:40:00",
+    "event_type": "nursing",
+    "sub_type": "药物执行",
+    "raw_content": "药物配方:, 0.9氯化钠注射液/100ml软袋/袋单次剂量: 100.0ml, 盐酸氨溴索注射液(塑瓶)/2ml:15mg/支单次剂量: 30.0mg, 执行方式: 静滴, 执行频次: QD, 总剂量: 100.0ml, 执行剂量: 100.0ml"
+  },
+  "event_content": "Medication formulation: 0.9% Sodium Chloride Injection/100 mL soft bag/single dose: 100 mL, Ambroxol Hydrochloride Injection (plastic vial)/2 mL: 15 mg/vial single dose: 30 mg, Administration route: IV drip, Frequency: QD, Total volume: 100 mL, Administered volume: 100 mL",
+  "params": {
+    "top_k": 10,
+    "tau_hours": 6.0,
+    "near_duplicate_delta": 0.0
+  },
+  "results": [
+    {
+      "event_id": "55c3d3f5-e353-4361-b462-f02012daf595",
+      "score": 0.8655443331176689,
+      "reasons": {
+        "sim_vec": 0.7981767058372498,
+        "time_score": 0.932911960398088
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T18:15:00",
+        "event_type": "nursing",
+        "sub_type": "药物执行",
+        "raw_content": "药物配方:, 0.9氯化钠注射液/100ml软袋/袋单次剂量: 100.0ml, (壹丽安)注射用艾普拉唑钠/10mg1/瓶单次剂量: 10.0mg, 执行方式: 静滴, 执行频次: QD, 总剂量: 100.0ml, 执行剂量: 100.0ml",
+        "id": "55c3d3f5-e353-4361-b462-f02012daf595"
+      },
+      "content": "Medication formulation: 0.9% Sodium Chloride Injection/100 mL soft bag/single dose: 100 mL, Ilaprazole Sodium for Injection/10 mg/vial single dose: 10 mg, Administration route: IV drip, Frequency: QD, Total dose: 100 mL, Administered dose: 100 mL"
+    },
+    {
+      "event_id": "f2400d5d-fbd7-4eae-a488-4e8f4e1762d1",
+      "score": 0.7913653670018412,
+      "reasons": {
+        "sim_vec": 0.7244102954864502,
+        "time_score": 0.8583204385172322
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T17:45:00",
+        "event_type": "nursing",
+        "sub_type": "药物执行",
+        "raw_content": "药物配方:, 0.9氯化钠注射液/100ml软袋/袋单次剂量: 100.0ml, (稳可信)注射用盐酸万古霉素/500mg/瓶单次剂量: 1000.0mg, 执行方式: 静滴, 执行频次: QD, 总剂量: 100.0ml, 执行剂量: 100.0ml",
+        "id": "f2400d5d-fbd7-4eae-a488-4e8f4e1762d1"
+      },
+      "content": "Medication formulation: 0.9% Sodium Chloride Injection/100 mL soft bag/single dose: 100.0 mL, Vancomycin Hydrochloride for Injection (Vancocin)/500 mg/vial/single dose: 1000.0 mg. Administration route: IV infusion. Frequency: QD. Total volume: 100.0 mL. Administered volume: 100.0 mL."
+    },
+    {
+      "event_id": "293f0b62-ac76-4f4a-95b2-33d514c90664",
+      "score": 0.624912187266558,
+      "reasons": {
+        "sim_vec": 0.7284066081047058,
+        "time_score": 0.5214177664284101
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T14:45:34",
+        "event_type": "order",
+        "sub_type": "order",
+        "raw_content": "医嘱类型: temporary\n医嘱内容:\n- 0.9氯化钠注射液/100ml软袋/袋\n- 盐酸氨溴索注射液(塑瓶)/2ml:15mg/支",
+        "id": "293f0b62-ac76-4f4a-95b2-33d514c90664"
+      },
+      "content": "Order type: Temporary  \nOrder content:  \n- Sodium chloride 0.9% injection/100 mL soft bag/bag  \n- Ambroxol hydrochloride injection (plastic vial)/2 mL: 15 mg/ampule"
+    }
+  ]
+}
