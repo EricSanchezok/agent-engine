@@ -52,6 +52,7 @@ class SearchV1(BaseSearchAlgorithm):
             q_vec,
             top_k=topn_vec,
             near_duplicate_delta=near_duplicate_delta,
+            ef_search=topn_vec,
         )  # (content, sim, md)
 
         logger.info(f"Vector hits length: {len(vec_hits)}")

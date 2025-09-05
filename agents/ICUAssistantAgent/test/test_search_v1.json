@@ -65,6 +65,125 @@
         "id": "293f0b62-ac76-4f4a-95b2-33d514c90664"
       },
       "content": "Order type: Temporary  \nOrder content:  \n- Sodium chloride 0.9% injection/100 mL soft bag/bag  \n- Ambroxol hydrochloride injection (plastic vial)/2 mL: 15 mg/ampule"
+    },
+    {
+      "event_id": "63453fbd-be35-421d-9f8d-0f759f02b0e6",
+      "score": 0.6083606178481031,
+      "reasons": {
+        "sim_vec": 0.6508815288543701,
+        "time_score": 0.565839706841836
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T15:15:00",
+        "event_type": "nursing",
+        "sub_type": "药物执行",
+        "raw_content": "药物配方:, 碳酸氢钠林格注射液/500ml/袋单次剂量: 500.0ml, 执行方式: 静滴, 执行频次: QD, 总剂量: 500.0ml, 执行剂量: 500.0ml",
+        "id": "63453fbd-be35-421d-9f8d-0f759f02b0e6"
+      },
+      "content": "Medication formulation: Sodium bicarbonate Ringer's injection/500 mL/bag  \nSingle dose: 500 mL  \nAdministration route: IV drip  \nFrequency: QD  \nTotal dose: 500 mL  \nAdministered dose: 500 mL"
+    },
+    {
+      "event_id": "99ba0bf8-4c5c-4c4d-8bc9-d05ad9712fb3",
+      "score": 0.5975605697562936,
+      "reasons": {
+        "sim_vec": 0.300281822681427,
+        "time_score": 0.8948393168311602
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T18:00:00",
+        "event_type": "nursing",
+        "sub_type": "疼痛评估及记录单",
+        "raw_content": "性别: 女, 年龄: 80, 入院时间: 2024.05.21 15:52:46:9460, 主要诊断: 脑积水, 药物不良反应: 无（）, 程度评分: 0（无痛）,, 性别: 女, 年龄: 80, 入院时间: 2024.05.21 15:52:46:9460, 主要诊断: 脑积水, 药物不良反应: 无（）, 程度评分: 0（无痛）",
+        "id": "99ba0bf8-4c5c-4c4d-8bc9-d05ad9712fb3"
+      },
+      "content": "Sex: Female, Age: 80, Admission Time: 2024-05-21 15:52:46.9460, Primary Diagnosis: Hydrocephalus, Adverse Drug Reaction: None, Severity Score: 0 (No pain)."
+    },
+    {
+      "event_id": "0051431b-98f0-4541-8d33-a3ceb7b7e896",
+      "score": 0.5964543969562295,
+      "reasons": {
+        "sim_vec": 0.29806947708129883,
+        "time_score": 0.8948393168311602
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T18:00:00",
+        "event_type": "nursing",
+        "sub_type": "护理措施",
+        "raw_content": "患者呼之不应各路推泵畅右侧卧位",
+        "id": "0051431b-98f0-4541-8d33-a3ceb7b7e896"
+      },
+      "content": "Patient unresponsive, all infusion pumps patent, right lateral position."
+    },
+    {
+      "event_id": "ddf30375-e292-4f9d-9ded-fa04b5412cc4",
+      "score": 0.5880987055037247,
+      "reasons": {
+        "sim_vec": 0.6599200367927551,
+        "time_score": 0.5162773742146942
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T14:42:00",
+        "event_type": "nursing",
+        "sub_type": "药物执行",
+        "raw_content": "药物配方:, 0.9氯化钠注射液10ml大冢/10ml:0.09g/单次剂量: 30.0ml, (佩尔)盐酸尼卡地平注射液/10mg:10ml/支单次剂量: 20.0mg, 执行方式: 静脉推泵, 执行频次: QD, 总剂量: 30.0ml, 执行剂量: 50.0ml",
+        "id": "ddf30375-e292-4f9d-9ded-fa04b5412cc4"
+      },
+      "content": "Medication formulation: 0.9% Sodium Chloride Injection 10 mL (Otsuka)/10 mL: 0.09 g, single dose: 30.0 mL; Nicardipine Hydrochloride Injection (Per)/10 mg: 10 mL/vial, single dose: 20.0 mg. Administration route: IV push/pump. Frequency: QD. Total volume: 30.0 mL. Administered volume: 50.0 mL."
+    },
+    {
+      "event_id": "2434424b-22af-447a-b8ef-70545bdf454a",
+      "score": 0.5822505041570876,
+      "reasons": {
+        "sim_vec": 0.2341768741607666,
+        "time_score": 0.9303241341534084
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T18:14:00",
+        "event_type": "nursing",
+        "sub_type": "护理措施",
+        "raw_content": "床边血气分析",
+        "id": "2434424b-22af-447a-b8ef-70545bdf454a"
+      },
+      "content": "Bedside arterial blood gas analysis"
+    },
+    {
+      "event_id": "3a8531ce-888e-497f-81e2-2426cf796751",
+      "score": 0.5815370015772364,
+      "reasons": {
+        "sim_vec": 0.23210358619689941,
+        "time_score": 0.9309704169575734
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T18:14:15",
+        "event_type": "blood_gas",
+        "sub_type": "blood_gas",
+        "raw_content": "血气分析结果：\n- Hct: 40.8307452632085\n- tO2: 8.11753644027947 mmol/l\n- cBase(B): 2.16425811806544 mmol/l\n- Glu: 6.69608499923261 mmol/l\n- tHb: 8.26700653233621 mmol/l\n- K: 3.61738082728473 mmol/l\n- Lac: 1.54921016323663 mmol/l\n- sO2: 97.3833084106445\n- SBC: 26.3045499210836 mmol/l\n- O2Hb: 96.6042419433594\n- Na: 137.553821986619 mmol/l\n- Ca: 1.11122967121497 mmol/l\n- HHb: 2.59575805664063\n- Cl-: 104.249855190139 mmol/l\n- FIO2: 21.0\n- pH(T): 7.45988403369449 phunit\n- HCO3-: 25.858550385843 mmol/l\n- pO2(T): 12.5007093626743 kPa\n- cBase(Ecf): 2.02867173169375 mmol/l\n- pCO2: 4.85279901971917 kPa\n- pO2: 12.5007093626743 kPa\n- pCO2(T): 4.85279901971917 kPa\n- pH: 7.45988403369449 phunit\n- T: 37.0 C\n- p50(act): 3.32220322810725 kPa",
+        "id": "3a8531ce-888e-497f-81e2-2426cf796751"
+      },
+      "content": "Arterial blood gas analysis results:  \n- Hct: 40.83%  \n- tO2: 8.12 mmol/L  \n- cBase(B): 2.16 mmol/L  \n- Glu: 6.70 mmol/L  \n- tHb: 8.27 mmol/L  \n- K: 3.62 mmol/L  \n- Lac: 1.55 mmol/L  \n- sO2: 97.38%  \n- SBC: 26.30 mmol/L  \n- O2Hb: 96.60%  \n- Na: 137.55 mmol/L  \n- Ca: 1.11 mmol/L  \n- HHb: 2.60%  \n- Cl-: 104.25 mmol/L  \n- FIO2: 21.0%  \n- pH(T): 7.460  \n- HCO3-: 25.86 mmol/L  \n- pO2(T): 12.50 kPa  \n- cBase(Ecf): 2.03 mmol/L  \n- pCO2: 4.85 kPa  \n- pO2: 12.50 kPa  \n- pCO2(T): 4.85 kPa  \n- pH: 7.460  \n- T: 37.0°C  \n- p50(act): 3.32 kPa"
+    },
+    {
+      "event_id": "f67fef73-6996-4cc9-80e9-8ed3fef1ed21",
+      "score": 0.5808897474570174,
+      "reasons": {
+        "sim_vec": 0.5170270800590515,
+        "time_score": 0.6447524148549832
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T16:02:00",
+        "event_type": "nursing",
+        "sub_type": "药物执行",
+        "raw_content": "药物配方:, (速乐涓)蛇毒血凝酶注射液/1u:1ml/支单次剂量: 2.0u, 执行方式: 静推, 执行频次: QD",
+        "id": "f67fef73-6996-4cc9-80e9-8ed3fef1ed21"
+      },
+      "content": "Medication formulation: (Sulejuan) Batroxobin Injection 1 u:1 mL/ampoule, single dose: 2.0 u, administration route: IV push, frequency: QD"
     }
   ]
 }

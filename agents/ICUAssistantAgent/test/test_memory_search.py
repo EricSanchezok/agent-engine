@@ -63,6 +63,15 @@ async def main() -> int:
         ids = await memory.add_events(patient_id, batch)
         total_written += len(ids)
         logger.info(f"Update {i}: wrote {len(ids)} events (total={total_written})")
+        # Print each event's timestamp and id to inspect ordering
+        try:
+            ts_list = [str(ev.get("timestamp")) for ev in batch]
+            is_sorted = all(ts_list[j] <= ts_list[j + 1] for j in range(len(ts_list) - 1))
+            for idx, ev in enumerate(batch, start=1):
+                logger.info(f"Update {i}: event[{idx}] ts={ev.get('timestamp')} id={ev.get('event_id')}")
+            logger.info(f"Update {i}: batch timestamps non-decreasing={is_sorted}")
+        except Exception as e:
+            logger.warning(f"Update {i}: failed to print timestamps: {e}")
         last_event_id = ids[-1]
 
     results = await _do_search(memory, patient_id, last_event_id, logger=logger)

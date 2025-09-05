@@ -477,7 +477,6 @@ class ScalableMemory:
         # Optional external LLM client embedding
         self._llm_client: Optional[Any] = llm_client
         self._embed_model: Optional[str] = embed_model or os.getenv("AGENT_ENGINE_EMBED_MODEL")
-        # Async runner removed; use native async methods
         # Whether vector storage and ANN search are enabled
         self._enable_vectors: bool = bool(enable_vectors)
 
@@ -641,6 +640,17 @@ class ScalableMemory:
         self.db.commit()
         ScalableMemory._initialized_paths[cache_key] = True
 
+    def _sanitize_name_for_fs(self, name: str) -> str:
+        return "".join(ch if (ch.isalnum() or ch in ("_", "-", ".")) else "_" for ch in str(name))
+
+    def _compute_index_path(self, backend: str) -> Path:
+        safe = self._sanitize_name_for_fs(self.name)
+        if backend == "hnswlib":
+            return self.base_dir / f"index_hnsw_{safe}.bin"
+        if backend == "annoy":
+            return self.base_dir / f"index_annoy_{safe}.ann"
+        return self.base_dir / f"index_bruteforce_{safe}.json"
+
     def _ensure_index_initialized(self) -> None:
         dim_opt = self._get_vector_dim()
         if dim_opt is None:
@@ -660,21 +670,28 @@ class ScalableMemory:
                     ef_c = int(self._index_params.get("ef_construction", 200))
                     self._index = _HNSWIndex(dim=dim, space="cosine", init_capacity=init_cap, m=m, ef_construction=ef_c)
                     self._index_backend = "hnswlib"
-                    self._index_path = self.base_dir / "index_hnsw.bin"
+                    new_path = self._compute_index_path(self._index_backend)
+                    legacy_path = self.base_dir / "index_hnsw.bin"
                 elif backend == "annoy":
                     n_trees = int(self._index_params.get("n_trees", 10))
                     self._index = _AnnoyIndex(dim=dim, metric="angular", n_trees=n_trees)
                     self._index_backend = "annoy"
-                    self._index_path = self.base_dir / "index_annoy.ann"
+                    new_path = self._compute_index_path(self._index_backend)
+                    legacy_path = self.base_dir / "index_annoy.ann"
                 else:
                     self._index = _BruteForceIndex(dim=dim)
                     self._index_backend = "bruteforce"
-                    self._index_path = self.base_dir / "index_bruteforce.json"
+                    new_path = self._compute_index_path(self._index_backend)
+                    legacy_path = self.base_dir / "index_bruteforce.json"
 
-                # Try to load existing
-                if not self._index.load(self._index_path, dim):
-                    # Rebuild from DB if vectors exist
-                    self._rebuild_index_from_db()
+                # Prefer new per-name path; fallback to legacy shared filename
+                self._index_path = new_path
+                if not self._index.load(new_path, dim):
+                    if not self._index.load(legacy_path, dim):
+                        # Rebuild from DB if vectors exist (and then save to new path)
+                        self._rebuild_index_from_db()
+                    else:
+                        self._index_path = legacy_path
                 logger.info(f"ScalableMemory index ready: backend={self._index_backend}")
                 return
             except Exception as e:
@@ -711,21 +728,28 @@ class ScalableMemory:
                     ef_c = int(self._index_params.get("ef_construction", 200))
                     self._index = _HNSWIndex(dim=dim, space="cosine", init_capacity=init_cap, m=m, ef_construction=ef_c)
                     self._index_backend = "hnswlib"
-                    self._index_path = self.base_dir / "index_hnsw.bin"
+                    new_path = self._compute_index_path(self._index_backend)
+                    legacy_path = self.base_dir / "index_hnsw.bin"
                 elif backend == "annoy":
                     n_trees = int(self._index_params.get("n_trees", 10))
                     self._index = _AnnoyIndex(dim=dim, metric="angular", n_trees=n_trees)
                     self._index_backend = "annoy"
-                    self._index_path = self.base_dir / "index_annoy.ann"
+                    new_path = self._compute_index_path(self._index_backend)
+                    legacy_path = self.base_dir / "index_annoy.ann"
                 else:
                     self._index = _BruteForceIndex(dim=dim)
                     self._index_backend = "bruteforce"
-                    self._index_path = self.base_dir / "index_bruteforce.json"
+                    new_path = self._compute_index_path(self._index_backend)
+                    legacy_path = self.base_dir / "index_bruteforce.json"
 
-                # Try to load existing
-                if not self._index.load(self._index_path, dim):
-                    # Rebuild from DB if vectors exist
-                    self._rebuild_index_from_db()
+                # Prefer new per-name path; fallback to legacy shared filename
+                self._index_path = new_path
+                if not self._index.load(new_path, dim):
+                    if not self._index.load(legacy_path, dim):
+                        # Rebuild from DB if vectors exist (and then save to new path)
+                        self._rebuild_index_from_db()
+                    else:
+                        self._index_path = legacy_path
                 logger.info(f"ScalableMemory index ready: backend={self._index_backend}")
                 return
             except Exception as e:
@@ -1023,9 +1047,15 @@ class ScalableMemory:
         else:
             q_vec = await self._embed_text_async(str(query))
 
+        # Clamp k to number of items to avoid hnswlib contiguous array error when k > size
+        total = self.count()
+        if total <= 0:
+            return []
+        k = int(max(1, min(int(top_k), total)))
+
         with self._rw.read_locked():
             assert self._index is not None
-            labels, distances = self._index.search(q_vec, top_k=top_k, ef_search=ef_search)
+            labels, distances = self._index.search(q_vec, top_k=k, ef_search=(max(k, int(ef_search)) if ef_search is not None else None))
 
             results: List[Tuple[str, float, Dict[str, Any]]] = []
             for lb, dist in zip(labels, distances):

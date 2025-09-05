@@ -47,12 +47,12 @@ class ICUMemoryAgent:
         # Accept both Path and str for persist_dir
         self.persist_dir: str | Path = get_current_file_dir() / 'database'
 
-        # Global vector cache: id = event_id, content is a small marker, vector stored
+        # Global vector cache: isolate storage under its own subdirectory
         self._vector_cache = ScalableMemory(
             name="icu_vector_cache",
             llm_client=self.llm_client,
             embed_model=self.embed_model,
-            persist_dir=self.persist_dir
+            persist_dir=Path(self.persist_dir),
         )
 
         # Patient memory cache in process
@@ -102,7 +102,8 @@ class ICUMemoryAgent:
 
         Steps:
         - If the memory is loaded in-process, drop it from cache.
-        - Remove the directory under .memory/{patient_id}/ including DB and index files.
+        - Remove the directory under persist_dir/{patient_id}/ including DB and index files.
+        - For backward compatibility, also attempt to remove legacy path .memory/{patient_id}/.
         - Return True if removal succeeds or directory not found; False on errors.
         """
         try:
@@ -116,18 +117,29 @@ class ICUMemoryAgent:
                 except Exception:
                     pass
 
-            # Compute directory path mirroring ScalableMemory
-            from agent_engine.utils.project_root import get_project_root
+            import shutil
             from pathlib import Path
 
-            base_dir = Path(get_project_root()) / ".memory" / str(patient_id)
-            if not base_dir.exists():
-                return True
+            targets: list[Path] = []
+            # Primary (current) persist path
+            try:
+                targets.append(Path(self.persist_dir) / str(patient_id))
+            except Exception:
+                pass
+            # Legacy path fallback: project_root/.memory/{patient_id}
+            try:
+                from agent_engine.utils.project_root import get_project_root
+                targets.append(Path(get_project_root()) / ".memory" / str(patient_id))
+            except Exception:
+                pass
 
-            # Remove files
-            import shutil
+            removed_any = False
+            for d in targets:
+                if d.exists():
+                    shutil.rmtree(d, ignore_errors=True)
+                    removed_any = True
 
-            shutil.rmtree(base_dir, ignore_errors=True)
+            # If nothing existed, also consider as success
             return True
         except Exception as e:
             self.logger.error(f"Failed to delete patient memory '{patient_id}': {e}")
@@ -195,9 +207,6 @@ class ICUMemoryAgent:
         if not event_id:
             raise ValueError("Event is missing 'event_id' or 'id'")
 
-        timestamp = self._extract_timestamp(event)
-        event_type = self._get_nested(event, ["event_type"]) or self._get_nested(event, ["raw", "event_type"]) or ""
-        sub_type = self._get_nested(event, ["sub_type"]) or self._get_nested(event, ["raw", "sub_type"]) or ""
         content = self._event_to_text(event)
 
         # Try reuse vector from global cache
@@ -397,7 +406,7 @@ class ICUMemoryAgent:
                 name=str(patient_id),
                 llm_client=self.llm_client,
                 embed_model=self.embed_model,
-                persist_dir=self.persist_dir,
+                persist_dir=Path(self.persist_dir),
             )
             self._patient_memories[patient_id] = mem
             return mem
