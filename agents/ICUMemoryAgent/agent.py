@@ -61,55 +61,10 @@ class ICUMemoryAgent:
 
         self.logger.info("ICUMemoryAgent initialized with Azure embeddings and ScalableMemory backends")
 
-    # ----------------------- Public APIs -----------------------
-    async def search_related_events(
-        self,
-        patient_id: str,
-        event_id: str,  
-        top_k: int = 20,
-        weights: Optional[Dict[str, float]] = None,
-        tau_hours: float = 6.0,
-        version: str = "v1",
-        near_duplicate_delta: float = 0.0,
-    ) -> List[Dict[str, Any]]:
-        """Search related events using pluggable algorithm versions.
-
-        Currently v1 implements sim_vec + time_score only.
-        """
-        patient_mem = self._get_patient_memory(patient_id)
-
-        if version == "v1":
-            from .search.v1 import SearchV1
-
-            algo = SearchV1()
-        else:
-            raise ValueError(f"Unsupported search version: {version}")
-
-        results = await algo.search_related_events(
-            patient_mem=patient_mem,
-            query_event_id=event_id,
-            top_k=top_k,
-            weights=weights,
-            tau_hours=tau_hours,
-            near_duplicate_delta=near_duplicate_delta,
-        )
-        return results
-
-        
     def delete_patient_memory(self, patient_id: str) -> bool:
-        """Delete the persistent database and index for a given patient_id.
-
-        Steps:
-        - If the memory is loaded in-process, drop it from cache.
-        - Remove the directory under persist_dir/{patient_id}/ including DB and index files.
-        - For backward compatibility, also attempt to remove legacy path .memory/{patient_id}/.
-        - Return True if removal succeeds or directory not found; False on errors.
-        """
         try:
-            # Remove from in-memory cache so no open handles remain
             with self._lock:
                 mem = self._patient_memories.pop(patient_id, None)
-            # Best-effort: try to close DB connection if accessible
             if mem is not None:
                 try:
                     mem.db.close()
@@ -120,44 +75,32 @@ class ICUMemoryAgent:
             from pathlib import Path
 
             targets: list[Path] = []
-            # Primary (current) persist path
             try:
                 targets.append(Path(self.persist_dir))
             except Exception:
                 pass
-            # Legacy path fallback: project_root/.memory/{patient_id}
+
             try:
                 from agent_engine.utils.project_root import get_project_root
                 targets.append(Path(get_project_root()) / ".memory")
             except Exception:
                 pass
 
-            removed_any = False
             for d in targets:
                 if d.exists():
                     shutil.rmtree(d, ignore_errors=True)
-                    removed_any = True
 
-            # If nothing existed, also consider as success
             return True
         except Exception as e:
             self.logger.error(f"Failed to delete patient memory '{patient_id}': {e}")
             return False
 
     def delete_vector_cache(self) -> bool:
-        """Clear the global vector cache storage (icu_vector_cache).
-
-        Notes:
-        - This only provides the API; do NOT call if you need to preserve existing cache.
-        - Implementation relies on ScalableMemory.clear() to wipe stored items and index.
-        - Physical files are not force-removed here to avoid accidental data loss.
-        """
         try:
             try:
                 self._vector_cache.clear()
             except Exception as e:
                 self.logger.warning(f"Failed to clear vector cache items: {e}")
-            # Best-effort: close DB handle
             try:
                 self._vector_cache.db.close()
             except Exception:
