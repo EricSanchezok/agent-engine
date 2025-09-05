@@ -155,13 +155,43 @@ class _DB:
                     logger.warning("DuckDB failed to open and detailed logging also failed. Falling back to SQLite.")
 
         # Fallback to SQLite
-        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        try:
+            # If DuckDB was preferred but failed, switch to a clear .sqlite3 file name
+            if self.prefer_duckdb and str(self.db_path).lower().endswith(".duckdb"):
+                try:
+                    self.db_path = self.db_path.with_suffix(".sqlite3")
+                except Exception:
+                    # Fallback if suffix replacement fails for any reason
+                    self.db_path = Path(str(self.db_path) + ".sqlite3")
+        except Exception:
+            pass
+
+        # Use a connect timeout for better multi-process WAL behavior
+        self._conn = sqlite3.connect(
+            str(self.db_path),
+            check_same_thread=False,
+            timeout=5.0,
+        )
         self.backend = "sqlite"
+
+        # Pragmas tuned for read-heavy, multi-process WAL usage
+        # WAL provides readers-writer concurrency; NORMAL sync balances safety/perf
         self._conn.execute("PRAGMA journal_mode=WAL;")
         self._conn.execute("PRAGMA synchronous=NORMAL;")
-        self._conn.execute("PRAGMA temp_store = MEMORY;")
-        self._conn.execute("PRAGMA mmap_size = 30000000000;")  # 30GB hint
+        self._conn.execute("PRAGMA temp_store=MEMORY;")
+        self._conn.execute("PRAGMA mmap_size=30000000000;")  # 30GB hint
+        # New pragmas for stability and throughput
+        self._conn.execute("PRAGMA busy_timeout=5000;")  # ms
+        self._conn.execute("PRAGMA cache_size=-16384;")    # ~16MB cache
+        self._conn.execute("PRAGMA wal_autocheckpoint=2000;")  # ~8MB @ 4KB pages
+        self._conn.execute("PRAGMA journal_size_limit=67108864;")  # 64MB cap
+        self._conn.execute("PRAGMA locking_mode=NORMAL;")
         self._conn.commit()
+        # Track last WAL checkpoint time
+        try:
+            self._last_wal_checkpoint_ts = time.time()
+        except Exception:
+            self._last_wal_checkpoint_ts = 0.0
 
     def execute(self, sql: str, params: Tuple[Any, ...] = ()):
         if self.backend == "duckdb":
@@ -189,6 +219,19 @@ class _DB:
 
     def commit(self) -> None:
         self._conn.commit()
+        # Periodically checkpoint WAL to control file growth without blocking writers
+        try:
+            if self.backend == "sqlite":
+                now = time.time()
+                last = getattr(self, "_last_wal_checkpoint_ts", 0.0)
+                if (now - last) > 10.0:
+                    try:
+                        self._conn.execute("PRAGMA wal_checkpoint(PASSIVE);")
+                    finally:
+                        self._last_wal_checkpoint_ts = now
+        except Exception:
+            # Non-fatal; continue
+            pass
 
     def close(self) -> None:
         try:

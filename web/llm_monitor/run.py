@@ -51,7 +51,7 @@ class LLMMonitorAPIHandler(SimpleHTTPRequestHandler):
         # Use the same persist_dir as the monitor: project_root/.llm_monitoring
         project_root = get_project_root()
         persist_dir = project_root / ".llm_monitoring"
-        return ScalableMemory(name="llm_chats", enable_vectors=False, persist_dir=str(persist_dir))
+        return ScalableMemory(name="llm_chats", enable_vectors=False, persist_dir=str(persist_dir), db_backend="sqlite")
 
     def _handle_sessions(self, parsed):
         qs = parse_qs(parsed.query or "")

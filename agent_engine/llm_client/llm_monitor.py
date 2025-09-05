@@ -31,6 +31,7 @@ class LLMChatMonitor:
             name=name,
             enable_vectors=enable_vectors,
             persist_dir=str(persist_dir),
+            db_backend="sqlite",
         )
 
     def new_trace_id(self, prefix: str = "llm") -> str:
