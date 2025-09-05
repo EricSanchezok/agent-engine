@@ -1,189 +1,359 @@
 {
   "patient_id": "1125112810",
-  "event_id": "d8ea11a5-1f4e-4b9d-8855-30c94435a69b",
+  "event_id": "81d37bac-84b4-48f9-a118-86082bc4fb38",
   "metadata": {
     "patient_id": "1125112810",
-    "timestamp": "2024-05-27T18:40:00",
+    "timestamp": "2024-06-06T08:19:29",
     "event_type": "nursing",
-    "sub_type": "药物执行",
-    "raw_content": "药物配方:, 0.9氯化钠注射液/100ml软袋/袋单次剂量: 100.0ml, 盐酸氨溴索注射液(塑瓶)/2ml:15mg/支单次剂量: 30.0mg, 执行方式: 静滴, 执行频次: QD, 总剂量: 100.0ml, 执行剂量: 100.0ml"
+    "sub_type": "导管观察及护理记录",
+    "raw_content": "性别: 女, 年龄: 80, 置管深度: 距鼻尖50, 导管措施: 1;2;3;5;6;7;8;10, 置管部位: 左鼻腔, 置管种类: 4.胃管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 距鼻尖50, 导管措施: 1;2;3;5;6;7;8;10, 置管部位: 左鼻腔, 置管种类: 4.胃管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评"
   },
-  "event_content": "Medication formulation: 0.9% Sodium Chloride Injection, 100 mL soft bag, single dose: 100 mL; Ambroxol Hydrochloride Injection (plastic vial), 2 mL: 15 mg per vial, single dose: 30 mg. Administration route: IV drip. Frequency: QD. Total volume: 100 mL. Administered volume: 100 mL.",
+  "event_content": "Sex: Female, Age: 80, Catheter depth: 50 cm from nasal tip, Catheter measures: 1;2;3;5;6;7;8;10, Catheter site: Left nasal cavity, Catheter type: Nasogastric tube, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal, Catheter observation: Secured, patent, surrounding skin normal, Catheter placement method: Guided, Catheter days: 0, ICU transfer out: No, Extubation criteria assessment: Completed.",
   "params": {
-    "top_k": 10,
+    "top_k": 20,
     "tau_hours": 6.0,
     "near_duplicate_delta": 0.0
   },
   "results": [
     {
-      "event_id": "55c3d3f5-e353-4361-b462-f02012daf595",
-      "score": 0.8563171466762474,
+      "event_id": "428ec94e-856b-4e72-b9e5-a37ce713c3b9",
+      "score": 0.9248685510278263,
       "reasons": {
-        "sim_vec": 0.7797223329544067,
-        "time_score": 0.932911960398088
+        "sim_vec": 0.850523829460144,
+        "time_score": 0.9992132725955085
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T18:15:00",
+        "timestamp": "2024-06-06T08:19:12",
         "event_type": "nursing",
-        "sub_type": "药物执行",
-        "raw_content": "药物配方:, 0.9氯化钠注射液/100ml软袋/袋单次剂量: 100.0ml, (壹丽安)注射用艾普拉唑钠/10mg1/瓶单次剂量: 10.0mg, 执行方式: 静滴, 执行频次: QD, 总剂量: 100.0ml, 执行剂量: 100.0ml",
-        "id": "55c3d3f5-e353-4361-b462-f02012daf595"
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 医生置管, 导管措施: 1;2;3;5;6;7;8;9;10, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 医生置管, 导管措施: 1;2;3;5;6;7;8;9;10, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "428ec94e-856b-4e72-b9e5-a37ce713c3b9"
       },
-      "content": "Medication formulation: 0.9% Sodium Chloride Injection/100 mL soft bag/single dose: 100 mL, Ilaprazole Sodium for Injection/10 mg/vial/single dose: 10 mg, Route: IV drip, Frequency: QD, Total dose: 100 mL, Administered dose: 100 mL"
+      "content": "Sex: Female, Age: 80, Catheter depth: Physician-inserted, Catheter measures: 1;2;3;5;6;7;8;9;10, Catheter site: Urethra, Catheter type: 1. Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer-out: No, Extubation indication assessment: Assessed, Sex: Female, Age: 80, Catheter depth: Physician-inserted, Catheter measures: 1;2;3;5;6;7;8;9;10, Catheter site: Urethra, Catheter type: 1. Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer-out: No, Extubation indication assessment: Assessed"
     },
     {
-      "event_id": "f2400d5d-fbd7-4eae-a488-4e8f4e1762d1",
-      "score": 0.8289916334813334,
+      "event_id": "923b6fd5-f259-4e49-8f12-232f59cf1d24",
+      "score": 0.7827085523456181,
       "reasons": {
-        "sim_vec": 0.7996628284454346,
-        "time_score": 0.8583204385172322
+        "sim_vec": 0.5684218406677246,
+        "time_score": 0.9969952640235116
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T17:45:00",
+        "timestamp": "2024-06-06T08:18:24",
         "event_type": "nursing",
-        "sub_type": "药物执行",
-        "raw_content": "药物配方:, 0.9氯化钠注射液/100ml软袋/袋单次剂量: 100.0ml, (稳可信)注射用盐酸万古霉素/500mg/瓶单次剂量: 1000.0mg, 执行方式: 静滴, 执行频次: QD, 总剂量: 100.0ml, 执行剂量: 100.0ml",
-        "id": "f2400d5d-fbd7-4eae-a488-4e8f4e1762d1"
+        "sub_type": "导尿管伴随性尿路感染风险监控",
+        "raw_content": "尿路_年龄60岁: 2, 尿路_女性: 3, 尿路_营养不良: 1, 尿路_意识障碍: 4, 尿路_留置导尿管>7天: 6, 尿路_全身性使用抗生素: 3, 性别: 女, 护理措施: 保持导尿管通畅，集尿袋低于膀胱水平，轻插导尿管，避免不必要的膀胱冲洗，7天更换集尿袋, 尿路_年龄60岁: 2, 尿路_女性: 3, 尿路_营养不良: 1, 尿路_意识障碍: 4, 尿路_留置导尿管>7天: 6, 尿路_全身性使用抗生素: 3, 性别: 女, 护理措施: 保持导尿管通畅，集尿袋低于膀胱水平，轻插导尿管，避免不必要的膀胱冲洗，7天更换集尿袋，导尿管感染总分: 19 高风险：加强护理并尽快拔管",
+        "id": "923b6fd5-f259-4e49-8f12-232f59cf1d24"
       },
-      "content": "Medication formulation: 0.9% Sodium Chloride Injection/100 mL soft bag/bag, single dose: 100.0 mL; Vancomycin Hydrochloride for Injection (Vancocin)/500 mg/vial, single dose: 1000.0 mg. Administration route: IV infusion. Frequency: QD. Total volume: 100.0 mL. Administered volume: 100.0 mL."
+      "content": "Urinary tract_age ≥60 years: 2, Urinary tract_female: 3, Urinary tract_malnutrition: 1, Urinary tract_altered consciousness: 4, Urinary tract_indwelling catheter >7 days: 6, Urinary tract_systemic antibiotic use: 3, Gender: Female, Nursing interventions: Maintain catheter patency, keep urine bag below bladder level, insert catheter gently, avoid unnecessary bladder irrigation, replace urine bag every 7 days, Urinary tract_age ≥60 years: 2, Urinary tract_female: 3, Urinary tract_malnutrition: 1, Urinary tract_altered consciousness: 4, Urinary tract_indwelling catheter >7 days: 6, Urinary tract_systemic antibiotic use: 3, Gender: Female, Nursing interventions: Maintain catheter patency, keep urine bag below bladder level, insert catheter gently, avoid unnecessary bladder irrigation, replace urine bag every 7 days, Total catheter-associated infection score: 19 High risk: Intensify care and remove catheter as soon as possible."
     },
     {
-      "event_id": "293f0b62-ac76-4f4a-95b2-33d514c90664",
-      "score": 0.6413289455654319,
+      "event_id": "ecdd5113-15a5-4107-bdbd-3b620ff81b58",
+      "score": 0.7570371577517496,
       "reasons": {
-        "sim_vec": 0.7612401247024536,
-        "time_score": 0.5214177664284101
+        "sim_vec": 0.5159244537353516,
+        "time_score": 0.9981498617681478
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T14:45:34",
-        "event_type": "order",
-        "sub_type": "order",
-        "raw_content": "医嘱类型: temporary\n医嘱内容:\n- 0.9氯化钠注射液/100ml软袋/袋\n- 盐酸氨溴索注射液(塑瓶)/2ml:15mg/支",
-        "id": "293f0b62-ac76-4f4a-95b2-33d514c90664"
-      },
-      "content": "Order type: Temporary  \nOrder content:  \n- Sodium chloride 0.9% injection solution, 100 mL soft bag/bag  \n- Ambroxol hydrochloride injection solution (plastic bottle), 2 mL: 15 mg/ampule"
-    },
-    {
-      "event_id": "ddf30375-e292-4f9d-9ded-fa04b5412cc4",
-      "score": 0.6301489181254135,
-      "reasons": {
-        "sim_vec": 0.7440204620361328,
-        "time_score": 0.5162773742146942
-      },
-      "metadata": {
-        "patient_id": "1125112810",
-        "timestamp": "2024-05-27T14:42:00",
+        "timestamp": "2024-06-06T08:18:49",
         "event_type": "nursing",
-        "sub_type": "药物执行",
-        "raw_content": "药物配方:, 0.9氯化钠注射液10ml大冢/10ml:0.09g/单次剂量: 30.0ml, (佩尔)盐酸尼卡地平注射液/10mg:10ml/支单次剂量: 20.0mg, 执行方式: 静脉推泵, 执行频次: QD, 总剂量: 30.0ml, 执行剂量: 50.0ml",
-        "id": "ddf30375-e292-4f9d-9ded-fa04b5412cc4"
+        "sub_type": "医院获得性肺炎风险因素评估表",
+        "raw_content": "肺炎_年龄60岁: 1, 肺炎_入住ICU2天: 1, 肺炎_住院时间2周: 1, 肺炎_卧床时间>1周: 3, 肺炎_实验室指标: 1, 肺炎_颅胸腹部全麻手术: 2, 肺炎_抗生素联合使用: 2, 性别: 女, 护理措施: 平卧位；翻身拍背；口腔护理；气道湿化，肺炎总分: 22 重点防护，实施平卧位、翻身拍背、口腔护理、气道湿化、营养支持、保护性隔离等措施, 肺炎_年龄60岁: 1, 肺炎_入住ICU2天: 1, 肺炎_住院时间2周: 1, 肺炎_卧床时间>1周: 3, 肺炎_实验室指标: 1, 肺炎_颅胸腹部全麻手术: 2, 肺炎_抗生素联合使用: 2, 性别: 女, 护理措施: 平卧位；翻身拍背；口腔护理；气道湿化，肺炎总分: 22 重点防护，实施平卧位、翻身拍背、口腔护理、气道湿化、营养支持、保护性隔离等措施",
+        "id": "ecdd5113-15a5-4107-bdbd-3b620ff81b58"
       },
-      "content": "Medication formulation: 0.9% Sodium Chloride Injection 10 mL (Otsuka) 0.09 g/10 mL, single dose: 30.0 mL; Nicardipine Hydrochloride Injection (Per) 10 mg/10 mL per vial, single dose: 20.0 mg. Administration route: IV push/pump. Frequency: QD. Total volume: 30.0 mL. Administered volume: 50.0 mL."
+      "content": "Pneumonia, age 60 y: 1; Pneumonia, ICU stay 2 d: 1; Pneumonia, hospitalization duration 2 wk: 1; Pneumonia, bedridden >1 wk: 3; Pneumonia, lab findings: 1; Pneumonia, cranial/thoracic/abdominal general anesthesia surgery: 2; Pneumonia, combined antibiotic use: 2; Sex: female; Nursing interventions: supine position, repositioning with back percussion, oral care, airway humidification; Pneumonia total score: 22. Key protective measures implemented: supine position, repositioning with back percussion, oral care, airway humidification, nutritional support, protective isolation."
     },
     {
-      "event_id": "3a8531ce-888e-497f-81e2-2426cf796751",
-      "score": 0.6281522445353053,
+      "event_id": "c187ef31-2890-4f98-a385-f127805f37cc",
+      "score": 0.7445665133710314,
       "reasons": {
-        "sim_vec": 0.3253340721130371,
-        "time_score": 0.9309704169575734
+        "sim_vec": 0.504249095916748,
+        "time_score": 0.9848839308253148
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T18:14:15",
-        "event_type": "blood_gas",
-        "sub_type": "blood_gas",
-        "raw_content": "血气分析结果：\n- Hct: 40.8307452632085\n- tO2: 8.11753644027947 mmol/l\n- cBase(B): 2.16425811806544 mmol/l\n- Glu: 6.69608499923261 mmol/l\n- tHb: 8.26700653233621 mmol/l\n- K: 3.61738082728473 mmol/l\n- Lac: 1.54921016323663 mmol/l\n- sO2: 97.3833084106445\n- SBC: 26.3045499210836 mmol/l\n- O2Hb: 96.6042419433594\n- Na: 137.553821986619 mmol/l\n- Ca: 1.11122967121497 mmol/l\n- HHb: 2.59575805664063\n- Cl-: 104.249855190139 mmol/l\n- FIO2: 21.0\n- pH(T): 7.45988403369449 phunit\n- HCO3-: 25.858550385843 mmol/l\n- pO2(T): 12.5007093626743 kPa\n- cBase(Ecf): 2.02867173169375 mmol/l\n- pCO2: 4.85279901971917 kPa\n- pO2: 12.5007093626743 kPa\n- pCO2(T): 4.85279901971917 kPa\n- pH: 7.45988403369449 phunit\n- T: 37.0 C\n- p50(act): 3.32220322810725 kPa",
-        "id": "3a8531ce-888e-497f-81e2-2426cf796751"
+        "timestamp": "2024-06-06T08:14:00",
+        "event_type": "nursing",
+        "sub_type": "谵妄评估单",
+        "raw_content": "性别: 女, RASS评分: -4（深度镇静——对呼唤无反应，仅对身体刺激有反应）, 分型结果: nan, 性别: 女, RASS评分: -4（深度镇静——对呼唤无反应，仅对身体刺激有反应）, 分型结果: nan",
+        "id": "c187ef31-2890-4f98-a385-f127805f37cc"
       },
-      "content": "Arterial blood gas analysis results:  \n- Hct: 40.83%  \n- tO2: 8.12 mmol/L  \n- cBase(B): 2.16 mmol/L  \n- Glu: 6.70 mmol/L  \n- tHb: 8.27 mmol/L  \n- K: 3.62 mmol/L  \n- Lac: 1.55 mmol/L  \n- sO2: 97.38%  \n- SBC: 26.30 mmol/L  \n- O2Hb: 96.60%  \n- Na: 137.55 mmol/L  \n- Ca: 1.11 mmol/L  \n- HHb: 2.60%  \n- Cl-: 104.25 mmol/L  \n- FIO2: 21.0%  \n- pH(T): 7.460  \n- HCO3-: 25.86 mmol/L  \n- pO2(T): 12.50 kPa  \n- cBase(Ecf): 2.03 mmol/L  \n- pCO2: 4.85 kPa  \n- pO2: 12.50 kPa  \n- pCO2(T): 4.85 kPa  \n- pH: 7.460  \n- T: 37.0°C  \n- p50(act): 3.32 kPa"
+      "content": "Sex: Female, RASS score: -4 (deep sedation—unresponsive to verbal stimuli, responsive only to physical stimuli), Classification result: nan, Sex: Female, RASS score: -4 (deep sedation—unresponsive to verbal stimuli, responsive only to physical stimuli), Classification result: nan"
     },
     {
-      "event_id": "2434424b-22af-447a-b8ef-70545bdf454a",
-      "score": 0.6173360034437392,
+      "event_id": "3fac30bb-71fc-493e-aed8-26f7b33e0e83",
+      "score": 0.6505739896191052,
       "reasons": {
-        "sim_vec": 0.3043478727340698,
-        "time_score": 0.9303241341534084
+        "sim_vec": 0.4992605447769165,
+        "time_score": 0.8018874344612937
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T18:14:00",
+        "timestamp": "2024-06-06T07:00:00",
         "event_type": "nursing",
         "sub_type": "护理措施",
-        "raw_content": "床边血气分析",
-        "id": "2434424b-22af-447a-b8ef-70545bdf454a"
+        "raw_content": "患者呼之不应各路推泵畅心电监护示窦性心律右上肢外周静脉穿刺维持推泵畅无外渗各类导管在位固定无滑脱皮肤情况详见观察单",
+        "id": "3fac30bb-71fc-493e-aed8-26f7b33e0e83"
       },
-      "content": "Bedside arterial blood gas analysis"
+      "content": "Patient unresponsive to verbal stimuli. All infusion pumps patent. Cardiac monitoring shows sinus rhythm. Peripheral venous catheter in right upper limb patent without extravasation. All catheters in place and secured without dislodgement. Skin condition detailed in observation sheet."
     },
     {
-      "event_id": "f740fe3c-a8f4-461e-82b3-c9b3114db89b",
-      "score": 0.6106320471694711,
+      "event_id": "706bfac9-3aeb-41ec-ba7e-0a4d45fef0ef",
+      "score": 0.43136394853521876,
       "reasons": {
-        "sim_vec": 0.326424777507782,
-        "time_score": 0.8948393168311602
+        "sim_vec": 0.8425131440162659,
+        "time_score": 0.020214753054171673
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T18:00:00",
+        "timestamp": "2024-06-05T08:55:00",
         "event_type": "nursing",
-        "sub_type": "约束护理记录单",
-        "raw_content": "约束_意识不清: 无危险因素, 约束_行为不能自控: 存在危险因素（拔管、坠床、自伤等）, 约束情况: 使用约束, 约束部位: 双上肢, 约束皮肤部位: 正常, 部位末梢循环: 正常, 约束肢体功能部位: 舒适, 性别: 女, 护理措施: 悬挂警示标识，宣教指导，签署护理安全告知书，松紧适宜，Q2h放松约束带5-10 min，间歇性约束加强床边交接，加强局部皮肤观察, 约束_意识不清: 无危险因素, 约束_行为不能自控: 存在危险因素（拔管、坠床、自伤等）, 约束情况: 使用约束, 约束部位: 双上肢, 约束皮肤部位: 正常, 部位末梢循环: 正常, 约束肢体功能部位: 舒适, 性别: 女, 护理措施: 悬挂警示标识，宣教指导，签署护理安全告知书，松紧适宜，Q2h放松约束带5-10 min，间歇性约束加强床边交接，加强局部皮肤观察",
-        "id": "f740fe3c-a8f4-461e-82b3-c9b3114db89b"
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "706bfac9-3aeb-41ec-ba7e-0a4d45fef0ef"
       },
-      "content": "Restraint - Altered consciousness: No risk factors.  \nRestraint - Uncontrolled behavior: Risk factors present (tube removal, fall, self-injury, etc.).  \nRestraint status: Restraints applied.  \nRestraint site: Bilateral upper limbs.  \nSkin condition at restraint site: Normal.  \nPeripheral circulation at site: Normal.  \nLimb function at restraint site: Comfortable.  \nSex: Female.  \nNursing measures: Warning signs posted, patient education provided, nursing safety consent form signed, appropriate restraint tightness maintained, restraint straps loosened for 5-10 minutes every 2 hours, intermittent restraint with enhanced bedside handoff, enhanced local skin monitoring.  \nRestraint - Altered consciousness: No risk factors.  \nRestraint - Uncontrolled behavior: Risk factors present (tube removal, fall, self-injury, etc.).  \nRestraint status: Restraints applied.  \nRestraint site: Bilateral upper limbs.  \nSkin condition at restraint site: Normal.  \nPeripheral circulation at site: Normal.  \nLimb function at restraint site: Comfortable.  \nSex: Female.  \nNursing measures: Warning signs posted, patient education provided, nursing safety consent form signed, appropriate restraint tightness maintained, restraint straps loosened for 5-10 minutes every 2 hours, intermittent restraint with enhanced bedside handoff, enhanced local skin monitoring."
+      "content": "Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No, Extubation indication assessment: Assessed, Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No, Extubation indication assessment: Assessed"
     },
     {
-      "event_id": "63453fbd-be35-421d-9f8d-0f759f02b0e6",
-      "score": 0.608272432776158,
+      "event_id": "6473e77c-b2b1-4190-ba19-bb59bc4eb698",
+      "score": 0.42526191813763814,
       "reasons": {
-        "sim_vec": 0.6507051587104797,
-        "time_score": 0.565839706841836
+        "sim_vec": 0.850523829460144,
+        "time_score": 6.815132243652918e-09
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T15:15:00",
+        "timestamp": "2024-06-01T15:30:00",
         "event_type": "nursing",
-        "sub_type": "药物执行",
-        "raw_content": "药物配方:, 碳酸氢钠林格注射液/500ml/袋单次剂量: 500.0ml, 执行方式: 静滴, 执行频次: QD, 总剂量: 500.0ml, 执行剂量: 500.0ml",
-        "id": "63453fbd-be35-421d-9f8d-0f759f02b0e6"
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 医生置管, 导管措施: 1;2;3;5;6;7;8;9;10, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 医生置管, 导管措施: 1;2;3;5;6;7;8;9;10, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "6473e77c-b2b1-4190-ba19-bb59bc4eb698"
       },
-      "content": "Medication formulation: Sodium bicarbonate Ringer's injection/500 mL/bag  \nSingle dose: 500 mL  \nAdministration route: IV drip  \nFrequency: QD  \nTotal dose: 500 mL  \nAdministered dose: 500 mL"
+      "content": "Sex: Female, Age: 80, Catheter depth: Physician-inserted, Catheter measures: 1;2;3;5;6;7;8;9;10, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, Transferred out of ICU: No, Extubation indication assessment: Assessed, Sex: Female, Age: 80, Catheter depth: Physician-inserted, Catheter measures: 1;2;3;5;6;7;8;9;10, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, Transferred out of ICU: No, Extubation indication assessment: Assessed"
     },
     {
-      "event_id": "263c6d80-c5ae-43ab-999c-738914d127dd",
-      "score": 0.6082167543469441,
+      "event_id": "dcd9c2a6-b2de-49cf-9dfc-54d587ed61d4",
+      "score": 0.4214529877901313,
       "reasons": {
-        "sim_vec": 0.696630597114563,
-        "time_score": 0.5198029115793253
+        "sim_vec": 0.8425131440162659,
+        "time_score": 0.00039283156399669473
       },
       "metadata": {
         "patient_id": "1125112810",
-        "timestamp": "2024-05-27T14:44:27",
-        "event_type": "order",
-        "sub_type": "order",
-        "raw_content": "医嘱类型: temporary\n医嘱内容:\n- 0.9氯化钠注射液/250ml软袋/袋\n- 氨甲环酸注射液/5ml:0.25g/支",
-        "id": "263c6d80-c5ae-43ab-999c-738914d127dd"
-      },
-      "content": "Order type: Temporary  \nOrder content:  \n- 0.9% Sodium Chloride Injection, 250 mL soft bag, per bag  \n- Tranexamic Acid Injection, 5 mL: 0.25 g per ampule"
-    },
-    {
-      "event_id": "99ba0bf8-4c5c-4c4d-8bc9-d05ad9712fb3",
-      "score": 0.6032636911800149,
-      "reasons": {
-        "sim_vec": 0.31168806552886963,
-        "time_score": 0.8948393168311602
-      },
-      "metadata": {
-        "patient_id": "1125112810",
-        "timestamp": "2024-05-27T18:00:00",
+        "timestamp": "2024-06-04T09:16:19",
         "event_type": "nursing",
-        "sub_type": "疼痛评估及记录单",
-        "raw_content": "性别: 女, 年龄: 80, 入院时间: 2024.05.21 15:52:46:9460, 主要诊断: 脑积水, 药物不良反应: 无（）, 程度评分: 0（无痛）,, 性别: 女, 年龄: 80, 入院时间: 2024.05.21 15:52:46:9460, 主要诊断: 脑积水, 药物不良反应: 无（）, 程度评分: 0（无痛）",
-        "id": "99ba0bf8-4c5c-4c4d-8bc9-d05ad9712fb3"
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "dcd9c2a6-b2de-49cf-9dfc-54d587ed61d4"
       },
-      "content": "Sex: Female, Age: 80, Admission Time: 2024-05-21 15:52:46.9460, Primary Diagnosis: Hydrocephalus, Adverse Drug Reaction: None, Pain Score: 0 (No pain)."
+      "content": "Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No, Extubation indication assessment: Assessed, Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No, Extubation indication assessment: Assessed"
+    },
+    {
+      "event_id": "d893a5b7-31e6-43e3-a366-d65acd44945c",
+      "score": 0.4212601416167974,
+      "reasons": {
+        "sim_vec": 0.8425131440162659,
+        "time_score": 7.139217329014928e-06
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-06-03T09:13:31",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "d893a5b7-31e6-43e3-a366-d65acd44945c"
+      },
+      "content": "Sex: Female, Age: 80, Catheter depth: inserted 7 cm, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: urethra, Catheter type: standard urinary catheter, Catheter observation - fixation: fixed, Catheter observation - patency: patent, Catheter observation - surrounding skin: normal, Catheter observation: fixed, patent, surrounding skin normal, Catheter method: tracking, Catheter duration: 0 days, ICU transfer out: no, Extubation criteria assessment: assessed."
+    },
+    {
+      "event_id": "6a4fd9b7-8ba7-4731-966f-5e7a8d6a9f44",
+      "score": 0.42125663629228316,
+      "reasons": {
+        "sim_vec": 0.8425131440162659,
+        "time_score": 1.2856830044108335e-07
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-06-02T09:07:26",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "6a4fd9b7-8ba7-4731-966f-5e7a8d6a9f44"
+      },
+      "content": "Sex: Female, Age: 80, Catheter depth: Internal 7 cm, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: 1. Standard urinary catheter, Catheter observation - fixation: Fixed, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Surrounding skin normal, Catheter observation: Fixed, patent, surrounding skin normal, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No, Extubation indication assessment: Assessed."
+    },
+    {
+      "event_id": "55fd823f-3330-45a3-b033-908e727632e6",
+      "score": 0.42125657200813305,
+      "reasons": {
+        "sim_vec": 0.8425131440162659,
+        "time_score": 2.5864768992686154e-16
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-28T08:58:42",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "55fd823f-3330-45a3-b033-908e727632e6"
+      },
+      "content": "Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No, Extubation indication assessment: Assessed."
+    },
+    {
+      "event_id": "cfc261fa-7c10-4912-b180-1f7ad079441d",
+      "score": 0.41426169872283936,
+      "reasons": {
+        "sim_vec": 0.8285233974456787,
+        "time_score": 1.1890558043305086e-17
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T14:30:00",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 性别: 女, 性别: 女, 年龄: 80, 年龄: 80, 年龄: 80, 置管深度: 距门齿24, 置管深度: 医生置管, 置管深度: 内置7cm, 导管措施: 1;2;3;5;6;7;8;10;12, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 导管措施: 1;2;3;5;6;7;8;10;12, 置管部位: 尿道, 置管部位: 口腔, 置管部位: 左桡动脉, 置管种类: 2.气管插管, 置管种类: 3.动脉置管, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_固定: 固定, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_通畅: 通畅, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察_周围皮肤: 周围皮肤正常, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 置管, 置管方式: 置管, 置管方式: 跟踪, 置管天数: 0, 置管天数: 0, 置管天数: 0, 监护室转出: 否, 监护室转出: 否, 监护室转出: 否, 评估拔管指征: 已评, 评估拔管指征: 已评, 评估拔管指征: 已评, 性别: 女, 性别: 女, 性别: 女, 年龄: 80, 年龄: 80, 年龄: 80, 置管深度: 距门齿24, 置管深度: 医生置管, 置管深度: 内置7cm, 导管措施: 1;2;3;5;6;7;8;10;12, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 导管措施: 1;2;3;5;6;7;8;10;12, 置管部位: 尿道, 置管部位: 口腔, 置管部位: 左桡动脉, 置管种类: 2.气管插管, 置管种类: 3.动脉置管, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_固定: 固定, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_通畅: 通畅, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察_周围皮肤: 周围皮肤正常, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 置管, 置管方式: 置管, 置管方式: 跟踪, 置管天数: 0, 置管天数: 0, 置管天数: 0, 监护室转出: 否, 监护室转出: 否, 监护室转出: 否, 评估拔管指征: 已评, 评估拔管指征: 已评, 评估拔管指征: 已评",
+        "id": "cfc261fa-7c10-4912-b180-1f7ad079441d"
+      },
+      "content": "Sex: Female  \nAge: 80  \nCatheter depth: 24 cm from incisors; physician-inserted; 7 cm internal  \nCatheter measures: 1, 2, 3, 5, 6, 7, 8, 10, 12; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13; 1, 2, 3, 5, 6, 7, 8, 10, 12  \nCatheter site: Urethra; oral cavity; left radial artery  \nCatheter type: Endotracheal tube; arterial catheter; standard urinary catheter  \nCatheter observation - fixation: Secured; secured; secured  \nCatheter observation - patency: Patent; patent; patent  \nCatheter observation - surrounding skin: Normal; normal; normal  \nCatheter observation: Secured, patent, surrounding skin normal; secured, patent, surrounding skin normal; secured, patent, surrounding skin normal  \nCatheter method: Catheterization; catheterization; tracking  \nCatheter days: 0; 0; 0  \nICU transfer-out: No; no; no  \nExtubation criteria assessment: Evaluated; evaluated; evaluated"
+    },
+    {
+      "event_id": "e4067fc2-407a-4fe7-9121-ea873b5a1bba",
+      "score": 0.40979471802711487,
+      "reasons": {
+        "sim_vec": 0.8195894360542297,
+        "time_score": 3.6625497221067936e-17
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-27T21:15:00",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 拔管时间: 21:15, 置管种类: 2.气管插管, 拔管原因: 正常拔管, 置管方式: 拔管, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 拔管时间: 21:15, 置管种类: 2.气管插管, 拔管原因: 正常拔管, 置管方式: 拔管, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "e4067fc2-407a-4fe7-9121-ea873b5a1bba"
+      },
+      "content": "Sex: Female, Age: 80, Extubation time: 21:15, Catheter type: Endotracheal intubation, Extubation reason: Routine extubation, Catheter method: Extubation, Catheter duration: 0 days, ICU transfer out: No, Extubation criteria assessment: Completed."
+    },
+    {
+      "event_id": "736f50f1-2af6-4279-8a92-ec826bd79ac2",
+      "score": 0.4073196053824103,
+      "reasons": {
+        "sim_vec": 0.8146392107009888,
+        "time_score": 6.383187038084991e-11
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-31T11:28:34",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否",
+        "id": "736f50f1-2af6-4279-8a92-ec826bd79ac2"
+      },
+      "content": "Sex: Female, Age: 80, Catheter depth: Inserted 7 cm, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No."
+    },
+    {
+      "event_id": "f5d0e7f1-349e-4b68-aeb0-1d447c021962",
+      "score": 0.4072384485663525,
+      "reasons": {
+        "sim_vec": 0.8144692182540894,
+        "time_score": 7.678878615686428e-06
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-06-03T09:39:45",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否",
+        "id": "f5d0e7f1-349e-4b68-aeb0-1d447c021962"
+      },
+      "content": "Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No."
+    },
+    {
+      "event_id": "54a6840d-eae6-4cc4-8605-85d305be5acd",
+      "score": 0.40723461245895093,
+      "reasons": {
+        "sim_vec": 0.8144692182540894,
+        "time_score": 6.66381248558908e-09
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-06-01T15:21:55",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否",
+        "id": "54a6840d-eae6-4cc4-8605-85d305be5acd"
+      },
+      "content": "Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal, Catheter observation: Secured, patent, surrounding skin normal, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No."
+    },
+    {
+      "event_id": "34aae7eb-c827-4eb6-b270-ccdf70bf1b52",
+      "score": 0.40723460912704484,
+      "reasons": {
+        "sim_vec": 0.8144692182540894,
+        "time_score": 3.549891534887938e-16
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-28T10:52:41",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 性别: 女, 年龄: 80, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否",
+        "id": "34aae7eb-c827-4eb6-b270-ccdf70bf1b52"
+      },
+      "content": "Sex: Female, Age: 80, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No."
+    },
+    {
+      "event_id": "dde452c4-c205-4c1c-afe8-d653070b8518",
+      "score": 0.40353748202323925,
+      "reasons": {
+        "sim_vec": 0.8070749640464783,
+        "time_score": 2.603054512665371e-16
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-28T09:01:00",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 80, 拔管时间: 09:01, 置管种类: 3.动脉置管, 拔管原因: 正常拔管, 置管方式: 拔管, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评, 性别: 女, 年龄: 80, 拔管时间: 09:01, 置管种类: 3.动脉置管, 拔管原因: 正常拔管, 置管方式: 拔管, 置管天数: 0, 监护室转出: 否, 评估拔管指征: 已评",
+        "id": "dde452c4-c205-4c1c-afe8-d653070b8518"
+      },
+      "content": "Sex: Female, Age: 80, Extubation time: 09:01, Catheter type: Arterial catheterization, Extubation reason: Routine extubation, Catheterization method: Extubation, Catheter duration: 0 days, ICU transfer out: No, Extubation criteria assessment: Completed."
+    },
+    {
+      "event_id": "98ace6a6-1cdc-4a1c-94f1-4dbe53f8192b",
+      "score": 0.39886078238487244,
+      "reasons": {
+        "sim_vec": 0.7977215647697449,
+        "time_score": 6.586743044043769e-23
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-24T13:52:42",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 79, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否, 性别: 女, 年龄: 79, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 跟踪, 置管天数: 0, 监护室转出: 否",
+        "id": "98ace6a6-1cdc-4a1c-94f1-4dbe53f8192b"
+      },
+      "content": "Sex: Female, Age: 79, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Secured, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Secured, patent, normal surrounding skin, Catheter method: Tracked, Catheter days: 0, ICU transfer out: No."
+    },
+    {
+      "event_id": "97ddee94-72a4-41fb-b6c0-a43c8d322d97",
+      "score": 0.39860984683036804,
+      "reasons": {
+        "sim_vec": 0.7972196936607361,
+        "time_score": 3.045164797416751e-26
+      },
+      "metadata": {
+        "patient_id": "1125112810",
+        "timestamp": "2024-05-22T15:48:10",
+        "event_type": "nursing",
+        "sub_type": "导管观察及护理记录",
+        "raw_content": "性别: 女, 年龄: 79, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 置管, 置管天数: 0, 监护室转出: 否, 性别: 女, 年龄: 79, 置管深度: 内置7cm, 导管措施: 1;2;3;4;5;6;7;8;9;10;11;12;13, 置管部位: 尿道, 置管种类: 1.普通导尿管, 置管观察_固定: 固定, 置管观察_通畅: 通畅, 置管观察_周围皮肤: 周围皮肤正常, 置管观察: 固定,通畅,周围皮肤正常, 置管方式: 置管, 置管天数: 0, 监护室转出: 否",
+        "id": "97ddee94-72a4-41fb-b6c0-a43c8d322d97"
+      },
+      "content": "Sex: Female, Age: 79, Catheter depth: 7 cm internal, Catheter measures: 1;2;3;4;5;6;7;8;9;10;11;12;13, Catheter site: Urethra, Catheter type: Standard urinary catheter, Catheter observation - fixation: Fixed, Catheter observation - patency: Patent, Catheter observation - surrounding skin: Normal surrounding skin, Catheter observation: Fixed, patent, normal surrounding skin, Catheter placement method: Catheterization, Catheter days: 0, ICU transfer out: No."
     }
   ]
 }

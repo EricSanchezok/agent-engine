@@ -12,8 +12,8 @@ from agents.ICUDataIngestionAgent.agent import ICUDataIngestionAgent
 from agents.ICUMemoryAgent.agent import ICUMemoryAgent
 
 PATIENT_ID = "1125112810"
-UPDATES = 100
-TOP_K = 10
+UPDATES = 500
+TOP_K = 20
 TAU_HOURS = 6.0
 VERSION = "v1"
 
@@ -28,7 +28,7 @@ async def _do_search(memory: ICUMemoryAgent, patient_id: str, last_event_id: Opt
         top_k=TOP_K,
         tau_hours=TAU_HOURS,
         version=VERSION,
-        near_duplicate_delta=0.01,
+        near_duplicate_delta=0.05,
     )
     for rank, r in enumerate(results, start=1):
         ev_id = r.get("event_id")
@@ -67,9 +67,9 @@ async def main() -> int:
         try:
             ts_list = [str(ev.get("timestamp")) for ev in batch]
             is_sorted = all(ts_list[j] <= ts_list[j + 1] for j in range(len(ts_list) - 1))
-            for idx, ev in enumerate(batch, start=1):
-                logger.info(f"Update {i}: event[{idx}] ts={ev.get('timestamp')} id={ev.get('event_id')}")
-            logger.info(f"Update {i}: batch timestamps non-decreasing={is_sorted}")
+            # for idx, ev in enumerate(batch, start=1):
+            #     logger.info(f"Update {i}: event[{idx}] ts={ev.get('timestamp')} id={ev.get('event_id')}")
+            # logger.info(f"Update {i}: batch timestamps non-decreasing={is_sorted}")
         except Exception as e:
             logger.warning(f"Update {i}: failed to print timestamps: {e}")
         last_event_id = ids[-1]
