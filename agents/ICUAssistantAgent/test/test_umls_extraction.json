@@ -1,0 +1,1397 @@
+{
+  "patient_id": "1125112810",
+  "event_id": "d8ea11a5-1f4e-4b9d-8855-30c94435a69b",
+  "event_content": "Medication formulation: 0.9% Sodium Chloride Injection, 100 mL soft bag, single dose: 100 mL; Ambroxol Hydrochloride Injection (plastic vial), 2 mL: 15 mg per vial, single dose: 30 mg. Administration route: IV drip. Frequency: QD. Total volume: 100 mL. Administered volume: 100 mL.",
+  "extraction": {
+    "mentions": [
+      {
+        "text": "per",
+        "span": [
+          155,
+          158
+        ],
+        "linked": {
+          "cui": "C0449201",
+          "name": "PER (body structure)",
+          "semantic_types": [
+            {
+              "name": "Body Location or Region",
+              "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T029"
+            }
+          ],
+          "root_source": "MTH"
+        }
+      },
+      {
+        "text": "total",
+        "span": [
+          231,
+          236
+        ],
+        "linked": {
+          "cui": "C0439810",
+          "name": "Total",
+          "semantic_types": [
+            {
+              "name": "Qualitative Concept",
+              "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T080"
+            }
+          ],
+          "root_source": "MTH"
+        }
+      },
+      {
+        "text": "ambroxol hydrochloride",
+        "span": [
+          94,
+          116
+        ],
+        "linked": {
+          "cui": "C1367795",
+          "name": "ambroxol hydrochloride",
+          "semantic_types": [
+            {
+              "name": "Organic Chemical",
+              "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T109"
+            },
+            {
+              "name": "Pharmacologic Substance",
+              "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T121"
+            }
+          ],
+          "root_source": "MTH"
+        }
+      },
+      {
+        "text": "administered",
+        "span": [
+          253,
+          265
+        ],
+        "linked": {
+          "cui": "C0806914",
+          "name": "Medication administered",
+          "semantic_types": [
+            {
+              "name": "Health Care Activity",
+              "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T058"
+            }
+          ],
+          "root_source": "MTH"
+        }
+      },
+      {
+        "text": "sodium chloride",
+        "span": [
+          29,
+          44
+        ],
+        "linked": {
+          "cui": "C0037494",
+          "name": "sodium chloride",
+          "semantic_types": [
+            {
+              "name": "Inorganic Chemical",
+              "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T197"
+            }
+          ],
+          "root_source": "MTH"
+        }
+      },
+      {
+        "text": "volume ml",
+        "span": [
+          -1,
+          -1
+        ],
+        "linked": {
+          "cui": "C0427993",
+          "name": "Semen volume good: 2-5 ml.",
+          "semantic_types": [
+            {
+              "name": "Finding",
+              "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T033"
+            }
+          ],
+          "root_source": "SNOMEDCT_US"
+        }
+      }
+    ],
+    "concepts": [
+      {
+        "cui": "C0449201",
+        "name": "PER (body structure)",
+        "sty": [
+          {
+            "name": "Body Location or Region",
+            "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T029"
+          }
+        ],
+        "sabs": [
+          "MTH"
+        ],
+        "weight": 1.0
+      },
+      {
+        "cui": "C0439810",
+        "name": "Total",
+        "sty": [
+          {
+            "name": "Qualitative Concept",
+            "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T080"
+          }
+        ],
+        "sabs": [
+          "MTH"
+        ],
+        "weight": 1.0
+      },
+      {
+        "cui": "C1367795",
+        "name": "ambroxol hydrochloride",
+        "sty": [
+          {
+            "name": "Organic Chemical",
+            "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T109"
+          },
+          {
+            "name": "Pharmacologic Substance",
+            "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T121"
+          }
+        ],
+        "sabs": [
+          "MTH"
+        ],
+        "weight": 1.0
+      },
+      {
+        "cui": "C0806914",
+        "name": "Medication administered",
+        "sty": [
+          {
+            "name": "Health Care Activity",
+            "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T058"
+          }
+        ],
+        "sabs": [
+          "MTH"
+        ],
+        "weight": 1.0
+      },
+      {
+        "cui": "C0037494",
+        "name": "sodium chloride",
+        "sty": [
+          {
+            "name": "Inorganic Chemical",
+            "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T197"
+          }
+        ],
+        "sabs": [
+          "MTH"
+        ],
+        "weight": 1.0
+      },
+      {
+        "cui": "C0427993",
+        "name": "Semen volume good: 2-5 ml.",
+        "sty": [
+          {
+            "name": "Finding",
+            "uri": "https://uts-ws.nlm.nih.gov/rest/semantic-network/2025AA/TUI/T033"
+          }
+        ],
+        "sabs": [
+          "SNOMEDCT_US"
+        ],
+        "weight": 1.0
+      }
+    ],
+    "debug": {
+      "phrases": [
+        {
+          "phrase": "per",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 6411
+            }
+          ],
+          "selected_hits": 6411
+        },
+        {
+          "phrase": "total",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 4608
+            }
+          ],
+          "selected_hits": 4608
+        },
+        {
+          "phrase": "ambroxol hydrochloride",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 13
+            }
+          ],
+          "selected_hits": 13
+        },
+        {
+          "phrase": "administered",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 238
+            }
+          ],
+          "selected_hits": 238
+        },
+        {
+          "phrase": "sodium chloride",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 962
+            }
+          ],
+          "selected_hits": 962
+        },
+        {
+          "phrase": "hydrochloride injection plastic vial ml",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "administration route iv drip frequency",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "single dose mg administration route",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "vial single dose mg administration",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "dose mg administration route iv",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "mg administration route iv drip",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "chloride injection ml soft bag",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "injection ml soft bag single",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "injection plastic vial ml mg",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "bag single dose ml ambroxol",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "route iv drip frequency qd",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "ml soft bag single dose",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "soft bag single dose ml",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        },
+        {
+          "phrase": "volume ml",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 54
+            }
+          ],
+          "selected_hits": 54
+        },
+        {
+          "phrase": "medication formulation sodium",
+          "tried": [
+            {
+              "searchType": "words",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "words",
+              "rootSource": "LNC",
+              "hits": 0
+            },
+            {
+              "searchType": "phrase",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "SNOMEDCT_US",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "RXNORM",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "phrase",
+              "rootSource": "LNC",
+              "error": "search failed: 400 {\"name\":\"ValidationError\",\"status\":400,\"message\":\"Invalid 'searchType'\"}"
+            },
+            {
+              "searchType": "exact",
+              "sabs": [
+                "SNOMEDCT_US",
+                "RXNORM",
+                "LNC"
+              ],
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "SNOMEDCT_US",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "RXNORM",
+              "hits": 0
+            },
+            {
+              "searchType": "exact",
+              "rootSource": "LNC",
+              "hits": 0
+            }
+          ],
+          "selected_hits": 0
+        }
+      ]
+    }
+  }
+}
