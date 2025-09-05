@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Monitor</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header__title">LLM Monitor</div>
+    <div class="header__actions">
+      <button id="reloadBtn" class="btn">Reload</button>
+      <label class="poll">
+        <input type="checkbox" id="pollToggle" checked /> Auto refresh
+      </label>
+      <select id="pollInterval" class="select">
+        <option value="3000">3s</option>
+        <option value="5000" selected>5s</option>
+        <option value="10000">10s</option>
+      </select>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="panel panel--left">
+      <div class="filters">
+        <input id="searchInput" class="input" placeholder="Search keyword (message/response)" />
+        <select id="statusSelect" class="select">
+          <option value="">All status</option>
+          <option value="success">Success</option>
+          <option value="pending">Pending</option>
+          <option value="failed">Failed</option>
+        </select>
+        <input id="modelInput" class="input" placeholder="Model (e.g., o3-mini)" />
+        <input id="providerInput" class="input" placeholder="Provider (e.g., azure)" />
+      </div>
+      <div id="sessions" class="sessions"></div>
+    </section>
+
+    <section class="panel panel--right">
+      <div id="detailEmpty" class="detail-empty">Select a session to see details</div>
+      <div id="detail" class="detail hidden">
+        <div class="detail__header">
+          <div>
+            <div class="detail__title">Trace</div>
+            <div id="traceId" class="mono"></div>
+          </div>
+          <div class="detail__meta" id="detailMeta"></div>
+        </div>
+        <div class="detail__block">
+          <div class="detail__block-title">Request</div>
+          <pre id="requestJson" class="json-viewer"></pre>
+        </div>
+        <div class="detail__block">
+          <div class="detail__block-title">Response</div>
+          <pre id="responseJson" class="json-viewer"></pre>
+        </div>
+        <div class="detail__block">
+          <div class="detail__block-title">Timing</div>
+          <pre id="timingJson" class="json-viewer"></pre>
+        </div>
+        <div class="detail__block">
+          <div class="detail__block-title">Metadata</div>
+          <pre id="metadataJson" class="json-viewer"></pre>
+        </div>
+        <div class="detail__block">
+          <div class="detail__block-title">Raw Content</div>
+          <pre id="contentJson" class="json-viewer"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      window.LLMMonitorApp && window.LLMMonitorApp.init();
+    });
+  </script>
+</body>
+</html>
+
+

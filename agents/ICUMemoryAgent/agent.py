@@ -58,7 +58,6 @@ class ICUMemoryAgent:
         # Patient memory cache in process
         self._patient_memories: Dict[str, ScalableMemory] = {}
         self._lock = threading.Lock()
-        # Async runner removed
 
         self.logger.info("ICUMemoryAgent initialized with Azure embeddings and ScalableMemory backends")
 
@@ -123,13 +122,13 @@ class ICUMemoryAgent:
             targets: list[Path] = []
             # Primary (current) persist path
             try:
-                targets.append(Path(self.persist_dir) / str(patient_id))
+                targets.append(Path(self.persist_dir))
             except Exception:
                 pass
             # Legacy path fallback: project_root/.memory/{patient_id}
             try:
                 from agent_engine.utils.project_root import get_project_root
-                targets.append(Path(get_project_root()) / ".memory" / str(patient_id))
+                targets.append(Path(get_project_root()) / ".memory")
             except Exception:
                 pass
 
