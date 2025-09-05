@@ -24,21 +24,31 @@
 
   <main class="main">
     <section class="panel panel--left">
+      <div class="section-head">
+        <div class="section-title">Sessions</div>
+        <div class="section-stats"><span id="statTotal">0</span> items · tokens <span id="statTokens">0</span></div>
+      </div>
       <div class="filters">
-        <input id="searchInput" class="input" placeholder="Search keyword (message/response)" />
-        <select id="statusSelect" class="select">
-          <option value="">All status</option>
-          <option value="success">Success</option>
-          <option value="pending">Pending</option>
-          <option value="failed">Failed</option>
-        </select>
-        <input id="modelInput" class="input" placeholder="Model (e.g., o3-mini)" />
-        <input id="providerInput" class="input" placeholder="Provider (e.g., azure)" />
+        <input id="traceIdInput" class="input" placeholder="Search by trace_id" />
+        <button id="leftReloadBtn" class="btn">Reload</button>
       </div>
       <div id="sessions" class="sessions"></div>
     </section>
 
     <section class="panel panel--right">
+      <div class="dynamic">
+        <div class="section-head">
+          <div class="section-title">Live Updates</div>
+          <label class="poll dynamic__follow">
+            <input type="checkbox" id="followToggle" checked /> Follow new
+          </label>
+        </div>
+        <div id="dynamicStrip" class="dynamic__strip"></div>
+      </div>
+
+      <div class="section-head">
+        <div class="section-title">Focus</div>
+      </div>
       <div id="detailEmpty" class="detail-empty">Select a session to see details</div>
       <div id="detail" class="detail hidden">
         <div class="detail__header">

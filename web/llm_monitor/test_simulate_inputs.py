@@ -28,7 +28,7 @@ async def simulate_inputs(user_inputs: List[str]) -> None:
 
     base_url = os.getenv("AZURE_BASE_URL", "https://gpt.yunstorm.com/")
     api_version = os.getenv("AZURE_API_VERSION", "2025-04-01-preview")
-    model_name = os.getenv("AZURE_CHAT_MODEL", "o3-mini")
+    model_name = os.getenv("AZURE_CHAT_MODEL", "gpt-4.1-nano")
 
     client = AzureClient(api_key=api_key, base_url=base_url, api_version=api_version)
 
@@ -72,6 +72,14 @@ def main():
             "Summarize in one sentence why logs should use IDs. (#3)",
             "Give a short tip for debugging long LLM prompts. (#4)",
             "Say goodbye with a friendly tone. (#5)",
+            "How are you? (#6)",
+            "What is the capital of France? (#7)",
+            "What is the capital of China? (#8)",
+            "What is the capital of Japan? (#9)",
+            "What is the capital of Korea? (#10)",
+            "What is the capital of Germany? (#11)",
+            "What is the capital of Italy? (#12)",
+            "What is the capital of Spain? (#13)"
         ]
 
         asyncio.run(simulate_inputs(user_inputs))

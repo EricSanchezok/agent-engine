@@ -27,7 +27,9 @@ class LLMClient(ABC):
         self.logger = logger
         # Initialize monitor (non-vector storage under .llm_monitoring)
         try:
-            self.monitor = LLMChatMonitor(name="llm_chats", enable_vectors=False)
+            # Allow frontend notify url from env
+            notify_url = os.getenv("LLM_MONITOR_NOTIFY_URL")
+            self.monitor = LLMChatMonitor(name="llm_chats", enable_vectors=False, notify_url=notify_url)
         except Exception as e:
             self.monitor = None  # type: ignore
             self.logger.warning(f"LLM monitor initialization failed: {e}")

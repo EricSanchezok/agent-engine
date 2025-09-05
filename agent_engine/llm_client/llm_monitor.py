@@ -18,9 +18,11 @@ class LLMChatMonitor:
         *,
         name: str = "llm_chats",
         enable_vectors: bool = False,
+        notify_url: Optional[str] = None,
     ) -> None:
         self.logger = AgentLogger("LLMMonitor")
         self.name = name
+        self.notify_url = notify_url
 
         # Ensure storage under project_root/.llm_monitoring (no extra subfolder)
         project_root = get_project_root()
@@ -86,6 +88,27 @@ class LLMChatMonitor:
                 metadata=metadata,
                 item_id=trace_id,
             )
+            # notify frontend if configured
+            try:
+                if self.notify_url:
+                    try:
+                        import aiohttp  # type: ignore
+                        async with aiohttp.ClientSession() as sess:
+                            await sess.post(self.notify_url, json={"id": trace_id})
+                    except Exception:
+                        # fallback to stdlib if aiohttp not available
+                        import urllib.request
+                        import urllib.error
+                        import json as _json
+                        req = urllib.request.Request(self.notify_url, data=_json.dumps({"id": trace_id}).encode('utf-8'), headers={'Content-Type': 'application/json'}, method='POST')
+                        try:
+                            with urllib.request.urlopen(req, timeout=2) as _:
+                                pass
+                        except Exception as _e:
+                            # best-effort
+                            self.logger.warning(f"LLM monitor notify fallback failed: {_e}")
+            except Exception as ne:
+                self.logger.warning(f"LLM monitor notify failed: {ne}")
         except Exception as e:
             self.logger.warning(f"LLM monitor start_chat failed: {e}")
 
@@ -139,6 +162,25 @@ class LLMChatMonitor:
                 content=json.dumps(content, ensure_ascii=False),
                 metadata=old_meta,
             )
+            # notify frontend if configured
+            try:
+                if self.notify_url:
+                    try:
+                        import aiohttp  # type: ignore
+                        async with aiohttp.ClientSession() as sess:
+                            await sess.post(self.notify_url, json={"id": trace_id})
+                    except Exception:
+                        import urllib.request
+                        import urllib.error
+                        import json as _json
+                        req = urllib.request.Request(self.notify_url, data=_json.dumps({"id": trace_id}).encode('utf-8'), headers={'Content-Type': 'application/json'}, method='POST')
+                        try:
+                            with urllib.request.urlopen(req, timeout=2) as _:
+                                pass
+                        except Exception as _e:
+                            self.logger.warning(f"LLM monitor notify fallback failed: {_e}")
+            except Exception as ne:
+                self.logger.warning(f"LLM monitor notify failed: {ne}")
         except Exception as e:
             self.logger.warning(f"LLM monitor complete_chat failed: {e}")
 
@@ -191,6 +233,25 @@ class LLMChatMonitor:
                 content=json.dumps(content, ensure_ascii=False),
                 metadata=old_meta,
             )
+            # notify frontend if configured
+            try:
+                if self.notify_url:
+                    try:
+                        import aiohttp  # type: ignore
+                        async with aiohttp.ClientSession() as sess:
+                            await sess.post(self.notify_url, json={"id": trace_id})
+                    except Exception:
+                        import urllib.request
+                        import urllib.error
+                        import json as _json
+                        req = urllib.request.Request(self.notify_url, data=_json.dumps({"id": trace_id}).encode('utf-8'), headers={'Content-Type': 'application/json'}, method='POST')
+                        try:
+                            with urllib.request.urlopen(req, timeout=2) as _:
+                                pass
+                        except Exception as _e:
+                            self.logger.warning(f"LLM monitor notify fallback failed: {_e}")
+            except Exception as ne:
+                self.logger.warning(f"LLM monitor notify failed: {ne}")
         except Exception as e:
             self.logger.warning(f"LLM monitor fail_chat failed: {e}")
 
