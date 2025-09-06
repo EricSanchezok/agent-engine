@@ -38,6 +38,34 @@
     return i > 0 ? s.slice(0, i) : s;
   }
 
+  function prettyPrintJSON(value) {
+    try {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            return JSON.stringify(parsed, null, 2);
+          } catch (_) {
+            // fall through
+          }
+        }
+        return value;
+      }
+      if (typeof value === 'object') {
+        return JSON.stringify(value, null, 2);
+      }
+      return String(value);
+    } catch (e) {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch (_) {
+        return String(value ?? '');
+      }
+    }
+  }
+
   function renderSessions() {
     const wrap = qs('#sessions');
     wrap.innerHTML = '';
@@ -82,11 +110,11 @@
     const m = data.metadata || {};
 
     qs('#detailMeta').textContent = `${m.status || ''} · ${m.provider || ''} · ${m.model_name || ''}`;
-    qs('#requestJson').textContent = JSON.stringify(c.request || {}, null, 2);
-    qs('#responseJson').textContent = JSON.stringify(c.response || {}, null, 2);
-    qs('#timingJson').textContent = JSON.stringify(c.timing || {}, null, 2);
-    qs('#metadataJson').textContent = JSON.stringify(m || {}, null, 2);
-    qs('#contentJson').textContent = JSON.stringify(c || {}, null, 2);
+    qs('#requestJson').textContent = prettyPrintJSON(c.request || {});
+    qs('#responseJson').textContent = prettyPrintJSON(c.response || {});
+    qs('#timingJson').textContent = prettyPrintJSON(c.timing || {});
+    qs('#metadataJson').textContent = prettyPrintJSON(m || {});
+    qs('#contentJson').textContent = prettyPrintJSON(c || {});
   }
 
   function renderDynamicStrip() {
@@ -141,6 +169,9 @@
       for (const id of ids) {
         await addTileById(id, true);
       }
+      if (state.follow && state.selectedId) {
+        await fetchDetail(state.selectedId).catch(() => {});
+      }
     } catch (_) {}
   }
 
@@ -175,20 +206,20 @@
     // Subscribe SSE for realtime updates
     try {
       const sse = new EventSource(`${API_BASE}/stream`);
-      sse.onmessage = (ev) => {
+      sse.onmessage = async (ev) => {
         try {
           const data = JSON.parse(ev.data || '{}');
           if (data && data.type === 'update') {
-            // left list stays static; refresh newest and re-poll existing tiles to update status
-            fetch(`${API_BASE}/sessions`).then(r => r.json()).then(d => {
+            try {
+              const d = await fetch(`${API_BASE}/sessions`).then(r => r.json());
               const newest = (d.items || [])[0];
-              if (newest && newest.trace_id) addTileById(String(newest.trace_id));
-            }).catch(() => {});
-            refreshTiles();
-            updateStats();
+              if (newest && newest.trace_id) await addTileById(String(newest.trace_id));
+            } catch (_) {}
+            await refreshTiles();
+            await updateStats();
           } else if (data && data.type === 'new' && data.id) {
-            addTileById(String(data.id));
-            updateStats();
+            await addTileById(String(data.id));
+            await updateStats();
           }
         } catch (e) {
           // ignore
