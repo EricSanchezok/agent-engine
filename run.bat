@@ -17,6 +17,15 @@ if "%~1"=="" (
 :: Build the complete file path
 set SCRIPT_PATH=%PROJECT_ROOT%\%~1
 
+set REST_ARGS=
+:__SHIFT_ARGS
+shift
+if "%~1"=="" goto __ARGS_DONE
+set REST_ARGS=%REST_ARGS% "%~1"
+goto __SHIFT_ARGS
+
+:__ARGS_DONE
+
 :: Check if the file exists
 if not exist "%SCRIPT_PATH%" (
     echo Error: File does not exist - %SCRIPT_PATH%
@@ -33,7 +42,7 @@ echo ========================================
 echo.
 
 :: Run Python script
-uv run "%SCRIPT_PATH%"
+uv run "%SCRIPT_PATH%" %REST_ARGS%
 
 :: Check run result
 if %ERRORLEVEL% neq 0 (

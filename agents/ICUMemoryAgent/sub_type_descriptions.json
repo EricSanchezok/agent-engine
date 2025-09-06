@@ -1,0 +1,134 @@
+[
+    {
+        "sub_type": "护理措施",
+        "description": "Documents specific interventions and key observations implemented during a nursing shift, such as patient positioning, turning and back percussion, suctioning, oxygen therapy with flow rate/pump speed settings, ventilator parameter adjustments, line care, skin and circulation assessment, patient education, and risk prevention. Records may be itemized or in brief narrative form to track nursing implementation and changes in the patient's condition."
+    },
+    {
+        "sub_type": "order",
+        "description": "Records the initiation and modification of physician's orders, including order type (e.g., standing, PRN), content, frequency/duration, and precautions. Covers directives for treatment, nursing care, laboratory tests, imaging, medications, and procedures."
+    },
+    {
+        "sub_type": "一般护理监测记录单",
+        "description": "Used for routine nursing assessment documentation for inpatients in general wards (non-ICU settings). Content includes the assessment date, the patient's current vital signs (blood pressure, temperature, respiration, pulse), and other nursing notes."
+    },
+    {
+        "sub_type": "药物执行",
+        "description": "Documents the details of medication administration at the bedside, including drug name and strength, single and total dosage, route of administration (e.g., IV push, infusion), frequency, compatible diluent, actual volume administered, and time of administration. Facilitates traceability and medication safety management."
+    },
+    {
+        "sub_type": "导管观察及护理记录",
+        "description": "Records the insertion and maintenance of various catheters and lines (e.g., urinary catheters, gastric tubes, drainage tubes). Includes catheter type, site, insertion depth, fixation, patency, surrounding skin condition, catheter status (inserted/maintained/removed), days of catheterization, nursing interventions, and management of any abnormalities."
+    },
+    {
+        "sub_type": "谵妄评估单",
+        "description": "This assessment form utilizes the Richmond Agitation-Sedation Scale (RASS) and the Confusion Assessment Method for the ICU (CAM-ICU) to evaluate the level of agitation, depth of sedation, and presence of delirium (acute brain dysfunction) in ICU patients. The RASS allows for early detection of over-sedation or agitation. When the RASS score is -3 or higher (-3 to +4), the CAM-ICU is used for delirium assessment. It is suitable for non-verbal or intubated critically ill patients."
+    },
+    {
+        "sub_type": "history",
+        "description": "Records patient progress, including initial progress notes, ward round records, and interim summaries. Encompasses history of present illness, physical examination findings, results of ancillary studies, diagnosis and differential diagnosis, treatment plan, and order adjustments, reflecting the clinical course and decision-making process."
+    },
+    {
+        "sub_type": "约束护理记录单",
+        "description": "Documents and evaluates the entire process of using physical restraints on a patient. This includes assessment of risk factors such as self-extubation, falls from bed, and self-injury; the necessity of restraint and site selection; and continuous monitoring of skin integrity and functional status to ensure appropriate, safe, and ongoing care."
+    },
+    {
+        "sub_type": "lab",
+        "description": "Summarizes laboratory test results, listing test values, reference ranges, and abnormal flags (e.g., high, low, normal) by item. Covers various panels such as complete blood count (CBC), biochemistry, inflammatory and coagulation markers, and infectious disease serology. Supports trend analysis and clinical decision-making."
+    },
+    {
+        "sub_type": "blood_gas",
+        "description": "Records arterial blood gas (ABG) analysis results, including parameters such as pH, pCO2, pO2, HCO3-, BE, sO2, lactate, electrolytes, glucose, and FiO2. May include temperature correction and relevant ventilator settings. Used to assess ventilation, oxygenation, and acid-base balance."
+    },
+    {
+        "sub_type": "exam",
+        "description": "Records diagnostic examination and imaging reports. Includes the name of the examination (e.g., CT, MRI, Ultrasound) and the principal findings or conclusion for reference in patient assessment and clinical decision-making."
+    },
+    {
+        "sub_type": "医院获得性肺炎风险因素评估表",
+        "description": "Used to assess an inpatient's risk of developing Hospital-Acquired Pneumonia (HAP) during their hospital stay, in order to implement appropriate nursing interventions and preventive measures based on the assessed risk level."
+    },
+    {
+        "sub_type": "Caprini血栓风险评估单",
+        "description": "The Caprini Risk Assessment Model is used to evaluate an inpatient's risk for Venous Thromboembolism (VTE), including Deep Vein Thrombosis (DVT) and Pulmonary Embolism (PE). The model assigns points to various risk factors based on patient history, laboratory results, and planned surgical procedures. It is applicable to both medical and surgical inpatients, particularly in perioperative settings or for patients with prolonged immobility."
+    },
+    {
+        "sub_type": "疼痛评估及记录单",
+        "description": "Used to assess and document a patient's pain intensity, characteristics, medication use, and any adverse drug reactions, enabling healthcare providers to implement timely interventions and evaluate treatment efficacy."
+    },
+    {
+        "sub_type": "导尿管伴随性尿路感染风险监控",
+        "description": "This tool is used to assess and monitor the risk of Catheter-Associated Urinary Tract Infection (CAUTI) in hospitalized patients with an indwelling urinary catheter. It assists healthcare personnel in determining the continued necessity of the catheter, adequacy of care during catheterization, and in identifying early signs of infection."
+    },
+    {
+        "sub_type": "Braden",
+        "description": "The Braden Scale is used to assess an inpatient's risk of developing a pressure injury (pressure ulcer). It predicts the likelihood of skin breakdown by scoring six subscales: sensory perception, moisture, activity, mobility, nutrition, and friction/shear. Scores range from 6 to 23, with a higher score indicating a lower risk, helping clinicians to implement preventive measures."
+    },
+    {
+        "sub_type": "皮肤观察及护理记录单",
+        "description": "This assessment form is used to observe and document the patient's skin integrity, focusing on the presence of trauma, pressure ulcers, lesions, or other skin issues, to help nursing staff identify abnormalities and implement appropriate care measures promptly."
+    },
+    {
+        "sub_type": "跌倒/坠床风险评估表",
+        "description": "This scale is used to identify an inpatient's risk of falls or falling from bed, enabling nursing staff to implement targeted preventive and protective measures in a timely manner."
+    },
+    {
+        "sub_type": "压力性损伤观察及护理记录单",
+        "description": "Similar to the Braden Scale, this record focuses on documenting the specific location, size, and corresponding nursing interventions for an existing pressure injury. It is used for monitoring and managing pressure injuries in inpatients, especially those with prolonged bed rest or limited mobility."
+    },
+    {
+        "sub_type": "Barthel指数量表",
+        "description": "A tool for assessing the performance in activities of daily living (ADLs) for inpatients or individuals in rehabilitation. It evaluates a patient's ability to perform ten basic self-care tasks, such as feeding, dressing, toileting, and mobility, to determine their level of independence."
+    },
+    {
+        "sub_type": "内科血栓风险评估表",
+        "description": "Used to assess the risk of Venous Thromboembolism (VTE) in hospitalized medical patients to determine the need for initiating appropriate prophylactic measures."
+    },
+    {
+        "sub_type": "重症疼痛观察量表CPOT",
+        "description": "The Critical-Care Pain Observation Tool (CPOT) is a behavioral pain scale designed for critically ill adult patients who are unable to self-report pain (e.g., intubated, unconscious, or severely debilitated). It assesses pain intensity by observing behavioral indicators such as facial expressions, body movements, and muscle tension, and is suitable for use in ICU and post-operative monitoring environments."
+    },
+    {
+        "sub_type": "改良早期预警评分表MEWS",
+        "description": "The Modified Early Warning Score (MEWS) is an early warning tool based on scoring fundamental vital signs (e.g., respiratory rate, pulse, temperature, blood pressure, level of consciousness). It is designed to help clinicians promptly identify inpatients at risk of clinical deterioration and to trigger appropriate interventions."
+    },
+    {
+        "sub_type": "住院病人昏迷评定记录单",
+        "description": "Used to assess and document an inpatient's level of consciousness and degree of coma. A total score (ranging from 3 to 15) is obtained by evaluating responses in three categories: eye opening, verbal response, and motor response, helping clinicians track changes in the patient's condition. (Typically the Glasgow Coma Scale)."
+    },
+    {
+        "sub_type": "危重护理记录单",
+        "description": "A comprehensive and systematic record for documenting a critically ill patient's vital signs, treatment course, status of various lines and tubes, and nursing interventions. It enables the medical and nursing teams to have a current understanding of the patient's condition and to respond rapidly to any changes."
+    },
+    {
+        "sub_type": "surgery",
+        "description": "Records surgery-related information, such as procedure code and name, date, time, and surgical technique (including site and key procedural details as needed). Used for perioperative management and event traceability."
+    },
+    {
+        "sub_type": "肌力等级评估表",
+        "description": "Used to assess the muscle strength of an inpatient's limbs or specific body parts. It determines whether muscle power is normal, weakened (paresis), or absent (paralysis), helping clinicians to understand the patient's motor function and to guide rehabilitation and nursing care. (e.g., using the Medical Research Council scale)."
+    },
+    {
+        "sub_type": "洼田饮水试验及护理记录单",
+        "description": "The Kubota Water Swallow Test is used to assess a patient's swallowing function, particularly for those with suspected dysphagia. The test involves observing the patient's response to drinking water in divided amounts to determine the risk of aspiration or choking. It is commonly used for patients with neurological disorders, post-operative patients, or elderly individuals prone to impaired swallowing."
+    },
+    {
+        "sub_type": "约束评估记录单",
+        "description": "Documents the assessment for the necessity of protective restraints. Determines the need and level of restraint based on factors such as consciousness/behavior, risk of self-extubation, and fall risk. Also records corresponding nursing measures (e.g., scheduled release, skin and distal circulation checks, enhanced handover communication) and risk disclosure."
+    },
+    {
+        "sub_type": "PICC穿刺记录单",
+        "description": "A detailed record of the Peripherally Inserted Central Catheter (PICC) insertion procedure, documenting each step, catheter materials used, technical details, the patient's physiological status, and any adverse events during the procedure."
+    },
+    {
+        "sub_type": "PICC宣教记录单",
+        "description": "Documents that patient and family education regarding the PICC line has been provided. Ensures the patient and/or family understand how to protect and maintain the catheter to reduce the risk of complications and improve the quality of home care."
+    },
+    {
+        "sub_type": "孕产妇VTE管理评估表",
+        "description": "Used to assess the risk of Venous Thromboembolism (VTE) in maternal patients, particularly during the postpartum period, and to guide appropriate preventive or interventional measures. The assessment is based on a cumulative score of antenatal, postpartum, and transient risk factors, and is applicable in both inpatient obstetric and follow-up settings."
+    },
+    {
+        "sub_type": "PICC导管维护记录单",
+        "description": "This record is used for the systematic documentation and continuous monitoring of Peripherally Inserted Central Catheter (PICC) maintenance. It aims to ensure catheter integrity and safety, enable early detection and prevention of complications such as occlusion, infection, and phlebitis, and provide standardized, continuous intravenous therapy nursing care."
+    }
+]

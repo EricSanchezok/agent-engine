@@ -294,6 +294,11 @@ def run_server(host: str = "127.0.0.1", port: int = 8765):
 
 
 if __name__ == "__main__":
-    run_server()
+    import argparse
+    parser = argparse.ArgumentParser(description="Run LLM Monitor web server")
+    parser.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8765, help="Port to bind (default: 8765)")
+    args = parser.parse_args()
+    run_server(args.host, args.port)
 
 

@@ -153,35 +153,66 @@ class AgentLogger:
         """Create/update the link file to point to the current log file"""
         # Create a single link file for the main logger with "00_" prefix to ensure it appears first
         link_file = self.log_dir / "00_agent_logger_link.log"
-        
-        # Remove existing link if it exists
-        if link_file.exists():
-            link_file.unlink()
-        
-        # Create a text file with the current log filename and content
+
+        # Prepare content once
+        content_lines = [
+            "Main AgentLogger Link File\n",
+            f"Current log file: {self.log_filename}\n",
+            f"Created at: {datetime.now().isoformat()}\n",
+            f"Full path: {self.log_filepath}\n",
+            f"Active loggers: {', '.join(self.loggers.keys())}\n",
+            "-" * 50 + "\n",
+        ]
+        try:
+            if self.log_filepath.exists():
+                with open(self.log_filepath, 'r', encoding='utf-8') as log_f:
+                    content = log_f.read()
+                content_lines.append("Log content:\n")
+                content_lines.append(content)
+            else:
+                content_lines.append("Log file not yet created.\n")
+        except Exception:
+            # If reading current log fails, still proceed with basic info
+            content_lines.append("Log file read failed.\n")
+
+        data = ''.join(content_lines)
+
+        # Best-effort atomic write with retries to avoid Windows sharing violations
+        tmp_file = self.log_dir / f".{link_file.name}.tmp"
+        pid_specific_file = self.log_dir / f"00_agent_logger_link_{os.getpid()}.log"
+        for _ in range(3):
+            try:
+                with open(tmp_file, 'w', encoding='utf-8') as f:
+                    f.write(data)
+                # Attempt atomic replace
+                os.replace(tmp_file, link_file)
+                return
+            except Exception:
+                # Small delay before retry
+                time.sleep(0.05)
+            finally:
+                # Ensure tmp file does not linger in case of partial failures
+                try:
+                    if tmp_file.exists():
+                        tmp_file.unlink()
+                except Exception:
+                    pass
+
+        # Fallback: try direct write without replace
         try:
             with open(link_file, 'w', encoding='utf-8') as f:
-                f.write(f"Main AgentLogger Link File\n")
-                f.write(f"Current log file: {self.log_filename}\n")
-                f.write(f"Created at: {datetime.now().isoformat()}\n")
-                f.write(f"Full path: {self.log_filepath}\n")
-                f.write(f"Active loggers: {', '.join(self.loggers.keys())}\n")
-                f.write("-" * 50 + "\n")
-                # Copy the actual log content from the current log file
-                if self.log_filepath.exists():
-                    with open(self.log_filepath, 'r', encoding='utf-8') as log_f:
-                        content = log_f.read()
-                        f.write("Log content:\n")
-                        f.write(content)
-                else:
-                    f.write("Log file not yet created.\n")
-        except Exception as e:
-            # Fallback: create a simple text file
-            with open(link_file, 'w', encoding='utf-8') as f:
-                f.write(f"Main AgentLogger Link File\n")
-                f.write(f"Current log file: {self.log_filename}\n")
-                f.write(f"Created at: {datetime.now().isoformat()}\n")
-                f.write(f"Error: {str(e)}\n")
+                f.write(data)
+            return
+        except Exception:
+            pass
+
+        # Last resort: write to a process-specific link file to avoid contention
+        try:
+            with open(pid_specific_file, 'w', encoding='utf-8') as f:
+                f.write(data)
+        except Exception:
+            # Give up quietly; link file is best-effort only
+            pass
     
     def _clear_old_link_file(self):
         """Clear the old link file content when reinitializing"""
@@ -189,13 +220,13 @@ class AgentLogger:
         
         if link_file.exists():
             try:
-                # Clear the content but keep the file
+                # Best-effort truncate; avoid deleting to prevent Windows permission errors
                 with open(link_file, 'w', encoding='utf-8') as f:
-                    f.write(f"Main AgentLogger Link File\n")
+                    f.write("Main AgentLogger Link File\n")
                     f.write("Log file cleared. Waiting for new content...\n")
-            except Exception as e:
-                # If we can't clear it, just remove it
-                link_file.unlink()
+            except Exception:
+                # Swallow errors; link file is optional convenience
+                pass
 
     def _check_file_size(self):
         """Check if current log file exceeds size limit and rotate if necessary"""
