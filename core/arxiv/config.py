@@ -1,4 +1,4 @@
-categories = [
+default_categories = [
     'cs.CL', 'cs.NE', 'physics.comp-ph', 
     'q-bio.BM', 'eess.AS', 'cs.MM', 'math.IT', 
     'q-bio.QM', 'I.2.10; I.4.8; I.2.6; I.2.7; I.5.4; I.5.1', 
@@ -9,5 +9,5 @@ categories = [
     'cond-mat.stat-mech', 'cs.DC'
 ]
 
-CATEGORIES_QUERY_STRING = f"({' OR '.join([f'cat:{cat}' for cat in categories])})"
+CATEGORIES_QUERY_STRING = f"({' OR '.join([f'cat:{cat}' for cat in default_categories])})"
 

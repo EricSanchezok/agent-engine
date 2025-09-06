@@ -226,4 +226,4 @@ class ArxivMemory:
 
 
 if __name__ == "__main__":
-    asyncio.run(ArxivMemory().store_one_day("20250906"))
+    asyncio.run(ArxivMemory().store_one_day("20250904"))
