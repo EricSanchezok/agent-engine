@@ -73,6 +73,9 @@ class ArxivMemory:
         - content: paper.summary
         - vector: Azure embedding for summary
         - metadata: paper.info (dict)
+
+        Optimization:
+        - Before embedding, check if the id already exists AND has a stored vector; if so, skip to avoid token cost.
         """
         if not papers:
             return []
@@ -95,28 +98,43 @@ class ArxivMemory:
                     self.logger.warning(f"Embedding failed for paper {paper.id}: {e}")
                     return idx, None, e
 
-        # Prepare inputs
+        # Prepare inputs: skip items that already have vectors in DB
         items: List[ArxivItem] = []
-        texts_to_embed_idx: List[int] = []
-        tasks: List[asyncio.Task] = []
+        to_embed: List[Tuple[int, Paper]] = []
 
-        for i, p in enumerate(papers):
+        for p in papers:
             pid = p.id
             content = str(p.info.get("summary", "") or "")
             md = dict(p.info)
             md["id"] = pid
+
+            # Check existing record and vector to avoid redundant embeddings
+            try:
+                _existing_content, existing_vec, _existing_md = self.memory.get_by_id(pid)
+            except Exception as e:
+                self.logger.warning(f"Lookup failed for id={pid}: {e}")
+                existing_vec = None
+
+            if isinstance(existing_vec, list) and len(existing_vec) > 0:
+                # Already stored with vector; skip
+                self.logger.info(f"Skip id={pid}: already stored with vector")
+                continue
+
+            # Need embedding
+            idx = len(items)
             items.append(ArxivItem(id=pid, content=content, metadata=md, vector=None))
-            tasks.append(asyncio.create_task(embed_one(i, p)))
-            texts_to_embed_idx.append(i)
+            to_embed.append((idx, p))
 
         # Run concurrent embeddings
-        results = await asyncio.gather(*tasks, return_exceptions=False)
-        for idx, vec, err in results:
-            if vec is not None:
-                items[idx].vector = vec
-            else:
-                # If embedding failed, skip this paper
-                self.logger.warning(f"Skip storing paper due to missing vector: {papers[idx].id}")
+        if to_embed:
+            tasks: List[asyncio.Task] = [asyncio.create_task(embed_one(idx, paper)) for idx, paper in to_embed]
+            results = await asyncio.gather(*tasks, return_exceptions=False)
+            for idx, vec, err in results:
+                if vec is not None:
+                    items[idx].vector = vec
+                else:
+                    # If embedding failed, leave vector None; it will be filtered out
+                    self.logger.warning(f"Skip storing paper due to missing vector: {items[idx].id}")
 
         payload: List[Dict[str, Any]] = []
         for it in items:
@@ -183,18 +201,29 @@ class ArxivMemory:
             max_results: limit
             max_concurrency: embedding concurrency
         """
+        self.logger.info(f"Storing papers for {date_str} with {categories} and {max_results} results")
         if not isinstance(date_str, str) or len(date_str) != 8 or not date_str.isdigit():
             raise ValueError("date_str should be 'YYYYMMDD'")
 
-        # Build query string
+        # Build query string over [date_str, next_day]
+        try:
+            from datetime import datetime, timedelta
+            dt = datetime.strptime(date_str, "%Y%m%d")
+            next_day = (dt + timedelta(days=1)).strftime("%Y%m%d")
+        except Exception:
+            next_day = date_str
+
         if categories:
             cats = " OR ".join([f"cat:{c}" for c in categories])
-            q = f"({cats}) AND submittedDate:[{date_str} TO {date_str}]"
+            q = f"({cats}) AND submittedDate:[{date_str} TO {next_day}]"
         else:
-            q = f"submittedDate:[{date_str} TO {date_str}]"
+            q = f"submittedDate:[{date_str} TO {next_day}]"
 
         fetcher = ArXivFetcher()
         papers = await fetcher.search(query_string=q, max_results=max_results)
+        self.logger.info(f"Found {len(papers)} papers")
         return await self.store_papers(papers, max_concurrency=max_concurrency)
 
 
+if __name__ == "__main__":
+    asyncio.run(ArxivMemory().store_one_day("20250906"))

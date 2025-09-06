@@ -40,7 +40,7 @@ logger = AgentLogger(__name__)
 def _clean_arxiv_id(raw_id: str) -> str:
     """清洗 arXiv ID：
     1. 将 `_` 替换为 `.`
-    2. 去掉版本号 `v\d+$`
+    2. 去掉版本号 `v\\d+$`
 
     Examples
     --------
