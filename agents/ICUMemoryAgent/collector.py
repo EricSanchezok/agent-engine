@@ -29,6 +29,7 @@ class ICUMemoryCollector:
     async def build_plan(
         self,
         user_query: str,
+        current_time: str,
         total_events: int,
         event_time_range: Tuple[Optional[str], Optional[str]],
         result_summary: Optional[str] = None,
@@ -46,7 +47,7 @@ class ICUMemoryCollector:
             section='collector',
             prompt_type='user',
             user_query=user_query,
-            current_time=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            current_time=current_time,
             total_events=total_events,
             event_time_range=event_time_range,
             result_summary=(result_summary or ""),
@@ -61,7 +62,7 @@ class ICUMemoryCollector:
             logger.error(f"ICUMemoryCollector.build_plan error: {e}")
             return []
 
-    async def assess(self, user_query: str, events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def assess(self, user_query: str, current_time: str, events: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Assess whether current coverage is sufficient. Returns JSON with keys: is_sufficient, reasons, summary."""
         system_prompt = self.prompt_loader.get_prompt(
             section='assessor',
@@ -71,7 +72,7 @@ class ICUMemoryCollector:
             section='assessor',
             prompt_type='user',
             user_query=user_query,
-            current_time=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            current_time=current_time,
             events=events,
         )
         try:
@@ -99,6 +100,7 @@ class ICUMemoryCollector:
         # Fetch coarse context once
         total_events = memory.get_event_count(patient_id)
         event_time_range = memory.get_event_time_range(patient_id)
+        current_time = event_time_range[1]
 
         aggregated_by_id: Dict[str, Dict[str, Any]] = {}
         reasons: str = ""
@@ -109,6 +111,7 @@ class ICUMemoryCollector:
             logger.info(f"Iteration {it+1}/{max_iterations}: building plan")
             plan = await self.build_plan(
                 user_query=user_query,
+                current_time=current_time,
                 total_events=total_events,
                 event_time_range=event_time_range,
                 result_summary=result_summary or "",
@@ -144,7 +147,7 @@ class ICUMemoryCollector:
 
             # Assess on full events and update reasons/summary
             current_events_list = list(aggregated_by_id.values())
-            assessor = await self.assess(user_query, current_events_list)
+            assessor = await self.assess(user_query, current_time, current_events_list)
             reasons = assessor.get('reasons', "")
             assessor_summary = assessor.get('summary', "")
             # Combine assessor summary with additional fields
