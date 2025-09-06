@@ -434,12 +434,12 @@ class ICUMemoryAgent:
         self,
         patient_id: str,
         query: Any,
-        top_k: int = 5,
+        top_k: int = 20,
         threshold: float = 0.0,
         include_vectors: bool = False,
         sub_types: Optional[List[str]] = None,
         ef_search: Optional[int] = None,
-        near_duplicate_delta: float = 0.0,
+        near_duplicate_delta: float = 0.1,
     ) -> List[Dict[str, Any]]:
         """Vector search within a patient's memory using ScalableMemory.search.
 
