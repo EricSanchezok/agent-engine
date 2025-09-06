@@ -348,6 +348,39 @@ class ICUMemoryAgent:
         _, vector, _ = self._vector_cache.get_by_id(event_id)
         return vector
 
+    def get_event_count(self, patient_id: str) -> int:
+        """Return total number of events stored for the patient."""
+        mem = self._get_patient_memory(patient_id)
+        count = 0
+        for _content, _vector, _md in mem.get_all():
+            count += 1
+        return count
+
+    def get_event_time_range(self, patient_id: str) -> Tuple[Optional[str], Optional[str]]:
+        """Return (earliest_timestamp, latest_timestamp) among the patient's events.
+
+        If the patient has no events, returns (None, None).
+        """
+        mem = self._get_patient_memory(patient_id)
+        earliest_dt: Optional[datetime] = None
+        latest_dt: Optional[datetime] = None
+        earliest_str: Optional[str] = None
+        latest_str: Optional[str] = None
+
+        for _content, _vector, md in mem.get_all():
+            ts_str = md.get("timestamp")
+            ts = self._to_datetime(ts_str)
+            if ts is None:
+                continue
+            if earliest_dt is None or ts < earliest_dt:
+                earliest_dt = ts
+                earliest_str = ts_str
+            if latest_dt is None or ts > latest_dt:
+                latest_dt = ts
+                latest_str = ts_str
+
+        return (earliest_str, latest_str)
+
     def get_events_between(
         self,
         patient_id: str,

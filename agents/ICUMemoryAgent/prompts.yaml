@@ -111,11 +111,13 @@ collector:
 
   user_prompt:
     _type: prompt
-    input_variables: ["user_query", "current_time"]
+    input_variables: ["user_query", "current_time", "total_events", "event_time_range"]
     template: |
       Current Context:
       - The current time is: {current_time}
-      - Use this to resolve any relative time expressions like "yesterday" or "in the last 3 hours".
+      - Total number of events in memory: {total_events}
+      - Time range of events in memory (earliest, latest): {event_time_range}
+      - Use this context to resolve relative time expressions (like "yesterday") and to select appropriate parameters for 'n' (for `get_recent_events`) and time windows (for `get_events_within_hours` and `get_events_between`).
 
       Now, analyze the following user query and generate the corresponding JSON execution plan.
 
