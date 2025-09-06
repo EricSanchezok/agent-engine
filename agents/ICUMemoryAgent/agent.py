@@ -254,6 +254,7 @@ class ICUMemoryAgent:
         ref_time: Optional[str | datetime],
         hours: int,
         include_vectors: bool = False,
+        sub_types: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Return events within [ref_time - hours, ref_time].
 
@@ -272,12 +273,18 @@ class ICUMemoryAgent:
         start_dt = ref_dt - timedelta(hours=hours)
 
         mem = self._get_patient_memory(patient_id)
+        sub_types_set = set(sub_types) if sub_types else None
         results = []
         for content, vector, md in mem.get_all():
             ts_str = md.get("timestamp")
             ts = self._to_datetime(ts_str)
             if ts is None:
                 continue
+            # filter by sub_type if provided
+            if sub_types_set is not None:
+                st = md.get("sub_type")
+                if st not in sub_types_set:
+                    continue
             if start_dt <= ts <= ref_dt:
                 item = {
                     "id": md.get("id"),
@@ -299,17 +306,24 @@ class ICUMemoryAgent:
         patient_id: str,
         n: int,
         include_vectors: bool = False,
+        sub_types: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """Return the most recent N events by timestamp (descending)."""
         if n <= 0:
             return []
         mem = self._get_patient_memory(patient_id)
+        sub_types_set = set(sub_types) if sub_types else None
         items = []
         for content, vector, md in mem.get_all():
             ts_str = md.get("timestamp")
             ts = self._to_datetime(ts_str)
             if ts is None:
                 continue
+            # filter by sub_type if provided
+            if sub_types_set is not None:
+                st = md.get("sub_type")
+                if st not in sub_types_set:
+                    continue
             item = {
                 "id": md.get("id"),
                 "timestamp": ts_str,
@@ -333,6 +347,150 @@ class ICUMemoryAgent:
         """Get a cached vector by event_id from the global cache."""
         _, vector, _ = self._vector_cache.get_by_id(event_id)
         return vector
+
+    def get_events_between(
+        self,
+        patient_id: str,
+        start_time: Optional[str | datetime],
+        end_time: Optional[str | datetime],
+        include_vectors: bool = False,
+        sub_types: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return events within [start_time, end_time].
+
+        If start_time is None, use the earliest event timestamp.
+        If end_time is None, use the latest event timestamp.
+
+        Args:
+            patient_id: Unique patient id.
+            start_time: ISO string or datetime for range start (inclusive), or None.
+            end_time: ISO string or datetime for range end (inclusive), or None.
+            include_vectors: Whether to include vectors in results.
+            sub_types: Optional list of sub_type filters. If provided, only events whose
+                metadata.sub_type is in this list are included.
+
+        Returns:
+            List of events sorted by timestamp ascending within the window.
+        """
+        mem = self._get_patient_memory(patient_id)
+        sub_types_set = set(sub_types) if sub_types else None
+
+        # First pass: collect items and determine earliest/latest timestamps
+        collected: List[Tuple[Optional[datetime], str, str, str, str, Dict[str, Any], List[float], str]] = []
+        earliest: Optional[datetime] = None
+        latest: Optional[datetime] = None
+        for content, vector, md in mem.get_all():
+            ts_str = md.get("timestamp")
+            ts = self._to_datetime(ts_str)
+            if ts is None:
+                continue
+            # filter by sub_type if provided
+            if sub_types_set is not None:
+                st = md.get("sub_type")
+                if st not in sub_types_set:
+                    continue
+            collected.append((ts, md.get("id"), ts_str or "", md.get("event_type"), md.get("sub_type"), md, vector, content))
+            if earliest is None or ts < earliest:
+                earliest = ts
+            if latest is None or ts > latest:
+                latest = ts
+
+        if not collected:
+            return []
+
+        # Determine range boundaries
+        s_dt = self._to_datetime(start_time) if start_time is not None else earliest
+        e_dt = self._to_datetime(end_time) if end_time is not None else latest
+        if s_dt is None and earliest is not None:
+            s_dt = earliest
+        if e_dt is None and latest is not None:
+            e_dt = latest
+        if s_dt is None or e_dt is None:
+            return []
+        # Normalize order
+        if s_dt > e_dt:
+            s_dt, e_dt = e_dt, s_dt
+
+        results: List[Dict[str, Any]] = []
+        for ts, iid, ts_str, ev_type, sub_t, md, vector, content in collected:
+            assert ts is not None
+            if s_dt <= ts <= e_dt:
+                item: Dict[str, Any] = {
+                    "id": iid,
+                    "timestamp": ts_str,
+                    "event_type": ev_type,
+                    "sub_type": sub_t,
+                    "content": content,
+                    "metadata": md,
+                }
+                if include_vectors:
+                    item["vector"] = vector
+                results.append(item)
+
+        results.sort(key=lambda x: self._to_datetime(x.get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc))
+        return results
+
+    async def query_search(
+        self,
+        patient_id: str,
+        query: Any,
+        top_k: int = 5,
+        threshold: float = 0.0,
+        include_vectors: bool = False,
+        sub_types: Optional[List[str]] = None,
+        ef_search: Optional[int] = None,
+        near_duplicate_delta: float = 0.0,
+    ) -> List[Dict[str, Any]]:
+        """Vector search within a patient's memory using ScalableMemory.search.
+
+        Args:
+            patient_id: Unique patient id.
+            query: Text or vector.
+            top_k: Max results to return.
+            threshold: Minimum cosine similarity.
+            include_vectors: Whether to include vectors in results.
+            sub_types: Optional list of sub_type filters applied after search.
+            ef_search: Optional search breadth parameter for HNSW.
+            near_duplicate_delta: Exclude near-duplicates if > 0.0.
+
+        Returns:
+            List of results with fields: id, timestamp, event_type, sub_type, content, metadata, similarity,
+            and optional vector when include_vectors=True.
+        """
+        mem = self._get_patient_memory(patient_id)
+        raw = await mem.search(
+            query,
+            top_k=top_k,
+            threshold=threshold,
+            metadata_filter=None,
+            ef_search=ef_search,
+            near_duplicate_delta=near_duplicate_delta,
+        )
+
+        sub_types_set = set(sub_types) if sub_types else None
+        out: List[Dict[str, Any]] = []
+        for content, sim, md in raw:
+            if sub_types_set is not None:
+                st = md.get("sub_type")
+                if st not in sub_types_set:
+                    continue
+            item: Dict[str, Any] = {
+                "id": md.get("id"),
+                "timestamp": md.get("timestamp"),
+                "event_type": md.get("event_type"),
+                "sub_type": md.get("sub_type"),
+                "content": content,
+                "metadata": md,
+                "similarity": sim,
+            }
+            if include_vectors:
+                iid = md.get("id")
+                if iid:
+                    _, vec, _ = mem.get_by_id(iid)
+                    if vec is not None:
+                        item["vector"] = vec
+            out.append(item)
+        return out
 
     # ----------------------- Internal helpers -----------------------
     def _get_patient_memory(self, patient_id: str) -> ScalableMemory:
