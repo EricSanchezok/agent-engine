@@ -315,11 +315,11 @@ if __name__ == "__main__":
     from pprint import pprint
     message = "Hello, how are you?"
     response = asyncio.run(send_message_to_a2a_agent(
-        base_url="http://10.12.16.139:9900",
+        base_url="http://10.244.9.104:9900/",
         message=message,
         message_id=None,
         role="user",
         timeout=30.0,
-        proxy_url=None
+        proxy_url="http://56e7bc2e.r8.cpolar.top/"
     ))
     pprint(response)
