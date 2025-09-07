@@ -192,6 +192,41 @@ class ArxivMemory:
         results.sort(key=_version_key)
         return results
 
+    def histogram_by_day(self) -> List[Tuple[str, int]]:
+        """Return a histogram of papers per day from the memory database.
+
+        Returns:
+            List of (date_str, count) where date_str is 'YYYYMMDD', sorted ascending by date.
+            Only dates that have at least one paper are included.
+        """
+        import re
+
+        counts: Dict[str, int] = {}
+        try:
+            metadatas = self.memory.get_all_metadata()
+        except Exception as e:
+            self.logger.error(f"Failed to load metadata for histogram: {e}")
+            return []
+
+        for md in metadatas:
+            ts = md.get("timestamp") or md.get("submittedDate") or md.get("published") or ""
+            if not isinstance(ts, str):
+                ts = str(ts)
+
+            date_str: Optional[str] = None
+            m = re.match(r"(\d{8})", ts)
+            if m:
+                date_str = m.group(1)
+            else:
+                m2 = re.match(r"(\d{4})[-/]?(\d{2})[-/]?(\d{2})", ts)
+                if m2:
+                    date_str = f"{m2.group(1)}{m2.group(2)}{m2.group(3)}"
+
+            if date_str:
+                counts[date_str] = counts.get(date_str, 0) + 1
+
+        return sorted(counts.items(), key=lambda x: x[0])
+
     async def store_one_day(self, date_str: str, categories: Optional[List[str]] = None, *, max_results: int = 10000, max_concurrency: int = 32) -> List[str]:
         """Fetch and store all arXiv papers for a day and optional categories.
 
