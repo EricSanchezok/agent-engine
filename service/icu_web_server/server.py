@@ -154,7 +154,7 @@ else:  # pragma: no cover
 
 def main() -> None:  # pragma: no cover
     import uvicorn
-    uvicorn.run("service.icu_web_server.server:app", host="0.0.0.0", port=8080, reload=False)
+    uvicorn.run("service.icu_web_server.server:app", host="0.0.0.0", port=4200, reload=False)
 
 
 if __name__ == "__main__":  # pragma: no cover
