@@ -19,7 +19,7 @@ risk_diagnosis:
       - The risk type name must be an exact, case-sensitive match to a name in the third-level classification of the provided risk types.
       - The rationale must cite specific indicator values or clinical manifestations.
 
-      Output Format Specification:
+      Output JSON schema (STRICT):
       {
         "risks": [
           {"risk_name_1": "reason_1"},  // Rationale must reference specific indicators/findings
@@ -50,8 +50,7 @@ risk_diagnosis:
     template: |
       Event Content: {event}
 
-      Based on the content above, perform the risk type diagnosis, strictly adhering to the specified output format.
-
+      Return ONLY the JSON object matching the strict schema above.
 
 risk_audit:
   system_prompt:
@@ -71,7 +70,7 @@ risk_audit:
       Risk Table:
       {risks_table}
 
-      Output Format Specification:
+      Output JSON schema (STRICT):
       {
         "risks": [
           {"risk_name_1": "reason_1"},
@@ -104,3 +103,5 @@ risk_audit:
       ├─ Initial Result: {initial_diagnosis}
       └─ Original Event:
          Content: {event}
+
+      Return ONLY the JSON object matching the strict schema above.

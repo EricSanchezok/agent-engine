@@ -11,7 +11,7 @@ from agents.ICURiskPredictionAgent.risk_diagnosis import RiskDiagnosis
 logger = AgentLogger(__name__) 
 
 
-MAX_CONCURRENT_TASKS = 16
+MAX_CONCURRENT_TASKS = 32
 
 async def process_file(file_path: str, save_path: str, selected_event_types: list, risk_diagnosis: RiskDiagnosis, semaphore: asyncio.Semaphore):
     async with semaphore:
