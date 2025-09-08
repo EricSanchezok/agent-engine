@@ -290,12 +290,27 @@ class _HNSWIndex(_BaseANNIndex):
         if self._index is None:
             return
         try:
+            # Our best-known capacity may be stale after load; treat it as a lower bound
             current = self.capacity
             if need <= current:
                 return
             new_cap = 1 << (int(math.log2(max(need, current))) + 1)
-            self._index.resize_index(new_cap)
-            self.capacity = new_cap
+            try:
+                self._index.resize_index(new_cap)
+                self.capacity = max(self.capacity, new_cap)
+            except RuntimeError as re:
+                # If resize_index complains that new_cap is not greater than current max elements,
+                # it means the underlying index already has >= new_cap capacity. In that case, we
+                # can treat it as no-op and proceed.
+                msg = str(re).lower()
+                if (
+                    "greater than the current" in msg
+                    or "should be greater than the current" in msg
+                    or "new number of elements" in msg and "greater" in msg
+                ):
+                    self.capacity = max(self.capacity, new_cap)
+                else:
+                    raise
         except Exception as e:
             raise RuntimeError(f"Failed to resize index: {e}")
 
@@ -315,7 +330,17 @@ class _HNSWIndex(_BaseANNIndex):
         try:
             self._index.add_items(np.asarray([vector], dtype=np.float32), np.asarray([label], dtype=np.int64))
         except RuntimeError as e:
-            # If already exists, try delete then add
+            msg = str(e).lower()
+            # If capacity was insufficient due to stale capacity knowledge, grow and retry once
+            if ("exceeds the specified limit" in msg) or ("add_items" in msg and "limit" in msg):
+                # Double the requested need to avoid repeated resizes
+                self._ensure_capacity(max(need_by_count, need_by_label) * 2)
+                try:
+                    self._index.add_items(np.asarray([vector], dtype=np.float32), np.asarray([label], dtype=np.int64))
+                    return
+                except Exception as e2:
+                    raise RuntimeError(f"Failed to add after resize for label {label}: {e2}")
+            # Otherwise, if already exists, try delete then add
             try:
                 self._index.mark_deleted(label)
                 self._index.add_items(np.asarray([vector], dtype=np.float32), np.asarray([label], dtype=np.int64))
@@ -334,7 +359,16 @@ class _HNSWIndex(_BaseANNIndex):
         need_by_label = max_label + 1
         need_by_count = current_count + len(labels)
         self._ensure_capacity(max(need_by_label, need_by_count))
-        self._index.add_items(np.asarray(vectors, dtype=np.float32), np.asarray(labels, dtype=np.int64))
+        try:
+            self._index.add_items(np.asarray(vectors, dtype=np.float32), np.asarray(labels, dtype=np.int64))
+        except RuntimeError as e:
+            msg = str(e).lower()
+            if ("exceeds the specified limit" in msg) or ("add_items" in msg and "limit" in msg):
+                # Grow more aggressively and retry once
+                self._ensure_capacity(max(need_by_label, need_by_count) * 2)
+                self._index.add_items(np.asarray(vectors, dtype=np.float32), np.asarray(labels, dtype=np.int64))
+            else:
+                raise
 
     def search(self, vector: List[float], top_k: int, ef_search: Optional[int] = None) -> Tuple[List[int], List[float]]:
         if self._index is None:
@@ -363,11 +397,13 @@ class _HNSWIndex(_BaseANNIndex):
                 return False
             self._index = hnswlib.Index(space=self.space, dim=dim)
             self._index.load_index(str(path))
-            # capacity unknown after load; approximate with current elements * 2
+            # After load, set capacity conservatively to current_count so that we always trigger
+            # an actual resize before exceeding underlying max_elements.
             try:
-                self.capacity = max(1024, int(self._index.get_current_count() * 2))
+                current_count_after_load = int(self._index.get_current_count())
             except Exception:
-                self.capacity = 1024
+                current_count_after_load = 0
+            self.capacity = max(16, current_count_after_load)
             return True
         except Exception as e:
             logger.warning(f"Failed to load hnsw index: {e}")
