@@ -1,0 +1,481 @@
+{
+    "Circulatory System": {
+        "Shock and Hypoperfusion": [
+            "Septic Shock",
+            "Cardiogenic Shock",
+            "Obstructive Shock",
+            "Hypovolemic Shock",
+            "Refractory Hypoperfusion"
+        ],
+        "Arrhythmia and Conduction Disorders": [
+            "Ventricular Fibrillation",
+            "Asystole",
+            "Pulseless Electrical Activity",
+            "Monomorphic Ventricular Tachycardia",
+            "Polymorphic Ventricular Tachycardia",
+            "Torsades de Pointes",
+            "Premature Ventricular Contraction",
+            "Atrial Fibrillation with Rapid Ventricular Response",
+            "Atrial Flutter with Rapid Conduction",
+            "Paroxysmal Supraventricular Tachycardia",
+            "Sinus Arrest",
+            "Sinoatrial Block",
+            "Second-Degree Atrioventricular Block, Mobitz Type II",
+            "Third-Degree Atrioventricular Block"
+        ],
+        "Acute Ischemia and Structural Complications": [
+            "Unstable Angina",
+            "NSTEMI (Non-ST-Elevation Myocardial Infarction)",
+            "STEMI (ST-Elevation Myocardial Infarction)",
+            "Acute Left Heart Failure",
+            "Acute Right Heart Failure",
+            "Acute Pulmonary Edema",
+            "Acute Severe Mitral Regurgitation due to Papillary Muscle Rupture",
+            "Ventricular Septal Rupture",
+            "Left Ventricular Free Wall Rupture",
+            "Cardiac Rupture",
+            "Low Cardiac Output related to Right Ventricular Infarction",
+            "Acute Myocardial Ischemia-Reperfusion Injury"
+        ],
+        "Hypertensive Complications": [
+            "Hypertensive Emergency",
+            "Rebound Hypertension after Hypertensive Crisis",
+            "Refractory Hypertension"
+        ],
+        "Thromboembolic Events": [
+            "High-Risk/Intermediate-High-Risk Pulmonary Embolism",
+            "Deep Vein Thrombosis",
+            "Aortic Dissection",
+            "Intramural Aortic Hematoma",
+            "Penetrating Atherosclerotic Ulcer",
+            "Aortic Rupture",
+            "Acute Peripheral Arterial Ischemia"
+        ],
+        "Pericardial and Myocardial Diseases": [
+            "Acute Cardiac Tamponade",
+            "Fulminant Myocarditis",
+            "Infective Endocarditis",
+            "Acute Severe Valvular Regurgitation",
+            "Myocardial Abscess",
+            "Septic Embolism",
+            "Acute Pericarditis"
+        ],
+        "Iatrogenic Complications": [
+            "Puncture Site Hematoma",
+            "Pseudoaneurysm",
+            "Active Bleeding at Puncture Site",
+            "Arteriovenous Fistula",
+            "Device Thrombosis",
+            "Circuit Clotting",
+            "Cardiac Perforation",
+            "Superior Vena Cava Syndrome",
+            "Post-cardiac Surgery Low Cardiac Output Syndrome",
+            "Post-cardiac Surgery Major Hemorrhage",
+            "New-onset Atrial Fibrillation",
+            "Graft Anastomotic Complication",
+            "Limb Ischemia",
+            "Air Embolism"
+        ]
+    },
+    "Respiratory System": {
+        "Oxygenation/Ventilation Failure": [
+            "Acute Hypoxemic Respiratory Failure",
+            "Acute Hypercapnic Respiratory Failure",
+            "Acute Respiratory Distress Syndrome (ARDS)",
+            "Refractory Hypoxemia",
+            "Persistent Carbon Dioxide Retention",
+            "Respiratory Acidosis",
+            "Respiratory Alkalosis",
+            "Cardiogenic Pulmonary Edema",
+            "Non-cardiogenic Pulmonary Edema"
+        ],
+        "Lower Respiratory Tract Infections": [
+            "Hospital-Acquired Pneumonia (HAP)",
+            "Ventilator-Associated Pneumonia (VAP)",
+            "Pneumonia due to Drug-Resistant Organisms",
+            "Pulmonary Fungal Infection",
+            "Severe Pneumonia",
+            "Aspiration Pneumonia",
+            "Inhalational Lung Injury",
+            "Chemical Pneumonitis"
+        ],
+        "Airway Events": [
+            "Aspiration",
+            "Airway Secretion Occlusion",
+            "Bronchial Obstruction",
+            "Bronchospasm",
+            "Acute Exacerbation of Asthma",
+            "Acute Exacerbation of COPD",
+            "Unplanned Extubation",
+            "Reintubation after Extubation Failure",
+            "Laryngeal Edema",
+            "Tracheal Stenosis",
+            "Tracheomalacia",
+            "Tracheoesophageal Fistula",
+            "Tracheoinnominate Artery Fistula",
+            "Major Stomal Bleeding"
+        ],
+        "Mechanical Ventilation-Related Complications": [
+            "Barotrauma",
+            "Volutrauma",
+            "Subcutaneous Emphysema",
+            "Pneumomediastinum",
+            "Pulmonary Interstitial Emphysema",
+            "Patient-Ventilator Asynchrony"
+        ],
+        "Pleural and Parenchymal Complications": [
+            "Spontaneous Pneumothorax",
+            "Secondary Pneumothorax",
+            "Tension Pneumothorax",
+            "Pleural Effusion",
+            "Empyema",
+            "Hemothorax",
+            "Chylothorax",
+            "Atelectasis",
+            "Pulmonary Contusion",
+            "Bronchopleural Fistula",
+            "Diffuse Alveolar Hemorrhage"
+        ],
+        "Hemorrhage and Embolism": [
+            "Hemoptysis",
+            "Acute Respiratory Failure due to Pulmonary Embolism"
+        ]
+    },
+    "Digestive System": {
+        "Gastrointestinal Bleeding": [
+            "Upper Gastrointestinal Bleeding",
+            "Lower Gastrointestinal Bleeding",
+            "Stress Ulcer",
+            "Hemorrhagic Gastritis",
+            "Anastomotic Bleeding",
+            "Antiplatelet-Related Bleeding",
+            "Gastrointestinal Tumor-Related Bleeding",
+            "Esophagogastric Variceal Rupture and Bleeding"
+        ],
+        "Liver": [
+            "Acute Liver Failure",
+            "Chronic Liver Failure",
+            "Hepatic Encephalopathy",
+            "Portal Vein Thrombosis",
+            "Mesenteric Vein Thrombosis",
+            "Biliary Peritonitis",
+            "Spontaneous Bacterial Peritonitis",
+            "Refractory Ascites",
+            "Budd-Chiari Syndrome"
+        ],
+        "Biliary Tract and Gallbladder": [
+            "Acute Cholangitis",
+            "Suppurative Cholangitis",
+            "Acute Cholecystitis",
+            "Acute Common Bile Duct Obstruction",
+            "Obstructive Jaundice",
+            "Biliary Sepsis",
+            "Post-sphincterotomy Bleeding"
+        ],
+        "Pancreas": [
+            "Acute Pancreatitis",
+            "Moderately Severe Pancreatitis",
+            "Severe Pancreatitis",
+            "Necrotizing Pancreatitis",
+            "Hemorrhagic Pancreatitis",
+            "Post-ERCP Pancreatitis",
+            "Pancreatic Pseudocyst"
+        ],
+        "Gastrointestinal Tract": [
+            "Gastric Ulcer Perforation",
+            "Duodenal Ulcer Perforation",
+            "Esophageal Perforation",
+            "Colonic Perforation",
+            "Anastomotic Leak",
+            "Small Bowel Obstruction",
+            "Gallstone Ileus",
+            "Sigmoid Volvulus",
+            "Malignant Bowel Obstruction",
+            "Acute Colonic Pseudo-obstruction (Ogilvie's Syndrome)",
+            "Acute Mesenteric Ischemia (Arterial Embolism)",
+            "Acute Mesenteric Ischemia (Arterial Thrombosis)",
+            "Nonocclusive Mesenteric Ischemia",
+            "Acute Mesenteric Ischemia (Venous Thrombosis)",
+            "Ischemic Colitis",
+            "Necrotizing Colitis",
+            "Bowel Necrosis",
+            "Severe Ileus",
+            "Clostridioides difficile Infection",
+            "Toxic Megacolon",
+            "Acute Severe Ulcerative Colitis",
+            "Complicated Diverticulitis"
+        ]
+    },
+    "Urogenital System": {
+        "Infections": [
+            "Acute Pyelonephritis",
+            "Acute Urinary Tract Infection",
+            "Catheter-Associated Urinary Tract Infection (CAUTI)",
+            "Renal Abscess",
+            "Perinephric Abscess",
+            "Infected Hydronephrosis",
+            "Acute Prostatitis"
+        ],
+        "Kidney": [
+            "Prerenal Acute Kidney Injury",
+            "Intrinsic Acute Kidney Injury",
+            "Postrenal Acute Kidney Injury",
+            "Rhabdomyolysis-Associated Acute Kidney Injury",
+            "Tumor Lysis Syndrome",
+            "Drug-Induced Nephrotoxicity",
+            "Renal Failure",
+            "Hyperkalemia",
+            "Refractory Metabolic Acidosis",
+            "Oliguria",
+            "Anuria",
+            "Volume Overload",
+            "Uremic Encephalopathy",
+            "Renal Artery Thrombosis",
+            "Renal Vein Thrombosis",
+            "Hydronephrosis",
+            "Post-Renal Biopsy Bleeding",
+            "Retroperitoneal Hematoma",
+            "Dialysis Disequilibrium Syndrome",
+            "CRRT Filter/Circuit Clotting"
+        ],
+        "Ureter/Bladder/Urethra": [
+            "Hydroureter",
+            "Acute Obstruction due to Ureteral Stone",
+            "Infected Ureteral Obstruction",
+            "Acute Urinary Retention",
+            "Life-threatening Hematuria",
+            "Bladder Clot Retention",
+            "Bladder Rupture",
+            "Urethral Injury",
+            "Urethral False Passage",
+            "Ureteral Stent Obstruction",
+            "Stent-Related Infection"
+        ]
+    },
+    "Nervous System": {
+        "Acute Cerebrovascular Events": [
+            "Spontaneous Intraparenchymal Hemorrhage",
+            "Intraventricular Hemorrhage",
+            "Cerebellar Hemorrhage",
+            "Brainstem Hemorrhage",
+            "Subarachnoid Hemorrhage",
+            "Acute Ischemic Stroke",
+            "Cerebral Venous Sinus Thrombosis"
+        ],
+        "Intracranial Pressure and Herniation": [
+            "Intracranial Hypertension",
+            "Venous Intracranial Hypertension",
+            "Tonsillar Herniation",
+            "Uncal Herniation",
+            "Central Herniation",
+            "Acute Hydrocephalus",
+            "Ventriculitis",
+            "Ependymitis",
+            "Intracranial Hypotension Syndrome",
+            "External Ventricular Drain Occlusion"
+        ],
+        "Traumatic Brain Injury and Postoperative Complications": [
+            "Acute Epidural Hematoma",
+            "Subdural Hematoma",
+            "Diffuse Axonal Injury",
+            "Cerebral Contusion and Laceration",
+            "Progressive Hematoma Expansion",
+            "Acute Spinal Cord Injury",
+            "Spinal Shock",
+            "Shunt/Drain Malfunction"
+        ],
+        "Seizures": [
+            "Convulsive Status Epilepticus",
+            "Nonconvulsive Status Epilepticus"
+        ],
+        "Infections": [
+            "Intracranial Infection",
+            "Bacterial Meningitis",
+            "Viral Meningitis",
+            "Viral Encephalitis",
+            "Fungal Meningitis",
+            "Tuberculous Meningitis",
+            "Brain Abscess",
+            "Subdural Empyema",
+            "Epidural Abscess",
+            "Spinal Cord Abscess"
+        ],
+        "Spine/Spinal Cord": [
+            "Acute Spinal Cord Infarction",
+            "Vertebral Osteomyelitis",
+            "Paravertebral Abscess",
+            "Prevertebral Abscess",
+            "Acute Spinal Cord Compression Syndrome"
+        ],
+        "Neuromuscular Junction and Peripheral Nerves": [
+            "Myasthenic Crisis",
+            "Cholinergic Crisis",
+            "Guillain-Barré Syndrome requiring Mechanical Ventilation",
+            "ICU-Acquired Weakness"
+        ],
+        "Other Encephalopathies": [
+            "Delirium",
+            "Hepatic Encephalopathy",
+            "Uremic Encephalopathy",
+            "Hyponatremic Encephalopathy",
+            "Hyposmolar Cerebral Edema",
+            "Central Pontine Myelinolysis after rapid sodium correction",
+            "Hypoglycemic Neuronal Injury",
+            "Wernicke's Encephalopathy",
+            "Posterior Reversible Encephalopathy Syndrome (PRES)",
+            "Reversible Cerebral Vasoconstriction Syndrome (RCVS)"
+        ]
+    },
+    "Endocrine and Immune Systems": {
+        "Glycemic Control": [
+            "Diabetic Ketoacidosis (DKA)",
+            "Hyperosmolar Hyperglycemic State (HHS)",
+            "Mixed DKA-HHS",
+            "Euglycemic Ketoacidosis",
+            "Severe Hypoglycemia"
+        ],
+        "Thyroid": [
+            "Thyroid Storm",
+            "Thyrotoxic Periodic Paralysis"
+        ],
+        "Adrenal": [
+            "Adrenal Crisis",
+            "Pheochromocytoma Crisis"
+        ],
+        "Pituitary and Hypothalamus": [
+            "Pituitary Apoplexy",
+            "Central Diabetes Insipidus"
+        ],
+        "Water Metabolism": [
+            "Syndrome of Inappropriate Antidiuretic Hormone Secretion (SIADH)",
+            "Nephrogenic Diabetes Insipidus",
+            "Hypernatremia",
+            "Hyperosmolar Crisis",
+            "Acute Severe Hyponatremia"
+        ],
+        "Electrolyte Disturbances": [
+            "Hypercalcemic Crisis",
+            "Hypocalcemia",
+            "Hypermagnesemia",
+            "Hypomagnesemia",
+            "Hypophosphatemia",
+            "Refeeding Syndrome"
+        ],
+        "Acid-Base Balance": [
+            "Metabolic Acidosis",
+            "Lactic Acidosis",
+            "Metabolic Alkalosis"
+        ],
+        "Immune System": [
+            "Arteritis",
+            "Cryoglobulinemic Vasculitis",
+            "Systemic Lupus Erythematosus (SLE) Crisis",
+            "Pulmonary Hypertension Crisis",
+            "Adult-onset Still's Disease Hyperinflammatory Crisis"
+        ]
+    },
+    "Obstetrics and Gynecology": {
+        "Obstetrics": [
+            "Eclampsia",
+            "Hypertensive Crisis in Pregnancy",
+            "Placental Abruption",
+            "Placenta Accreta Spectrum",
+            "Uterine Rupture",
+            "HELLP Syndrome",
+            "Amniotic Fluid Embolism",
+            "Puerperal Venous Thromboembolism",
+            "Peripartum Cardiomyopathy",
+            "Puerperal Endometritis",
+            "Postpartum Pelvic Infection",
+            "Postpartum Hemorrhage",
+            "Uterine Atony",
+            "Intrauterine Infection",
+            "Ruptured Ectopic Pregnancy with Hemoperitoneum"
+        ],
+        "Gynecology": [
+            "Ovarian/Adnexal Torsion",
+            "Severe Pelvic Inflammatory Disease"
+        ]
+    },
+    "Hematologic/Coagulation System": {
+        "Coagulation and Bleeding": [
+            "Disseminated Intravascular Coagulation (DIC)",
+            "Major Hemorrhage",
+            "Hypothermia",
+            "Dilutional Coagulopathy",
+            "Severe Bleeding in Coagulation Factor Deficiency",
+            "Anticoagulant-Associated Major Bleeding"
+        ],
+        "Platelets/Thrombosis": [
+            "Immune Thrombotic Thrombocytopenic Purpura (TTP)",
+            "Hemolytic Uremic Syndrome (HUS)",
+            "Immune Thrombocytopenia (ITP) with Bleeding",
+            "Antiphospholipid Syndrome",
+            "Heparin-Induced Thrombocytopenia and Thrombosis (HITT)"
+        ],
+        "Hemolysis": [
+            "Autoimmune Hemolytic Anemia",
+            "G6PD Deficiency Acute Hemolytic Crisis",
+            "Paroxysmal Nocturnal Hemoglobinuria (PNH) with Acute Hemolysis"
+        ],
+        "Hematologic Malignancy Emergencies": [
+            "Leukostasis in Acute Leukemia",
+            "Hyperviscosity Syndrome",
+            "Hemophagocytic Lymphohistiocytosis (HLH)"
+        ],
+        "Transfusion-Related Adverse Reactions": [
+            "Transfusion-Related Acute Lung Injury (TRALI)",
+            "Transfusion-Associated Circulatory Overload (TACO)",
+            "Acute Hemolytic Transfusion Reaction",
+            "Delayed Hemolytic Transfusion Reaction",
+            "Anaphylactic Shock",
+            "Bacterial Contamination leading to Bacteremia",
+            "Hypotensive Transfusion Reaction",
+            "Citrate Toxicity"
+        ],
+        "Red Blood Cells": [
+            "Acute Splenic Sequestration Crisis",
+            "Hyperhemolysis Syndrome",
+            "Aplastic Crisis",
+            "Polycythemia Vera"
+        ],
+        "Anemia": [
+            "Acute Anemia due to Major Hemorrhage",
+            "Severe Anemia",
+            "Autoimmune Hemolytic Anemia",
+            "Drug-Induced Hemolytic Anemia",
+            "Hemolysis associated with Prosthetic Heart Valves",
+            "Extracorporeal Circulation-Associated Hemolysis"
+        ]
+    },
+    "Trauma and Infection": {
+        "Trauma": [
+            "Trauma-Induced Coagulopathy",
+            "Major Pelvic Hemorrhage",
+            "Active Hemorrhage",
+            "Massive Hemothorax"
+        ],
+        "Bone and Extremities": [
+            "Acute Compartment Syndrome",
+            "Acute Limb Ischemia due to Vascular Injury",
+            "Open Fracture Infection",
+            "Fat Embolism Syndrome",
+            "Rhabdomyolysis",
+            "Crush Syndrome"
+        ],
+        "Infection": [
+            "Bacteremia",
+            "Sepsis",
+            "Multiple Organ Dysfunction Syndrome (MODS)",
+            "Central Line-Associated Bloodstream Infection (CLABSI)",
+            "Necrotizing Fasciitis",
+            "Gangrene",
+            "Toxic Shock Syndrome",
+            "Surgical Site/Wound Infection",
+            "Candidemia",
+            "Invasive Candidiasis",
+            "Aspergillosis",
+            "Pneumocystis Pneumonia (PCP)"
+        ]
+    }
+}
