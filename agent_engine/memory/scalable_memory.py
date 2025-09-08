@@ -302,7 +302,15 @@ class _HNSWIndex(_BaseANNIndex):
     def add_or_update(self, label: int, vector: List[float]) -> None:
         if self._index is None:
             raise RuntimeError("Index not initialized")
-        self._ensure_capacity(label + 1)
+        # Ensure capacity by both label space and element count growth
+        try:
+            current_count = int(self._index.get_current_count())  # type: ignore[attr-defined]
+        except Exception:
+            current_count = 0
+        # When updating, count may not increase, but ensuring for +1 is safe
+        need_by_count = current_count + 1
+        need_by_label = label + 1
+        self._ensure_capacity(max(need_by_count, need_by_label))
         import hnswlib  # type: ignore
         try:
             self._index.add_items(np.asarray([vector], dtype=np.float32), np.asarray([label], dtype=np.int64))
@@ -318,7 +326,14 @@ class _HNSWIndex(_BaseANNIndex):
         if self._index is None:
             raise RuntimeError("Index not initialized")
         max_label = max(labels) if labels else 0
-        self._ensure_capacity(max_label + 1)
+        # Ensure capacity based on both final label id and expected total count after this batch
+        try:
+            current_count = int(self._index.get_current_count())  # type: ignore[attr-defined]
+        except Exception:
+            current_count = 0
+        need_by_label = max_label + 1
+        need_by_count = current_count + len(labels)
+        self._ensure_capacity(max(need_by_label, need_by_count))
         self._index.add_items(np.asarray(vectors, dtype=np.float32), np.asarray(labels, dtype=np.int64))
 
     def search(self, vector: List[float], top_k: int, ef_search: Optional[int] = None) -> Tuple[List[int], List[float]]:
@@ -392,12 +407,37 @@ class _AnnoyIndex(_BaseANNIndex):
         # Annoy has no true update; we set and mark rebuild
         if self._index is None:
             raise RuntimeError("Index not initialized")
+        # Safety/logging: estimate resulting item count
+        try:
+            current_count = int(self._index.get_n_items())
+        except Exception:
+            current_count = 0
+        expected_after = max(current_count + 1, label + 1)
+        try:
+            logger.debug(f"Annoy add_or_update: current_count={current_count}, label={label}, expected_after={expected_after}")
+        except Exception:
+            pass
         self._index.add_item(label, vector)
         self._built = False
 
     def add_many(self, labels: List[int], vectors: List[List[float]]) -> None:
         if self._index is None:
             raise RuntimeError("Index not initialized")
+        # Safety/logging: estimate resulting item count using unique labels
+        try:
+            current_count = int(self._index.get_n_items())
+        except Exception:
+            current_count = 0
+        try:
+            unique_labels = len(set(labels))
+        except Exception:
+            unique_labels = len(labels)
+        max_label = max(labels) if labels else 0
+        expected_after = max(current_count + unique_labels, max_label + 1)
+        try:
+            logger.debug(f"Annoy add_many: current_count={current_count}, batch_labels={len(labels)}, unique_labels={unique_labels}, max_label={max_label}, expected_after={expected_after}")
+        except Exception:
+            pass
         for lb, vec in zip(labels, vectors):
             self._index.add_item(lb, vec)
         self._built = False
@@ -455,6 +495,16 @@ class _BruteForceIndex(_BaseANNIndex):
         self._vectors: List[List[float]] = []
 
     def add_or_update(self, label: int, vector: List[float]) -> None:
+        # Safety/logging: estimate resulting item count
+        try:
+            current_count = len(self._labels)
+        except Exception:
+            current_count = 0
+        expected_after = max(current_count + 1, label + 1)
+        try:
+            logger.debug(f"BruteForce add_or_update: current_count={current_count}, label={label}, expected_after={expected_after}")
+        except Exception:
+            pass
         try:
             idx = self._labels.index(label)
             self._vectors[idx] = vector
@@ -463,6 +513,21 @@ class _BruteForceIndex(_BaseANNIndex):
             self._vectors.append(vector)
 
     def add_many(self, labels: List[int], vectors: List[List[float]]) -> None:
+        # Safety/logging: estimate resulting item count using unique labels
+        try:
+            current_count = len(self._labels)
+        except Exception:
+            current_count = 0
+        try:
+            unique_labels = len(set(labels))
+        except Exception:
+            unique_labels = len(labels)
+        max_label = max(labels) if labels else 0
+        expected_after = max(current_count + unique_labels, max_label + 1)
+        try:
+            logger.debug(f"BruteForce add_many: current_count={current_count}, batch_labels={len(labels)}, unique_labels={unique_labels}, max_label={max_label}, expected_after={expected_after}")
+        except Exception:
+            pass
         for lb, vec in zip(labels, vectors):
             self.add_or_update(lb, vec)
 

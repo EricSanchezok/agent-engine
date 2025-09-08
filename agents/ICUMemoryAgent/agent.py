@@ -169,6 +169,97 @@ class ICUMemoryAgent:
         await patient_mem.add(content=content, vector=vector, metadata=md, item_id=event_id)
         return event_id
 
+    async def cache_event_vector_only(self, patient_id: str, event: Dict[str, Any], overwrite: bool = False) -> str:
+        """Cache only the event's embedding into the global icu_vector_cache.
+
+        This method does NOT write into the patient's ScalableMemory. It only ensures
+        the global vector cache (keyed by event_id) contains the up-to-date vector.
+
+        Args:
+            patient_id: Unique patient identifier (for metadata only).
+            event: Event dict; must contain 'id' or 'event_id' (or under raw).
+            overwrite: If True, re-embed and upsert regardless of existing cache.
+
+        Returns:
+            The event_id used as item id in the cache.
+        """
+        event_id = self._extract_event_id(event)
+        if not event_id:
+            raise ValueError("Event is missing 'event_id' or 'id'")
+
+        content_text = self._event_to_text(event)
+
+        if not overwrite:
+            # Try reuse existing vector from cache
+            _, existing_vec, _ = self._vector_cache.get_by_id(event_id)
+            if existing_vec is not None:
+                return event_id
+
+        # Compute a fresh embedding and upsert to cache
+        vector = await self._embed_text_async(content_text)
+        await self._vector_cache.add(
+            content=f"ICU_EVENT_VECTOR::{event_id}",
+            vector=vector,
+            metadata={"patient_id": patient_id},
+            item_id=event_id,
+        )
+        return event_id
+
+    async def cache_events_vectors_only(self, patient_id: str, events: List[Dict[str, Any]], overwrite: bool = False) -> List[str]:
+        """Batch cache embeddings into the global cache only.
+
+        - When overwrite=False: skip items already in cache and embed only missing ones.
+        - When overwrite=True: (re)embed all provided events and upsert into cache.
+
+        Returns list of event_ids processed.
+        """
+        if not events:
+            return []
+
+        # Prepare items with existing cache check
+        items: List[Dict[str, Any]] = []
+        to_embed_indices: List[int] = []
+        texts_to_embed: List[str] = []
+        event_ids: List[str] = []
+
+        for idx, ev in enumerate(events):
+            ev_id = self._extract_event_id(ev)
+            if not ev_id:
+                continue
+            event_ids.append(ev_id)
+            if overwrite:
+                items.append({
+                    "id": ev_id,
+                    "content": self._event_to_text(ev),
+                })
+                to_embed_indices.append(idx)
+                texts_to_embed.append(items[-1]["content"])  # align with last append
+            else:
+                _, cached_vec, _ = self._vector_cache.get_by_id(ev_id)
+                if cached_vec is None:
+                    content = self._event_to_text(ev)
+                    items.append({"id": ev_id, "content": content})
+                    to_embed_indices.append(idx)
+                    texts_to_embed.append(content)
+
+        # Embed as needed
+        if texts_to_embed:
+            vectors = await self._embed_batch_async(texts_to_embed)
+            for idx_local, vec in enumerate(vectors):
+                ev_index = to_embed_indices[idx_local]
+                ev = events[ev_index]
+                ev_id = self._extract_event_id(ev)
+                if not ev_id:
+                    continue
+                await self._vector_cache.add(
+                    content=f"ICU_EVENT_VECTOR::{ev_id}",
+                    vector=vec,
+                    metadata={"patient_id": patient_id},
+                    item_id=ev_id,
+                )
+
+        return event_ids
+
     async def add_events(self, patient_id: str, events: List[Dict[str, Any]]) -> List[str]:
         """Batch add events. Reuses cached vectors when available and embeds only uncached ones.
 
