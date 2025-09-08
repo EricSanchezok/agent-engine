@@ -34,7 +34,7 @@ async def main() -> int:
     logger = AgentLogger("BulkArxivDaily")
     mem = ArxivMemory()
 
-    start = date(2022, 1, 1)
+    start = date(2023, 4, 1)
     end = date.today()
     date_list = generate_date_strs(start, end)
 
