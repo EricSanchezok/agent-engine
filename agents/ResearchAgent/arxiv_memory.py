@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,12 +28,18 @@ class ArxivItem:
 
 
 class ArxivMemory:
-    """A scalable memory for arXiv metadata for ResearchAgent.
+    """Segmented arXiv metadata memory for ResearchAgent.
 
-    - Storage location: agents/ResearchAgent/database/
-    - Item id: Paper.id (can include version suffix like 'v2')
-    - Content: Paper.summary
-    - Vector: Azure text-embedding-3-large
+    Storage strategy:
+    - Base location: agents/ResearchAgent/database/
+    - Legacy single DB (read-only): arxiv_metada.duckdb or arxiv_metadata.duckdb under base dir
+    - Segmented DBs (read/write): base_dir/segments/<YYYYH1|YYYYH2>/
+        Each segment directory contains a ScalableMemory instance (DuckDB + index)
+
+    Item mapping:
+    - id: Paper.id (may include version suffix like 'v2')
+    - content: Paper.summary
+    - vector: Azure text-embedding-3-large
     """
 
     def __init__(self) -> None:
@@ -51,19 +58,131 @@ class ArxivMemory:
         # Embedding model fixed as requested
         self.embed_model: str = "text-embedding-3-large"
 
-        # Persist dir for ScalableMemory under ResearchAgent/database
+        # Base dir for all arXiv memories (legacy + segments)
         self.persist_dir: Path = get_current_file_dir() / 'database'
+        self.segments_dir: Path = self.persist_dir
+        try:
+            self.segments_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
 
-        # ScalableMemory for arxiv metadata; name fixed to 'arxiv_metadata'
-        # Persist dir rule: treat persist_dir as final storage directory (no extra subdir)
-        self.memory = ScalableMemory(
+        # Cache for segment ScalableMemory instances
+        self._segment_memories: Dict[str, ScalableMemory] = {}
+
+        # Detect legacy DB name if present
+        self._legacy_name: Optional[str] = self._detect_legacy_name()
+        self._legacy_memory: Optional[ScalableMemory] = None
+
+        self.logger.info("ArxivMemory initialized with segmented storage (half-year) and Azure embeddings")
+
+    # ------------------------------ Internal helpers ------------------------------
+    def _detect_legacy_name(self) -> Optional[str]:
+        """Detect legacy single-DB name under base dir.
+
+        Returns either 'arxiv_metada' (legacy typo) or 'arxiv_metadata', or None if not found.
+        """
+        candidates = ["arxiv_metada", "arxiv_metadata"]
+        for name in candidates:
+            db_file = self.persist_dir / f"{name}.duckdb"
+            if db_file.exists():
+                return name
+        return None
+
+    def _get_legacy_memory(self) -> Optional[ScalableMemory]:
+        if self._legacy_name is None:
+            return None
+        if self._legacy_memory is None:
+            self._legacy_memory = ScalableMemory(
+                name=self._legacy_name,
+                llm_client=self.llm_client,
+                embed_model=self.embed_model,
+                persist_dir=self.persist_dir,
+            )
+        return self._legacy_memory
+
+    def _extract_date_str(self, md: Dict[str, Any]) -> Optional[str]:
+        """Extract YYYYMMDD from metadata best-effort."""
+        ts = md.get("timestamp") or md.get("submittedDate") or md.get("published") or ""
+        if not isinstance(ts, str):
+            ts = str(ts)
+        m = re.match(r"(\d{8})", ts)
+        if m:
+            return m.group(1)
+        m2 = re.match(r"(\d{4})[-/]?(\d{2})[-/]?(\d{2})", ts)
+        if m2:
+            return f"{m2.group(1)}{m2.group(2)}{m2.group(3)}"
+        return None
+
+    def _segment_key_from_date(self, date_str: str) -> Optional[str]:
+        """Return segment key like '2022H1' or '2022H2' from YYYYMMDD."""
+        if not isinstance(date_str, str) or len(date_str) < 6:
+            return None
+        try:
+            year = int(date_str[:4])
+            month = int(date_str[4:6])
+            half = "H1" if 1 <= month <= 6 else "H2"
+            return f"{year}{half}"
+        except Exception:
+            return None
+
+    def _get_segment_memory(self, segment_key: str) -> ScalableMemory:
+        """Get or create ScalableMemory for a specific segment under segments_dir/segment_key.
+
+        Name is kept as 'arxiv_metadata' to keep filenames consistent inside each segment directory.
+        """
+        if segment_key in self._segment_memories:
+            return self._segment_memories[segment_key]
+        seg_dir = self.segments_dir / segment_key
+        try:
+            seg_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        mem = ScalableMemory(
             name="arxiv_metadata",
             llm_client=self.llm_client,
             embed_model=self.embed_model,
-            persist_dir=self.persist_dir,
+            persist_dir=seg_dir,
         )
+        self._segment_memories[segment_key] = mem
+        return mem
 
-        self.logger.info("ArxivMemory initialized with Azure embeddings and ScalableMemory")
+    def _list_existing_segments(self) -> List[str]:
+        """List existing segment keys by scanning the segments directory, including 'undated' if present."""
+        if not self.segments_dir.exists():
+            return []
+        out: List[str] = []
+        try:
+            for p in self.segments_dir.iterdir():
+                if not p.is_dir():
+                    continue
+                if re.match(r"^\d{4}H[12]$", p.name) or p.name == "undated":
+                    out.append(p.name)
+        except Exception:
+            return out
+        out.sort()
+        return out
+
+    def _iter_all_memories_for_read(self) -> List[ScalableMemory]:
+        """Return all memories to search (segments first in chronological order, then legacy)."""
+        mems: List[ScalableMemory] = []
+        for seg in self._list_existing_segments():
+            mems.append(self._get_segment_memory(seg))
+        legacy = self._get_legacy_memory()
+        if legacy is not None:
+            mems.append(legacy)
+        return mems
+
+    def _exists_with_vector(self, item_id: str) -> bool:
+        """Check across segments and legacy if the item exists with a stored vector."""
+        for mem in self._iter_all_memories_for_read():
+            try:
+                _c, vec, _m = mem.get_by_id(item_id)
+            except Exception as e:
+                self.logger.warning(f"Lookup failed for id={item_id} in a memory: {e}")
+                continue
+            if isinstance(vec, list) and len(vec) > 0:
+                return True
+        return False
 
     # ------------------------------ Public APIs ------------------------------
     async def store_papers(self, papers: List[Paper], *, max_concurrency: int = 32) -> List[str]:
@@ -75,7 +194,7 @@ class ArxivMemory:
         - metadata: paper.info (dict)
 
         Optimization:
-        - Before embedding, check if the id already exists AND has a stored vector; if so, skip to avoid token cost.
+        - Before embedding, check if the id already exists in any segment or legacy AND has a stored vector; if so, skip to avoid token cost.
         """
         if not papers:
             return []
@@ -98,7 +217,7 @@ class ArxivMemory:
                     self.logger.warning(f"Embedding failed for paper {paper.id}: {e}")
                     return idx, None, e
 
-        # Prepare inputs: skip items that already have vectors in DB
+        # Prepare inputs: skip items that already have vectors in any DB
         items: List[ArxivItem] = []
         to_embed: List[Tuple[int, Paper]] = []
 
@@ -108,16 +227,15 @@ class ArxivMemory:
             md = dict(p.info)
             md["id"] = pid
 
-            # Check existing record and vector to avoid redundant embeddings
+            # Check existing record and vector across segments and legacy
             try:
-                _existing_content, existing_vec, _existing_md = self.memory.get_by_id(pid)
+                exists = self._exists_with_vector(pid)
             except Exception as e:
                 self.logger.warning(f"Lookup failed for id={pid}: {e}")
-                existing_vec = None
+                exists = False
 
-            if isinstance(existing_vec, list) and len(existing_vec) > 0:
-                # Already stored with vector; skip
-                self.logger.info(f"Skip id={pid}: already stored with vector")
+            if exists:
+                self.logger.info(f"Skip id={pid}: already stored with vector (any segment/legacy)")
                 continue
 
             # Need embedding
@@ -136,49 +254,65 @@ class ArxivMemory:
                     # If embedding failed, leave vector None; it will be filtered out
                     self.logger.warning(f"Skip storing paper due to missing vector: {items[idx].id}")
 
-        payload: List[Dict[str, Any]] = []
+        # Group payloads by segment key
+        payload_by_segment: Dict[str, List[Dict[str, Any]]] = {}
         for it in items:
             if it.vector is None:
                 continue
-            payload.append({
+            date_str = self._extract_date_str(it.metadata) or ""
+            seg = self._segment_key_from_date(date_str) or "unknown"
+            if seg == "unknown":
+                # Fallback: put undated items into legacy-compatible new segment 'unknown'
+                seg = "undated"
+            payload_by_segment.setdefault(seg, []).append({
                 "id": it.id,
                 "content": it.content,
                 "vector": it.vector,
                 "metadata": it.metadata,
             })
 
-        if not payload:
+        if not payload_by_segment:
             return []
 
-        ids = await self.memory.add_many(payload)
-        return ids
+        stored_ids: List[str] = []
+        for seg_key, payload in payload_by_segment.items():
+            mem = self._get_segment_memory(seg_key)
+            ids = await mem.add_many(payload)
+            stored_ids.extend(ids)
+        return stored_ids
 
     def get_by_id(self, arxiv_id: str) -> List[Dict[str, Any]]:
-        """Get metadata by id. If version is omitted, return all versions including non-version form.
+        """Get metadata by id across segmented DBs (and legacy).
+
+        If version is omitted, return all versions including non-version form.
 
         Examples:
             - input '2402.11163v2' -> return that exact version if present
-            - input '2402.11163'   -> return list including '2402.11163', '2402.11163v1', '2402.11163v2', ...
+            - input '2402.11163'   -> list including '2402.11163', '2402.11163v1', '2402.11163v2', ...
         """
         cid = str(arxiv_id).strip()
         if not cid:
             return []
 
-        # If contains version suffix 'v<digits>', return exact
-        import re
+        # If contains version suffix 'v<digits>', return exact (first hit wins: segments in order, then legacy)
         if re.search(r"v\d+$", cid):
-            content, _vec, md = self.memory.get_by_id(cid)
-            return [{"id": cid, "content": content, "metadata": md}] if content is not None else []
+            for mem in self._iter_all_memories_for_read():
+                content, _vec, md = mem.get_by_id(cid)
+                if content is not None:
+                    return [{"id": cid, "content": content, "metadata": md}]
+            return []
 
-        # No version specified: return all matching ids
+        # No version specified: collect all matching ids across memories
         base = cid
         results: List[Dict[str, Any]] = []
-        for content, _vec, md in self.memory.get_all():
-            mid = md.get("id")
-            if not isinstance(mid, str):
-                continue
-            if mid == base or mid.startswith(base + "v"):
-                results.append({"id": mid, "content": content, "metadata": md})
+        for mem in self._iter_all_memories_for_read():
+            for content, _vec, md in mem.get_all():
+                mid = md.get("id")
+                if not isinstance(mid, str):
+                    continue
+                if mid == base or mid.startswith(base + "v"):
+                    results.append({"id": mid, "content": content, "metadata": md})
+
         # Stable sort by version number if present, with base id first
         def _version_key(x: Dict[str, Any]) -> Tuple[int, int]:
             xid = x.get("id", "")
@@ -193,37 +327,25 @@ class ArxivMemory:
         return results
 
     def histogram_by_day(self) -> List[Tuple[str, int]]:
-        """Return a histogram of papers per day from the memory database.
-
-        Returns:
-            List of (date_str, count) where date_str is 'YYYYMMDD', sorted ascending by date.
-            Only dates that have at least one paper are included.
-        """
-        import re
-
+        """Return a histogram of papers per day across segmented DBs (and legacy)."""
         counts: Dict[str, int] = {}
+
+        def _consume_md(md_list: List[Dict[str, Any]]) -> None:
+            for md in md_list:
+                d = self._extract_date_str(md)
+                if d:
+                    counts[d] = counts.get(d, 0) + 1
+
         try:
-            metadatas = self.memory.get_all_metadata()
+            # Segments first
+            for mem in self._iter_all_memories_for_read():
+                try:
+                    _consume_md(mem.get_all_metadata())
+                except Exception as e:
+                    self.logger.warning(f"Failed to load metadata from a memory: {e}")
         except Exception as e:
             self.logger.error(f"Failed to load metadata for histogram: {e}")
             return []
-
-        for md in metadatas:
-            ts = md.get("timestamp") or md.get("submittedDate") or md.get("published") or ""
-            if not isinstance(ts, str):
-                ts = str(ts)
-
-            date_str: Optional[str] = None
-            m = re.match(r"(\d{8})", ts)
-            if m:
-                date_str = m.group(1)
-            else:
-                m2 = re.match(r"(\d{4})[-/]?(\d{2})[-/]?(\d{2})", ts)
-                if m2:
-                    date_str = f"{m2.group(1)}{m2.group(2)}{m2.group(3)}"
-
-            if date_str:
-                counts[date_str] = counts.get(date_str, 0) + 1
 
         return sorted(counts.items(), key=lambda x: x[0])
 
