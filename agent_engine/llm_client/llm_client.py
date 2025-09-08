@@ -4,7 +4,7 @@ import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict, Any, AsyncIterator
 from openai import RateLimitError, APITimeoutError, APIConnectionError
 
 from ..agent_logger.agent_logger import AgentLogger
@@ -110,6 +110,19 @@ class LLMClient(ABC):
         **kwargs
     ) -> Optional[Union[List[float], List[List[float]]]]:
         """Get embeddings for the given text"""
+        pass
+
+    @abstractmethod
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model_name: str = 'o3-mini',
+        max_tokens: int = 8000,
+        temperature: Optional[float] = 0.7,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream chat completion yielding text chunks"""
         pass
     
     def _should_use_temperature(self, model_name: str) -> bool:

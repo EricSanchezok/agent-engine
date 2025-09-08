@@ -285,7 +285,9 @@ class LLMMonitorAPIHandler(SimpleHTTPRequestHandler):
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8765):
-    web_dir = Path(__file__).parent
+    # Serve static files from project_root/web/llm_monitor
+    project_root = get_project_root()
+    web_dir = project_root / "web" / "llm_monitor"
     os.chdir(web_dir)
     httpd = ThreadingHTTPServer((host, port), LLMMonitorAPIHandler)
     print(f"LLM Monitor web running at http://{host}:{port}")

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
 
 from agent_engine.agent_logger import AgentLogger
+from agent_engine.utils import get_project_root
 
 from core.icu_web.frontend_bridge import FrontendBridge
 from core.icu_web.session_runner import run_session_loop
@@ -16,7 +17,7 @@ from core.icu_web.session_runner import run_session_loop
 logger = AgentLogger(__name__)
 
 # Project root is two levels up: service/icu_web_server/server.py -> project root
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = get_project_root()
 WEB_DIR = ROOT_DIR / "web" / "icu_agents"
 ICU_DB_DIR = ROOT_DIR / "database" / "icu_raw"
 

@@ -24,7 +24,7 @@ def _find_free_port(host: str = "127.0.0.1", preferred: int = 8765) -> int:
 def main(host: str = "127.0.0.1", port: int | None = None):
     web_dir = Path(__file__).parent
     port = port or _find_free_port(host, 8765)
-    server = subprocess.Popen([sys.executable, str(web_dir / "run.py"), "--host", host, "--port", str(port)])
+    server = subprocess.Popen([sys.executable, str(web_dir / "server.py"), "--host", host, "--port", str(port)])
     try:
         time.sleep(1.5)
         webbrowser.open(f"http://{host}:{port}/index.html")

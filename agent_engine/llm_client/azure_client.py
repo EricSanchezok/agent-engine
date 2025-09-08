@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict, Any, AsyncIterator
 from openai import AsyncAzureOpenAI
 
 from .llm_client import LLMClient
@@ -195,3 +195,102 @@ class AzureClient(LLMClient):
             text=text,
             **kwargs
         )
+
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model_name: str = 'o3-mini',
+        max_tokens: int = 8000,
+        temperature: Optional[float] = 0.7,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream chat completion yielding text chunks"""
+        trace_id = None
+        messages: List[Dict[str, str]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        # Start monitor
+        if hasattr(self, "monitor") and self.monitor is not None:
+            try:
+                trace_id = self.monitor.new_trace_id()
+                params_for_record: Dict[str, Any] = {
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "stream": True,
+                }
+                params_for_record.update(kwargs or {})
+                await self.monitor.start_chat(
+                    trace_id=trace_id,
+                    provider="azure",
+                    model_name=model_name,
+                    messages=messages,
+                    params=params_for_record,
+                )
+            except Exception as e:
+                self.logger.warning(f"LLM monitor start failed: {e}")
+
+        self.logger.info(f"🚀 Streaming from Azure OpenAI: model={model_name}, max_tokens={max_tokens}, trace_id={trace_id}")
+
+        # Prepare params
+        params = self._prepare_chat_params(
+            model_name=model_name,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            **kwargs,
+        )
+        params["stream"] = True
+
+        accumulated_parts: List[str] = []
+
+        try:
+            stream = await self.client.chat.completions.create(**params)
+
+            async for event in stream:
+                try:
+                    piece: Optional[str] = None
+                    choices = getattr(event, "choices", None)
+                    if choices and len(choices) > 0:
+                        delta = getattr(choices[0], "delta", None)
+                        if delta is not None:
+                            piece = getattr(delta, "content", None)
+                        else:
+                            # fallback for SDKs that place content on message
+                            msg = getattr(choices[0], "message", None)
+                            if msg is not None:
+                                piece = getattr(msg, "content", None)
+                    if piece:
+                        accumulated_parts.append(piece)
+                        yield piece
+                except Exception as ie:
+                    self.logger.warning(f"Unexpected stream chunk structure: {ie}")
+
+            # complete monitor after stream ends
+            final_text = "".join(accumulated_parts)
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.complete_chat(
+                        trace_id=trace_id,
+                        response_text=final_text,
+                        usage=None,
+                        raw=None,
+                    )
+                except Exception as me:
+                    self.logger.warning(f"LLM monitor complete failed: {me}")
+            self.logger.info(f"✅ Azure OpenAI streaming finished, trace_id={trace_id}")
+
+        except Exception as e:
+            self.logger.error(f"❌ Azure OpenAI streaming failed: {e}, trace_id={trace_id}")
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.fail_chat(
+                        trace_id=trace_id,
+                        error_message=str(e),
+                        raw=None,
+                    )
+                except Exception as e2:
+                    self.logger.warning(f"LLM monitor fail record failed: {e2}")
+            return
