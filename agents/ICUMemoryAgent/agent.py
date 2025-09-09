@@ -777,3 +777,6 @@ class ICUMemoryAgent:
         return [await self._embed_text_async(t) for t in texts]
 
 
+if __name__ == "__main__":
+    memory = ICUMemoryAgent()
+    print(memory._vector_cache.count())

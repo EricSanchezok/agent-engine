@@ -62,15 +62,17 @@ class UMLSClinicalTranslator:
         except Exception as e:
             self.logger.error(f"Failed to clear translation cache: {e}")
 
-    async def translate_event_content(self, event_id: Optional[str], text_cn: str, overwrite: bool = False) -> Optional[str]:
+    async def translate_event_content(self, event_id: Optional[str], text_cn: str, real_translate: bool = False, overwrite: bool = False) -> Optional[str]:
         """Get or create an English translation for the given Chinese text.
 
         - If event_id is provided and overwrite=False, try cache first
+        - If real_translate is False, return the original text
         - If not in cache or overwrite=True, call LLM and upsert into cache when event_id is available
         - If no LLM configured, return None
         """
 
-        return text_cn
+        if not real_translate:
+            return text_cn
 
         text_cn = (text_cn or "").strip()
         if not text_cn:
@@ -122,8 +124,8 @@ class UMLSClinicalTranslator:
         return content_en
 
     # Alias
-    async def get_translation(self, event_id: Optional[str], text_cn: str, overwrite: bool = False) -> Optional[str]:
-        return await self.translate_event_content(event_id, text_cn, overwrite=overwrite)
+    async def get_translation(self, event_id: Optional[str], text_cn: str, real_translate: bool = False, overwrite: bool = False) -> Optional[str]:
+        return await self.translate_event_content(event_id, text_cn, real_translate=real_translate, overwrite=overwrite)
 
 
 if __name__ == '__main__':
