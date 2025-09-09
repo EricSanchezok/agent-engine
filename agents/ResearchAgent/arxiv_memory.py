@@ -529,6 +529,5 @@ class ArxivMemory:
 if __name__ == "__main__":
     # print(ArxivMemory().histogram_by_day())
     mem = ArxivMemory()
-    triples = mem.get_by_month("202406", categories=["cs.AI"])
+    triples = mem.get_by_month("202406")
     print(len(triples))
-    # print(triples[0][:2])
