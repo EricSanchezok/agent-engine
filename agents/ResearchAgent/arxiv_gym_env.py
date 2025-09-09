@@ -40,6 +40,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 import time
 import asyncio
 from functools import lru_cache
+import os
+import pickle
+import hashlib
 
 import numpy as np
 import pyinstrument
@@ -76,6 +79,8 @@ class ResearchArxivEnv:
         reward_fn: Optional[RewardFn] = None,
         reward_obj: Optional[ArxivRewardBase] = None,
         month_range: Optional[Tuple[str, str]] = None,
+        use_local_cache: bool = False,
+        cache_dir: Optional[str] = None,
     ) -> None:
         """Initialize the environment.
 
@@ -87,6 +92,8 @@ class ResearchArxivEnv:
             include_content: Whether to keep paper content in info (can be large). Default False.
             reward_fn: Optional callable(prev_state, action, next_state, ctx) -> float.
             month_range: Optional tuple of (start_month, end_month) in 'YYYYMM' format to limit the range.
+            use_local_cache: Whether to use local pickle cache for faster loading. Default False.
+            cache_dir: Directory for local cache files. Defaults to 'agents/ResearchAgent/database/env_cache/'.
         """
         self.categories = list(categories) if categories else None
         self.vector_dim = int(vector_dim)
@@ -94,6 +101,14 @@ class ResearchArxivEnv:
         self.max_vectors_per_month = int(max_vectors_per_month) if max_vectors_per_month is not None else None
         self.include_content = bool(include_content)
         self.month_range = month_range
+        self.use_local_cache = bool(use_local_cache)
+        self.cache_dir = cache_dir or "agents/ResearchAgent/database/env_cache"
+        
+        # Create cache directory if using local cache
+        if self.use_local_cache:
+            os.makedirs(self.cache_dir, exist_ok=True)
+            logger.info(f"Local cache enabled, directory: {self.cache_dir}")
+        
         # Reward: prefer object if provided; otherwise fallback to function or constant
         self._reward_fn: RewardFn = reward_fn if reward_fn is not None else self._default_reward_fn
         self._reward_obj: ArxivRewardBase = reward_obj if reward_obj is not None else ConstantReward(1.0)
@@ -134,7 +149,7 @@ class ResearchArxivEnv:
         }
 
         logger.info(
-            f"ResearchArxivEnv initialized: months={len(self._months)}, vector_dim={self.vector_dim}, categories={self.categories}, month_range={self.month_range}"
+            f"ResearchArxivEnv initialized: months={len(self._months)}, vector_dim={self.vector_dim}, categories={self.categories}, month_range={self.month_range}, use_local_cache={self.use_local_cache}"
         )
         
         # Preload all months if enabled
@@ -343,6 +358,82 @@ class ResearchArxivEnv:
         self._cache_hits = 0
         self._cache_misses = 0
         logger.info("Performance statistics reset")
+    
+    def _get_cache_filename(self, yyyymm: str) -> str:
+        """Generate cache filename for a given month."""
+        # Create a hash based on configuration to ensure cache consistency
+        config_str = f"{yyyymm}_{self.vector_dim}_{self.max_vectors_per_month}_{self.categories}_{self.include_content}"
+        config_hash = hashlib.md5(config_str.encode()).hexdigest()[:8]
+        return f"month_{yyyymm}_{config_hash}.pkl"
+    
+    def _get_cache_path(self, yyyymm: str) -> str:
+        """Get full path to cache file for a given month."""
+        filename = self._get_cache_filename(yyyymm)
+        return os.path.join(self.cache_dir, filename)
+    
+    def _save_to_cache(self, yyyymm: str, cache_entry: _MonthCache) -> None:
+        """Save month cache entry to local pickle file."""
+        if not self.use_local_cache:
+            return
+        
+        try:
+            cache_path = self._get_cache_path(yyyymm)
+            cache_data = {
+                "month": cache_entry.month,
+                "vectors": cache_entry.vectors,
+                "paper_ids": cache_entry.paper_ids,
+                "timestamp": cache_entry.timestamp,
+                "config": {
+                    "vector_dim": self.vector_dim,
+                    "max_vectors_per_month": self.max_vectors_per_month,
+                    "categories": self.categories,
+                    "include_content": self.include_content,
+                }
+            }
+            
+            with open(cache_path, 'wb') as f:
+                pickle.dump(cache_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+            
+            logger.debug(f"Saved cache for month {yyyymm} to {cache_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save cache for month {yyyymm}: {e}")
+    
+    def _load_from_cache(self, yyyymm: str) -> Optional[_MonthCache]:
+        """Load month cache entry from local pickle file."""
+        if not self.use_local_cache:
+            return None
+        
+        try:
+            cache_path = self._get_cache_path(yyyymm)
+            if not os.path.exists(cache_path):
+                return None
+            
+            with open(cache_path, 'rb') as f:
+                cache_data = pickle.load(f)
+            
+            # Validate configuration compatibility
+            config = cache_data.get("config", {})
+            if (config.get("vector_dim") != self.vector_dim or
+                config.get("max_vectors_per_month") != self.max_vectors_per_month or
+                config.get("categories") != self.categories or
+                config.get("include_content") != self.include_content):
+                logger.debug(f"Cache for month {yyyymm} has incompatible configuration, ignoring")
+                return None
+            
+            # Create cache entry
+            cache_entry = _MonthCache(
+                month=cache_data["month"],
+                vectors=cache_data["vectors"],
+                paper_ids=cache_data["paper_ids"],
+                timestamp=cache_data["timestamp"]
+            )
+            
+            logger.debug(f"Loaded cache for month {yyyymm} from {cache_path}")
+            return cache_entry
+            
+        except Exception as e:
+            logger.warning(f"Failed to load cache for month {yyyymm}: {e}")
+            return None
 
     # ------------------------------ Internals ------------------------------
     def _default_reward_fn(
@@ -387,7 +478,7 @@ class ResearchArxivEnv:
         return months
 
     def _load_month_cache(self, yyyymm: str) -> _MonthCache:
-        # Check cache first
+        # Check in-memory cache first
         current_time = time.time()
         if yyyymm in self._month_cache:
             cached = self._month_cache[yyyymm]
@@ -397,6 +488,19 @@ class ResearchArxivEnv:
             else:
                 # Cache expired, remove it
                 del self._month_cache[yyyymm]
+        
+        # Try to load from local cache file
+        if self.use_local_cache:
+            local_cache_entry = self._load_from_cache(yyyymm)
+            if local_cache_entry is not None:
+                # Check if local cache is still valid (not expired)
+                if current_time - local_cache_entry.timestamp < self._cache_ttl:
+                    self._month_cache[yyyymm] = local_cache_entry
+                    self._cache_hits += 1
+                    logger.debug(f"Loaded month {yyyymm} from local cache")
+                    return local_cache_entry
+                else:
+                    logger.debug(f"Local cache for month {yyyymm} is expired")
         
         self._cache_misses += 1
         
@@ -447,6 +551,10 @@ class ResearchArxivEnv:
         cache_entry = _MonthCache(month=yyyymm, vectors=arr, paper_ids=pids, timestamp=current_time)
         self._month_cache[yyyymm] = cache_entry
         
+        # Save to local cache if enabled
+        if self.use_local_cache:
+            self._save_to_cache(yyyymm, cache_entry)
+        
         # Update load time statistics
         load_time = time.time() - load_start_time
         self._performance_stats["total_load_time"] += load_time
@@ -489,7 +597,18 @@ class ResearchArxivEnv:
 
 if __name__ == "__main__":
     from agents.ResearchAgent.reward import NoveltyForwardReward
-    env = ResearchArxivEnv(month_range=("202201", "202205"), reward_obj=NoveltyForwardReward())
+    
+    # Test with local cache enabled
+    logger.info("Testing with local cache enabled...")
+    start_time = time.time()
+    env = ResearchArxivEnv(
+        month_range=("202201", "202205"), 
+        reward_obj=None,
+        use_local_cache=True
+    )
+    init_time = time.time() - start_time
+    logger.info(f"Initialization time: {init_time:.2f}s")
+    
     obs, info = env.reset()
     logger.info(f"Reset to month={obs['month']}, vectors={obs['vectors'].shape}")
 
@@ -501,5 +620,9 @@ if __name__ == "__main__":
         logger.info(
             f"Step -> month={obs['month']}, vectors={obs['vectors'].shape}, reward={reward}, terminated={terminated}, truncated={truncated}"
         )
+    
+    # Show cache statistics
+    stats = env.get_cache_stats()
+    logger.info(f"Cache statistics: {stats}")
 
 
