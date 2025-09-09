@@ -309,6 +309,15 @@ class ResearchArxivEnv:
         
         preload_time = time.time() - start_time
         logger.info(f"Preloading completed in {preload_time:.2f}s, cached {len(self._month_cache)} months")
+        
+        # Check if preload took too long with local cache enabled
+        if self.use_local_cache and preload_time > 30.0:
+            logger.warning(
+                f"⚠️  PERFORMANCE WARNING: Preload took {preload_time:.2f}s despite local cache being enabled. "
+                f"This suggests cache files may be corrupted or incompatible. "
+                f"Consider manually deleting the cache directory '{self.cache_dir}' to force cache regeneration. "
+                f"If the issue persists, it may indicate system performance limitations."
+            )
     
     async def _preload_next_months(self) -> None:
         """Preload next N months in background."""
