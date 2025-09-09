@@ -439,6 +439,64 @@ class ICUMemoryAgent:
         _, vector, _ = self._vector_cache.get_by_id(event_id)
         return vector
 
+    async def get_or_embed_vector_by_id(
+        self,
+        event_id: str,
+        event: Optional[Dict[str, Any]] = None,
+        content_text: Optional[str] = None,
+        patient_id: Optional[str] = None,
+        overwrite: bool = False,
+    ) -> List[float]:
+        """Get vector from global cache by event_id; if missing, embed and store into cache.
+
+        Notes:
+        - This method ONLY interacts with the global `_vector_cache`.
+        - It does NOT read or write `_patient_memories`.
+        - If the vector is not present (or overwrite=True), it will compute an
+          embedding using `event` or `content_text` and upsert into the cache.
+
+        Args:
+            event_id: Unique id of the event (cache key and item_id).
+            event: Optional event dict used to construct content_text when needed.
+            content_text: Optional raw text to embed when needed. If both `event`
+                and `content_text` are provided, `content_text` takes precedence.
+            patient_id: Optional patient id to include in cache metadata.
+            overwrite: If True, re-embed and upsert even if cache exists.
+
+        Returns:
+            The embedding vector as a List[float].
+        """
+        if not event_id:
+            raise ValueError("event_id is required")
+
+        try:
+            if not overwrite:
+                _, vec, _ = self._vector_cache.get_by_id(event_id)
+                if vec is not None:
+                    return vec
+
+            # Need to compute a fresh embedding
+            text: Optional[str] = content_text
+            if text is None:
+                if event is None:
+                    raise ValueError(
+                        "Vector not found in cache and no event/content provided for embedding"
+                    )
+                text = self._event_to_text(event)
+
+            vec = await self._embed_text_async(text)
+            md: Dict[str, Any] = {"patient_id": patient_id} if patient_id else {}
+            await self._vector_cache.add(
+                content=f"ICU_EVENT_VECTOR::{event_id}",
+                vector=vec,
+                metadata=md,
+                item_id=event_id,
+            )
+            return vec
+        except Exception as e:
+            self.logger.error(f"Failed to get or embed vector for event_id '{event_id}': {e}")
+            raise
+
     def get_event_count(self, patient_id: str) -> int:
         """Return total number of events stored for the patient."""
         mem = self._get_patient_memory(patient_id)

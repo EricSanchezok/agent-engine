@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
+import pyinstrument
 from dotenv import load_dotenv
 
 from agent_engine.agent_logger.agent_logger import AgentLogger
@@ -348,6 +348,72 @@ class ArxivMemory:
             return []
 
         return sorted(counts.items(), key=lambda x: x[0])
+        
+    @pyinstrument.profile()
+    def get_by_month(self, yyyymm: str, categories: Optional[List[str]] = None) -> List[Tuple[str, List[float], Dict[str, Any]]]:
+        """Return all (content, vector, metadata) for a specific month and optional categories.
+
+        Args:
+            yyyymm: Month in 'YYYYMM' format.
+            categories: Optional list of category strings (e.g., ['cs.AI', 'cs.LG']). If provided,
+                an item is included when it has any overlap with the given categories.
+
+        Notes:
+            - Searches the corresponding half-year segment first if it exists, then the legacy DB if present.
+            - Date is extracted from metadata using the same logic as ingestion.
+        """
+        cid = str(yyyymm).strip()
+        if not (len(cid) == 6 and cid.isdigit()):
+            raise ValueError("yyyymm should be 'YYYYMM'")
+
+        # Determine target half-year segment
+        try:
+            year = int(cid[:4])
+            month = int(cid[4:6])
+        except Exception:
+            raise ValueError("Invalid yyyymm format")
+        if not (1 <= month <= 12):
+            raise ValueError("Month should be between 01 and 12")
+        seg_key = f"{year}{'H1' if month <= 6 else 'H2'}"
+
+        # Build list of memories to read: target segment (if exists), then legacy
+        memories: List[ScalableMemory] = []
+        try:
+            existing = set(self._list_existing_segments())
+        except Exception:
+            existing = set()
+        if seg_key in existing:
+            memories.append(self._get_segment_memory(seg_key))
+        legacy = self._get_legacy_memory()
+        if legacy is not None:
+            memories.append(legacy)
+
+        # Normalize category filter
+        category_set = set([c.strip() for c in categories]) if categories else None
+
+        results: List[Tuple[str, List[float], Dict[str, Any]]] = []
+        for mem in memories:
+            try:
+                for content, vector, md in mem.get_all():
+                    d = self._extract_date_str(md)
+                    if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
+                        continue
+                    if category_set is not None:
+                        cats = md.get("categories", [])
+                        if isinstance(cats, str):
+                            cats_list = [cats]
+                        elif isinstance(cats, list):
+                            cats_list = [str(x) for x in cats]
+                        else:
+                            cats_list = []
+                        # Require at least one overlap
+                        if not set(cats_list).intersection(category_set):
+                            continue
+                    results.append((content, vector, md))
+            except Exception as e:
+                self.logger.warning(f"Failed to read from a memory for month {cid}: {e}")
+
+        return results
 
     async def store_one_day(self, date_str: str, categories: Optional[List[str]] = None, *, max_results: int = 10000, max_concurrency: int = 32) -> List[str]:
         """Fetch and store all arXiv papers for a day and optional categories.
@@ -383,4 +449,7 @@ class ArxivMemory:
 
 
 if __name__ == "__main__":
-    print(ArxivMemory().histogram_by_day())
+    # print(ArxivMemory().histogram_by_day())
+    mem = ArxivMemory()
+    triples = mem.get_by_month("202406", categories=["cs.AI","cs.LG"])
+    print(len(triples), triples[0][:2])  # 查看数量与前项内容/向量

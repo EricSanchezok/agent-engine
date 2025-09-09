@@ -201,9 +201,9 @@ class RiskLabelIndexer:
 
 if __name__ == "__main__":
     indexer = RiskLabelIndexer()
-    print(indexer.get_all_labels())
-    print(indexer.get_index_mapping())
-    print(indexer.index_to_risk(0))
-    print(indexer.risk_to_index("Sepsis"))
-    print(indexer.index_to_risk(1))
-    print(indexer.risk_to_index("Cardiogenic Shock"))
+    print(len(indexer.get_all_labels()))
+    # print(indexer.get_index_mapping())
+    # print(indexer.index_to_risk(0))
+    # print(indexer.risk_to_index("Sepsis"))
+    # print(indexer.index_to_risk(1))
+    # print(indexer.risk_to_index("Cardiogenic Shock"))
