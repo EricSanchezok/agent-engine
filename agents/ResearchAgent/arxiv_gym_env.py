@@ -35,6 +35,7 @@ Note:
 - This module does not require gym/gymnasium; it only mimics core APIs.
 """
 
+from ast import While
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -286,10 +287,12 @@ if __name__ == "__main__":
 
     # Dummy random action with correct dim
     rng = np.random.default_rng(0)
-    action = rng.normal(size=(8, env.vector_dim)).astype(np.float32)
-    obs, reward, terminated, truncated, info = env.step(action)
-    logger.info(
-        f"Step -> month={obs['month']}, vectors={obs['vectors'].shape}, reward={reward}, terminated={terminated}, truncated={truncated}"
-    )
+    terminated = False
+    while not terminated:
+        action = rng.normal(size=(8, env.vector_dim)).astype(np.float32)
+        obs, reward, terminated, truncated, info = env.step(action)
+        logger.info(
+            f"Step -> month={obs['month']}, vectors={obs['vectors'].shape}, reward={reward}, terminated={terminated}, truncated={truncated}"
+        )
 
 

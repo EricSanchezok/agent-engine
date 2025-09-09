@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
+from pickle import TRUE
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -150,7 +151,7 @@ def main() -> None:
     SEGMENT: str = "2024H1"                  # used only if PROCESS_ALL_SEGMENTS=False
     MONTHS: List[str] = []                    # manual months list; empty -> auto-discover per selection
     PROBE_MONTHS: bool = True                 # only include months that have at least 1 item
-    OVERWRITE: bool = False                   # recompute monthly cache if True
+    OVERWRITE: bool = TRUE                   # recompute monthly cache if True
     OUTPUT_HTML: str = "monthly_embeddings.html"
     # -------------------------------------------
 
