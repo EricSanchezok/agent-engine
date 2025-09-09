@@ -348,7 +348,7 @@ class ArxivMemory:
             return []
 
         return sorted(counts.items(), key=lambda x: x[0])
-        
+
     @pyinstrument.profile()
     def get_by_month(self, yyyymm: str, categories: Optional[List[str]] = None) -> List[Tuple[str, List[float], Dict[str, Any]]]:
         """Return all (content, vector, metadata) for a specific month and optional categories.
@@ -392,24 +392,102 @@ class ArxivMemory:
         category_set = set([c.strip() for c in categories]) if categories else None
 
         results: List[Tuple[str, List[float], Dict[str, Any]]] = []
+        seen_ids: set = set()
         for mem in memories:
             try:
-                for content, vector, md in mem.get_all():
-                    d = self._extract_date_str(md)
-                    if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
-                        continue
-                    if category_set is not None:
-                        cats = md.get("categories", [])
-                        if isinstance(cats, str):
-                            cats_list = [cats]
-                        elif isinstance(cats, list):
-                            cats_list = [str(x) for x in cats]
-                        else:
-                            cats_list = []
-                        # Require at least one overlap
-                        if not set(cats_list).intersection(category_set):
+                # Prefer DB-side filtering to avoid loading all vectors/content into memory
+                like_patterns = [
+                    f'%"timestamp": "{cid}%',
+                    f'%"timestamp":"{cid}%',
+                    f'%"submittedDate": "{cid}%',
+                    f'%"submittedDate":"{cid}%',
+                    f'%"published": "{cid}%',
+                    f'%"published":"{cid}%'
+                ]
+                where_clause = " OR ".join(["metadata LIKE ?" for _ in like_patterns])
+                try:
+                    cur = mem.db.execute(f"SELECT id, metadata FROM items WHERE {where_clause}", tuple(like_patterns))
+                    rows = mem.db.fetchall(cur)
+                    candidate_ids: List[str] = []
+                    for r in rows:
+                        mid = r[0]
+                        try:
+                            md = r[1]
+                            md_dict = md if isinstance(md, dict) else {}
+                            if not md_dict:
+                                import json as _json
+                                md_dict = _json.loads(md) if isinstance(md, str) and md else {}
+                        except Exception:
+                            md_dict = {}
+                        d = self._extract_date_str(md_dict)
+                        if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
                             continue
-                    results.append((content, vector, md))
+                        if category_set is not None:
+                            cats = md_dict.get("categories", [])
+                            if isinstance(cats, str):
+                                cats_list = [cats]
+                            elif isinstance(cats, list):
+                                cats_list = [str(x) for x in cats]
+                            else:
+                                cats_list = []
+                            if not set(cats_list).intersection(category_set):
+                                continue
+                        candidate_ids.append(mid)
+                    # If SQL returned no rows, optionally fall back to Python metadata scan
+                    if not candidate_ids:
+                        for md in mem.get_all_metadata():
+                            d = self._extract_date_str(md)
+                            if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
+                                continue
+                            if category_set is not None:
+                                cats = md.get("categories", [])
+                                if isinstance(cats, str):
+                                    cats_list = [cats]
+                                elif isinstance(cats, list):
+                                    cats_list = [str(x) for x in cats]
+                                else:
+                                    cats_list = []
+                                if not set(cats_list).intersection(category_set):
+                                    continue
+                            mid = md.get("id")
+                            if isinstance(mid, str):
+                                candidate_ids.append(mid)
+                except Exception:
+                    # Fallback: filter by metadata in Python (still avoids loading vectors)
+                    candidate_ids = []
+                    for md in mem.get_all_metadata():
+                        d = self._extract_date_str(md)
+                        if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
+                            continue
+                        if category_set is not None:
+                            cats = md.get("categories", [])
+                            if isinstance(cats, str):
+                                cats_list = [cats]
+                            elif isinstance(cats, list):
+                                cats_list = [str(x) for x in cats]
+                            else:
+                                cats_list = []
+                            if not set(cats_list).intersection(category_set):
+                                continue
+                        mid = md.get("id")
+                        if isinstance(mid, str):
+                            candidate_ids.append(mid)
+
+                # Fetch triples for candidates only; avoid duplicates across memories
+                for mid in candidate_ids:
+                    if mid in seen_ids:
+                        continue
+                    seen_ids.add(mid)
+                    try:
+                        content, vector, md = mem.get_by_id(mid)
+                        if content is None:
+                            continue
+                        # Ensure vector type
+                        if vector is None:
+                            vector = []
+                        results.append((content, vector, md))
+                    except Exception as e:
+                        self.logger.warning(f"Failed to load item {mid} from memory: {e}")
             except Exception as e:
                 self.logger.warning(f"Failed to read from a memory for month {cid}: {e}")
 
@@ -451,5 +529,6 @@ class ArxivMemory:
 if __name__ == "__main__":
     # print(ArxivMemory().histogram_by_day())
     mem = ArxivMemory()
-    triples = mem.get_by_month("202406", categories=["cs.AI","cs.LG"])
-    print(len(triples), triples[0][:2])  # 查看数量与前项内容/向量
+    triples = mem.get_by_month("202406", categories=["cs.AI"])
+    print(len(triples))
+    # print(triples[0][:2])

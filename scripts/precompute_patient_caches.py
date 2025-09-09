@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 """
-Precompute translation and vector caches for a single patient asynchronously.
+Precompute translation and vector caches for ICU patient data.
 
 Usage:
-  run.bat scripts\precompute_patient_caches.py
+  # Single patient by id
+  run.bat scripts\precompute_patient_caches.py --id 1125112810
 
-Configuration:
-  Edit PATIENT_ID and CONCURRENCY below as needed.
+  # All patients under database/icu_patients
+  run.bat scripts\precompute_patient_caches.py --all
+
+Notes:
+  - If no arguments are provided, the script defaults to PATIENT_ID.
+  - Edit PATIENT_ID and CONCURRENCY below as needed.
 """
 
 import asyncio
+import argparse
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent_engine.agent_logger import AgentLogger
@@ -67,27 +74,64 @@ async def vectorize_all(memory: ICUMemoryAgent, ingestion: ICUDataIngestionAgent
     return ok, len(seq)
 
 
-async def main() -> int:
-    logger = AgentLogger("PrecomputePatientCaches")
-    ingestion = ICUDataIngestionAgent()
-    memory = ICUMemoryAgent()
+async def process_patient_file(patient_json_path: str, memory: ICUMemoryAgent, *, logger: AgentLogger) -> Tuple[int, int, int, int]:
+    """Process a single patient JSON file: translate then vectorize.
 
-    # Load patient
-    patient_json_path = f"database/icu_raw/{PATIENT_ID}.json"
+    Returns a tuple: (ok_translate, total_translate, ok_vectorize, total_vectorize)
+    """
+    ingestion = ICUDataIngestionAgent()
     ingestion.load_patient(patient_json_path)
     if ingestion.patient_id is None:
-        ingestion.set_patient_id(PATIENT_ID)
+        # Fallback to file stem as patient id when not provided by loader
+        fallback_id = Path(patient_json_path).stem
+        if fallback_id:
+            ingestion.set_patient_id(fallback_id)
 
-    # Phase 1: translate all
-    logger.info(f"Start translation for patient_id={PATIENT_ID} with concurrency={CONCURRENCY}")
-    ok_t, total = await translate_all(ingestion, logger=logger)
-    logger.info(f"Translation done: success={ok_t}/{total}")
+    pid: str = ingestion.patient_id or ""
 
-    # Phase 2: vectorize all
-    logger.info(f"Start vectorization for patient_id={PATIENT_ID} with concurrency={CONCURRENCY}")
+    logger.info(f"Start translation for patient_id={pid} with concurrency={CONCURRENCY}")
+    ok_t, total_t = await translate_all(ingestion, logger=logger)
+    logger.info(f"Translation done: success={ok_t}/{total_t}")
+
+    logger.info(f"Start vectorization for patient_id={pid} with concurrency={CONCURRENCY}")
     ok_v, total_v = await vectorize_all(memory, ingestion, logger=logger)
     logger.info(f"Vectorization done: success={ok_v}/{total_v}")
 
+    return ok_t, total_t, ok_v, total_v
+
+
+async def main() -> int:
+    logger = AgentLogger("PrecomputePatientCaches")
+
+    parser = argparse.ArgumentParser(description="Precompute translation and vector caches for ICU patients.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--id", dest="patient_id", type=str, help="Process a single patient by id")
+    group.add_argument("--all", dest="process_all", action="store_true", help="Process all patient JSON files under database/icu_patients")
+    args = parser.parse_args()
+
+    memory = ICUMemoryAgent()
+
+    # Process all patients mode
+    if getattr(args, "process_all", False):
+        patients_dir = Path("database/icu_patients")
+        if not patients_dir.exists():
+            logger.error(f"Patients directory not found: {patients_dir}")
+            return 1
+
+        files = sorted(patients_dir.glob("*.json"))
+        if not files:
+            logger.warning(f"No patient JSON files found in: {patients_dir}")
+            return 0
+
+        logger.info(f"Processing all patients: count={len(files)}")
+        for file_path in files:
+            await process_patient_file(str(file_path), memory, logger=logger)
+        return 0
+
+    # Default/single patient mode
+    pid = getattr(args, "patient_id", None) or PATIENT_ID
+    patient_json_path = f"database/icu_patients/{pid}.json"
+    await process_patient_file(patient_json_path, memory, logger=logger)
     return 0
 
 

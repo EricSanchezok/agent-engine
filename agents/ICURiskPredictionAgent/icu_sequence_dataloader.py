@@ -296,6 +296,7 @@ class ICUSequenceDataLoader:
 if __name__ == "__main__":
     loader = ICUSequenceDataLoader(
         data_dir="database/icu_patients",
+        only_patient_id="1125112810",
         train_ratio=0.6,
         shuffle_patients=False,
     )

@@ -62,7 +62,11 @@ class RiskLabelIndexer:
 
         leaf_to_full: Dict[str, List[str]] = {}
         for label in labels:
-            leaf = label.split("/")[-1]
+            parts = label.split("/")
+            if len(parts) >= 3:
+                leaf = "/".join(parts[2:])
+            else:
+                leaf = parts[-1]
             leaf_to_full.setdefault(leaf, []).append(label)
         self._leaf_to_full: Dict[str, List[str]] = leaf_to_full
 
