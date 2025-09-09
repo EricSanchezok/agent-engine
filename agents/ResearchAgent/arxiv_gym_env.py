@@ -613,7 +613,7 @@ if __name__ == "__main__":
     start_time = time.time()
     env = ResearchArxivEnv(
         month_range=("202201", "202205"), 
-        reward_obj=None,
+        reward_obj=NoveltyForwardReward(),
         use_local_cache=True
     )
     init_time = time.time() - start_time

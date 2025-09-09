@@ -244,7 +244,7 @@ class HNSWVectorDensityEstimator:
             f"HNSW index built: size={Xn.shape[0]}, dim={self._dim}, metric={self.metric}, M={self.M}, ef_construction={self.ef_construction}"
         )
 
-    @pyinstrument.profile()
+    # @pyinstrument.profile()
     def estimate_density(self, query_vector: Sequence[float], k: int = 50) -> float:
         if self._index is None or self._dim is None:
             raise RuntimeError("HNSW index is not built. Call build(corpus_vectors) first.")
