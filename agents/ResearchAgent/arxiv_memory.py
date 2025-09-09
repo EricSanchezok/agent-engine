@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import asyncio
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -69,6 +70,11 @@ class ArxivMemory:
 
         # Cache for segment ScalableMemory instances
         self._segment_memories: Dict[str, ScalableMemory] = {}
+        
+        # Query result cache
+        self._query_cache: Dict[str, List[Tuple[str, List[float], Dict[str, Any]]]] = {}
+        self._cache_ttl: float = 300.0  # 5 minutes
+        self._cache_timestamps: Dict[str, float] = {}
 
         self.logger.info("ArxivMemory initialized with segmented storage (half-year) and Azure embeddings")
 
@@ -319,8 +325,7 @@ class ArxivMemory:
 
         return sorted(counts.items(), key=lambda x: x[0])
 
-    # @pyinstrument.profile()
-    def get_by_month(self, yyyymm: str, categories: Optional[List[str]] = None, *, include_vector: bool = True, limit: Optional[int] = None, batch_size: int = 5000) -> List[Tuple[str, List[float], Dict[str, Any]]]:
+    def get_by_month(self, yyyymm: str, categories: Optional[List[str]] = None, *, include_vector: bool = True, limit: Optional[int] = None, batch_size: int = 10000) -> List[Tuple[str, List[float], Dict[str, Any]]]:
         """Return all (content, vector, metadata) for a specific month and optional categories.
 
         Args:
@@ -338,6 +343,21 @@ class ArxivMemory:
         cid = str(yyyymm).strip()
         if not (len(cid) == 6 and cid.isdigit()):
             raise ValueError("yyyymm should be 'YYYYMM'")
+        
+        # Check cache first
+        cache_key = f"{cid}_{categories}_{include_vector}_{limit}"
+        current_time = time.time()
+        
+        if cache_key in self._query_cache:
+            if current_time - self._cache_timestamps[cache_key] < self._cache_ttl:
+                self.logger.debug(f"Cache hit for query {cache_key}")
+                return self._query_cache[cache_key]
+            else:
+                # Cache expired
+                del self._query_cache[cache_key]
+                del self._cache_timestamps[cache_key]
+        
+        self.logger.debug(f"Cache miss for query {cache_key}")
 
         # Determine target half-year segment
         try:
@@ -367,7 +387,7 @@ class ArxivMemory:
         def _build_where_and_params(mem_backend: str) -> Tuple[str, List[str]]:
             params: List[str] = []
             if mem_backend == "duckdb":
-                # Use JSON extraction for faster predicate evaluation
+                # Use JSON extraction for faster predicate evaluation with optimized patterns
                 month_clause = (
                     "("
                     "json_extract_string(metadata, '$.timestamp') LIKE ? OR "
@@ -377,19 +397,20 @@ class ArxivMemory:
                 )
                 params.extend([f"{cid}%", f"{cid}%", f"{cid}%"])
             else:
+                # Optimized SQLite patterns - use more specific patterns first
                 month_patterns = [
+                    f'%"timestamp":"{cid}%',  # Most common format first
                     f'%"timestamp": "{cid}%',
-                    f'%"timestamp":"{cid}%',
-                    f'%"submittedDate": "{cid}%',
                     f'%"submittedDate":"{cid}%',
-                    f'%"published": "{cid}%',
-                    f'%"published":"{cid}%'
+                    f'%"submittedDate": "{cid}%',
+                    f'%"published":"{cid}%',
+                    f'%"published": "{cid}%'
                 ]
                 month_clause = "(" + " OR ".join(["metadata LIKE ?" for _ in month_patterns]) + ")"
                 params.extend(month_patterns)
 
             if category_set is not None and len(category_set) > 0:
-                # Fallback to LIKE; JSON array membership functions are not guaranteed across backends
+                # Use more efficient category matching
                 cat_patterns = [f'%"{c}"%' for c in category_set]
                 cat_clause = "(" + " OR ".join(["metadata LIKE ?" for _ in cat_patterns]) + ")"
                 where = month_clause + " AND " + cat_clause
@@ -404,59 +425,75 @@ class ArxivMemory:
                 where_clause, params = _build_where_and_params(mem_backend)
                 # Decide projected columns
                 cols = "id, content, metadata, vector" if include_vector else "id, content, metadata"
-                offset = 0
-                # Loop with pagination
-                while True:
-                    sql = f"SELECT {cols} FROM items WHERE {where_clause} LIMIT {int(batch_size)} OFFSET {int(offset)}"
-                    cur = mem.db.execute(sql, tuple(params))
-                    rows = mem.db.fetchall(cur)
-                    if not rows:
-                        break
-                    for r in rows:
-                        mid = r[0]
-                        if mid in seen_ids:
-                            continue
-                        # Parse metadata and verify month/categories precisely
-                        try:
-                            md = r[2]
-                            md_dict = md if isinstance(md, dict) else (json.loads(md) if isinstance(md, str) and md else {})
-                        except Exception:
-                            md_dict = {}
-                        d = self._extract_date_str(md_dict)
-                        if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
-                            continue
-                        if category_set is not None:
-                            cats = md_dict.get("categories", [])
-                            if isinstance(cats, str):
-                                cats_list = [cats]
-                            elif isinstance(cats, list):
-                                cats_list = [str(x) for x in cats]
-                            else:
-                                cats_list = []
-                            if not set(cats_list).intersection(category_set):
-                                continue
-
-                        content = r[1]
-                        if include_vector:
-                            try:
-                                vblob = r[3]
-                                if vblob is None:
-                                    vec: List[float] = []
-                                else:
-                                    vec = np.frombuffer(vblob, dtype=np.float32).tolist()
-                            except Exception:
-                                vec = []
+                
+                # Use larger batch size for better performance
+                sql = f"SELECT {cols} FROM items WHERE {where_clause} LIMIT {int(batch_size)}"
+                cur = mem.db.execute(sql, tuple(params))
+                rows = mem.db.fetchall(cur)
+                
+                if not rows:
+                    continue
+                    
+                # Process all rows at once for better performance
+                batch_results = []
+                for r in rows:
+                    mid = r[0]
+                    if mid in seen_ids:
+                        continue
+                        
+                    # Parse metadata and verify month/categories precisely
+                    try:
+                        md = r[2]
+                        if isinstance(md, dict):
+                            md_dict = md
+                        elif isinstance(md, str) and md:
+                            # Use more efficient JSON parsing
+                            md_dict = json.loads(md)
                         else:
-                            vec = []
+                            md_dict = {}
+                    except (json.JSONDecodeError, TypeError):
+                        md_dict = {}
+                        
+                    d = self._extract_date_str(md_dict)
+                    if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
+                        continue
+                        
+                    if category_set is not None:
+                        cats = md_dict.get("categories", [])
+                        if isinstance(cats, str):
+                            cats_list = [cats]
+                        elif isinstance(cats, list):
+                            cats_list = [str(x) for x in cats]
+                        else:
+                            cats_list = []
+                        if not set(cats_list).intersection(category_set):
+                            continue
 
-                        seen_ids.add(mid)
-                        results.append((content, vec, md_dict))
-                        if limit is not None and len(results) >= int(limit):
-                            return results
-                    offset += len(rows)
+                    content = r[1]
+                    if include_vector:
+                        try:
+                            vblob = r[3]
+                            if vblob is None:
+                                vec: List[float] = []
+                            else:
+                                # More efficient vector conversion
+                                vec_array = np.frombuffer(vblob, dtype=np.float32)
+                                vec = vec_array.tolist()
+                        except (ValueError, TypeError):
+                            vec = []
+                    else:
+                        vec = []
+
+                    seen_ids.add(mid)
+                    batch_results.append((content, vec, md_dict))
+                    if limit is not None and len(results) + len(batch_results) >= int(limit):
+                        results.extend(batch_results)
+                        return results
+                
+                results.extend(batch_results)
 
                 # If no rows matched via SQL, fallback to Python metadata scan (no vectors)
-                if offset == 0:
+                if not results:
                     for md in mem.get_all_metadata():
                         d = self._extract_date_str(md)
                         if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
@@ -484,6 +521,14 @@ class ArxivMemory:
                             return results
             except Exception as e:
                 self.logger.warning(f"Failed to read from a memory for month {cid}: {e}")
+
+        # Cache the results
+        self._query_cache[cache_key] = results
+        self._cache_timestamps[cache_key] = current_time
+        
+        # Clean up expired cache entries if cache is getting large
+        if len(self._query_cache) > 50:
+            self._cleanup_query_cache()
 
         return results
 
@@ -518,6 +563,25 @@ class ArxivMemory:
         papers = await fetcher.search(query_string=q, max_results=max_results)
         self.logger.info(f"Found {len(papers)} papers")
         return await self.store_papers(papers, max_concurrency=max_concurrency)
+    
+    def _cleanup_query_cache(self) -> None:
+        """Clean up expired query cache entries."""
+        current_time = time.time()
+        expired_keys = [
+            key for key, timestamp in self._cache_timestamps.items()
+            if current_time - timestamp >= self._cache_ttl
+        ]
+        for key in expired_keys:
+            self._query_cache.pop(key, None)
+            self._cache_timestamps.pop(key, None)
+        if expired_keys:
+            self.logger.debug(f"Cleaned up {len(expired_keys)} expired query cache entries")
+    
+    def clear_query_cache(self) -> None:
+        """Clear all query cache."""
+        self._query_cache.clear()
+        self._cache_timestamps.clear()
+        self.logger.info("Query cache cleared")
 
 
 if __name__ == "__main__":

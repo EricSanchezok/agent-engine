@@ -804,6 +804,10 @@ class ScalableMemory:
                 """
             )
             self.db.execute("CREATE INDEX IF NOT EXISTS idx_items_content ON items(content)")
+            # Add composite index for metadata queries
+            self.db.execute("CREATE INDEX IF NOT EXISTS idx_items_metadata ON items(metadata)")
+            # Add index for vector queries
+            self.db.execute("CREATE INDEX IF NOT EXISTS idx_items_vector ON items(vector)")
 
         # schema version
         self._upsert_meta("schema_version", str(self.SCHEMA_VERSION))
