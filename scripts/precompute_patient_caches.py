@@ -62,7 +62,7 @@ async def vectorize_all(memory: ICUMemoryAgent, ingestion: ICUDataIngestionAgent
         async with sem:
             try:
                 # Cache vectors only into global cache with overwrite control
-                await memory.cache_event_vector_only(pid, ev, overwrite=True)
+                await memory.cache_event_vector_only(pid, ev, overwrite=False)
                 return True
             except Exception as e:
                 logger.warning(f"Vectorize failed for id={ev.get('id')}: {e}")

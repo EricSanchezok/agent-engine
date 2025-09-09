@@ -134,7 +134,7 @@ class ResearchArxivEnv:
         }
 
         logger.info(
-            f"ResearchArxivEnv initialized: months={len(self._months)}, vector_dim={self.vector_dim}, categories={self.categories}"
+            f"ResearchArxivEnv initialized: months={len(self._months)}, vector_dim={self.vector_dim}, categories={self.categories}, month_range={self.month_range}"
         )
         
         # Preload all months if enabled
@@ -164,7 +164,7 @@ class ResearchArxivEnv:
             logger.warning(f"Reward object reset failed: {e}")
         return obs, info
 
-    @pyinstrument.profile()
+    # @pyinstrument.profile()
     def step(self, action: Sequence[Sequence[float]]) -> Tuple[Dict[str, Any], float, bool, bool, Dict[str, Any]]:
         """Advance to the next month.
 
@@ -489,17 +489,18 @@ class ResearchArxivEnv:
 
 if __name__ == "__main__":
     # Minimal quickstart
-    env = ResearchArxivEnv()
+    env = ResearchArxivEnv(month_range=("202201", "202205"))
     obs, info = env.reset()
     logger.info(f"Reset to month={obs['month']}, vectors={obs['vectors'].shape}")
 
     # Dummy random action with correct dim
     rng = np.random.default_rng(0)
     terminated = False
-    action = rng.normal(size=(8, env.vector_dim)).astype(np.float32)
-    obs, reward, terminated, truncated, info = env.step(action)
-    logger.info(
-        f"Step -> month={obs['month']}, vectors={obs['vectors'].shape}, reward={reward}, terminated={terminated}, truncated={truncated}"
-    )
+    while not terminated:
+        action = rng.normal(size=(8, env.vector_dim)).astype(np.float32)
+        obs, reward, terminated, truncated, info = env.step(action)
+        logger.info(
+            f"Step -> month={obs['month']}, vectors={obs['vectors'].shape}, reward={reward}, terminated={terminated}, truncated={truncated}"
+        )
 
 
