@@ -488,12 +488,11 @@ class ResearchArxivEnv:
 
 
 if __name__ == "__main__":
-    # Minimal quickstart
-    env = ResearchArxivEnv(month_range=("202201", "202205"))
+    from agents.ResearchAgent.reward import NoveltyForwardReward
+    env = ResearchArxivEnv(month_range=("202201", "202205"), reward_obj=NoveltyForwardReward())
     obs, info = env.reset()
     logger.info(f"Reset to month={obs['month']}, vectors={obs['vectors'].shape}")
 
-    # Dummy random action with correct dim
     rng = np.random.default_rng(0)
     terminated = False
     while not terminated:
