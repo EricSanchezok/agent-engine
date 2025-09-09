@@ -69,6 +69,7 @@ class UMLSClinicalTranslator:
         - If not in cache or overwrite=True, call LLM and upsert into cache when event_id is available
         - If no LLM configured, return None
         """
+
         return text_cn
 
         text_cn = (text_cn or "").strip()

@@ -150,7 +150,14 @@ class AzureClient(LLMClient):
                 backoff=2
             )
             
-            embeddings = response.data[0].embedding
+            # Handle both single and batch embeddings
+            if isinstance(text, str):
+                # Single text input
+                embeddings = response.data[0].embedding
+            else:
+                # Multiple texts input - return list of embeddings
+                embeddings = [item.embedding for item in response.data]
+            
             self.logger.info(f"✅ Azure OpenAI embeddings received successfully")
             return embeddings
             

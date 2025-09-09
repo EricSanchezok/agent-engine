@@ -41,7 +41,7 @@ async def translate_all(ingestion: ICUDataIngestionAgent, *, logger: AgentLogger
             return False
         async with sem:
             try:
-                res = await ingestion._translator.get_translation(ev_id, content, overwrite=True)
+                res = await ingestion._translator.get_translation(ev_id, content, overwrite=False)
                 return res is not None and len(res) > 0
             except Exception as e:
                 logger.warning(f"Translate failed for id={ev_id}: {e}")
