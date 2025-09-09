@@ -214,6 +214,9 @@ class ICUSequenceDataLoader:
 
             X = np.asarray(vectors_with_time, dtype=np.float32)
             Y = np.stack(labels, axis=0).astype(np.float32)
+            
+            # Apply temporal smoothing to risk labels
+            Y_smoothed = self._smooth_risk_labels(Y)
 
             yield {
                 "patient_id": patient_id,
@@ -222,6 +225,7 @@ class ICUSequenceDataLoader:
                 "time_deltas": time_deltas,
                 "vectors": X,
                 "labels": Y,
+                "labels_smoothed": Y_smoothed,
             }
 
     # ---------------------- Internals ----------------------
@@ -304,6 +308,55 @@ class ICUSequenceDataLoader:
         
         return time_deltas
 
+    def _smooth_risk_labels(self, labels: np.ndarray) -> np.ndarray:
+        """
+        Apply temporal smoothing to risk labels.
+        
+        For each risk:
+        1. Backward mapping: When risk first appears, linearly decay from 1.0 to 0.0 from first occurrence to start
+        2. Forward mapping: When risk is present, keep all intermediate values at 1.0
+        3. Decay mapping: When risk last appears, linearly decay from 1.0 to 0.0 from last occurrence to end
+        """
+        if labels.size == 0:
+            return labels
+        
+        num_events, num_risks = labels.shape
+        smoothed_labels = labels.copy().astype(np.float32)
+        
+        for risk_idx in range(num_risks):
+            risk_sequence = labels[:, risk_idx]
+            
+            # Find all positions where this risk is present (value = 1.0)
+            risk_positions = np.where(risk_sequence == 1.0)[0]
+            
+            if len(risk_positions) == 0:
+                # No occurrences of this risk, keep all zeros
+                continue
+            
+            # Get first and last occurrence positions
+            first_occurrence = risk_positions[0]
+            last_occurrence = risk_positions[-1]
+            
+            # 1. Backward mapping: from first occurrence to start (index 0)
+            if first_occurrence > 0:
+                # Linear decay from 1.0 to 0.0
+                for i in range(first_occurrence):
+                    decay_factor = i / first_occurrence  # 0 to 1
+                    smoothed_labels[i, risk_idx] = 1.0 - decay_factor
+            
+            # 2. Forward mapping: keep all intermediate values at 1.0
+            # (This is already handled by the original labels)
+            
+            # 3. Decay mapping: from last occurrence to end
+            if last_occurrence < num_events - 1:
+                # Linear decay from 1.0 to 0.0
+                decay_length = num_events - 1 - last_occurrence
+                for i in range(last_occurrence + 1, num_events):
+                    decay_factor = (i - last_occurrence) / decay_length  # 0 to 1
+                    smoothed_labels[i, risk_idx] = 1.0 - decay_factor
+        
+        return smoothed_labels
+
     def _build_label_vector(self, event: Dict[str, Any]) -> np.ndarray:
         y = np.zeros(self.label_size, dtype=np.float32)
         risks = event.get("risks") if isinstance(event, dict) else None
@@ -336,11 +389,13 @@ if __name__ == "__main__":
     for sample in loader.iter_patient_sequences("train"):
         X = sample["vectors"]
         Y = sample["labels"]
+        Y_smoothed = sample["labels_smoothed"]
         time_deltas = sample["time_deltas"]
         timestamps = sample["timestamps"]
         
         print(f"Vector shape: {X.shape}")
         print(f"Label shape: {Y.shape}")
+        print(f"Smoothed label shape: {Y_smoothed.shape}")
         print(f"Time deltas shape: {len(time_deltas)}")
         print()
         
@@ -356,5 +411,36 @@ if __name__ == "__main__":
             print(f"  Max: {max(time_deltas[1:]):.2f} seconds")
             print(f"  Mean: {np.mean(time_deltas[1:]):.2f} seconds")
             print(f"  Median: {np.median(time_deltas[1:]):.2f} seconds")
+        
+        # Show risk smoothing statistics
+        print(f"\nRisk smoothing statistics:")
+        print(f"  Original labels - Non-zero count: {np.count_nonzero(Y)}")
+        print(f"  Smoothed labels - Non-zero count: {np.count_nonzero(Y_smoothed)}")
+        print(f"  Original labels - Max value: {np.max(Y):.3f}")
+        print(f"  Smoothed labels - Max value: {np.max(Y_smoothed):.3f}")
+        print(f"  Original labels - Mean value: {np.mean(Y):.3f}")
+        print(f"  Smoothed labels - Mean value: {np.mean(Y_smoothed):.3f}")
+        
+        # Show example of smoothing for a specific risk
+        print(f"\nExample risk smoothing (first risk with occurrences):")
+        for risk_idx in range(Y.shape[1]):
+            if np.any(Y[:, risk_idx] > 0):
+                print(f"  Risk {risk_idx}:")
+                # Find first and last occurrence
+                risk_positions = np.where(Y[:, risk_idx] == 1.0)[0]
+                first_pos = risk_positions[0]
+                last_pos = risk_positions[-1]
+                print(f"    First occurrence at event {first_pos}")
+                print(f"    Last occurrence at event {last_pos}")
+                
+                # Show smoothing around first occurrence
+                start_show = max(0, first_pos - 5)
+                end_show = min(Y.shape[0], first_pos + 6)
+                print(f"    Values around first occurrence (events {start_show}-{end_show-1}):")
+                for i in range(start_show, end_show):
+                    orig_val = Y[i, risk_idx]
+                    smooth_val = Y_smoothed[i, risk_idx]
+                    print(f"      Event {i}: Original={orig_val:.3f}, Smoothed={smooth_val:.3f}")
+                break
         
         break  # Only process first patient for demo
