@@ -35,14 +35,15 @@ Note:
 - This module does not require gym/gymnasium; it only mimics core APIs.
 """
 
-from ast import While
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+import pyinstrument
 
 from agent_engine.agent_logger import AgentLogger
 from agents.ResearchAgent.arxiv_memory import ArxivMemory
+from agents.ResearchAgent.reward import ArxivRewardBase, ConstantReward
 
 
 logger = AgentLogger("ResearchArxivEnv")
@@ -69,6 +70,7 @@ class ResearchArxivEnv:
         max_vectors_per_month: Optional[int] = None,
         include_content: bool = False,
         reward_fn: Optional[RewardFn] = None,
+        reward_obj: Optional[ArxivRewardBase] = None,
         density_estimator_factory: Optional[DensityEstimatorFactory] = None,
         density_k: int = 50,
     ) -> None:
@@ -89,7 +91,9 @@ class ResearchArxivEnv:
         self.max_months = int(max_months) if max_months is not None else None
         self.max_vectors_per_month = int(max_vectors_per_month) if max_vectors_per_month is not None else None
         self.include_content = bool(include_content)
+        # Reward: prefer object if provided; otherwise fallback to function or constant
         self._reward_fn: RewardFn = reward_fn if reward_fn is not None else self._default_reward_fn
+        self._reward_obj: ArxivRewardBase = reward_obj if reward_obj is not None else ConstantReward(1.0)
         self._density_estimator_factory = density_estimator_factory
         self._density_k = int(density_k)
 
@@ -123,8 +127,19 @@ class ResearchArxivEnv:
         self._current_cache = self._load_month_cache(self._months[self._month_index])
         self._maybe_build_density(self._current_cache)
         obs, info = self._make_observation_and_info(self._current_cache)
+        # Reset reward object state
+        ctx_reset: Dict[str, Any] = {
+            "density_estimator": self._density_estimator,
+            "density_k": self._density_k,
+            "next_month": self._current_cache.month,
+        }
+        try:
+            self._reward_obj.reset(self._cache_to_state(self._current_cache), ctx_reset)
+        except Exception as e:
+            logger.warning(f"Reward object reset failed: {e}")
         return obs, info
 
+    @pyinstrument.profile()
     def step(self, action: Sequence[Sequence[float]]) -> Tuple[Dict[str, Any], float, bool, bool, Dict[str, Any]]:
         """Advance to the next month.
 
@@ -162,7 +177,13 @@ class ResearchArxivEnv:
             "prev_month": prev_cache.month,
             "next_month": next_cache.month,
         }
-        reward = float(self._reward_fn(self._cache_to_state(prev_cache), action, self._cache_to_state(next_cache), ctx))
+        reward: float
+        # Prefer class-based reward
+        try:
+            reward = float(self._reward_obj.update(self._cache_to_state(prev_cache), action, self._cache_to_state(next_cache), ctx))
+        except Exception as e:
+            logger.warning(f"Reward object update failed, falling back to function: {e}")
+            reward = float(self._reward_fn(self._cache_to_state(prev_cache), action, self._cache_to_state(next_cache), ctx))
 
         return obs, reward, terminated, truncated, info
 
@@ -171,6 +192,12 @@ class ResearchArxivEnv:
         if not callable(reward_fn):
             raise ValueError("reward_fn must be callable")
         self._reward_fn = reward_fn
+
+    def set_reward_obj(self, reward_obj: ArxivRewardBase) -> None:
+        """Replace reward object at runtime."""
+        if not isinstance(reward_obj, ArxivRewardBase):
+            raise ValueError("reward_obj must be an instance of ArxivRewardBase")
+        self._reward_obj = reward_obj
 
     def months(self) -> List[str]:
         """Return list of available months (YYYYMM)."""
@@ -288,11 +315,10 @@ if __name__ == "__main__":
     # Dummy random action with correct dim
     rng = np.random.default_rng(0)
     terminated = False
-    while not terminated:
-        action = rng.normal(size=(8, env.vector_dim)).astype(np.float32)
-        obs, reward, terminated, truncated, info = env.step(action)
-        logger.info(
-            f"Step -> month={obs['month']}, vectors={obs['vectors'].shape}, reward={reward}, terminated={terminated}, truncated={truncated}"
-        )
+    action = rng.normal(size=(8, env.vector_dim)).astype(np.float32)
+    obs, reward, terminated, truncated, info = env.step(action)
+    logger.info(
+        f"Step -> month={obs['month']}, vectors={obs['vectors'].shape}, reward={reward}, terminated={terminated}, truncated={truncated}"
+    )
 
 
