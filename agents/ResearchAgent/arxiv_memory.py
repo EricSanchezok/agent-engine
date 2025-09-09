@@ -6,6 +6,8 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import json
+import numpy as np
 import pyinstrument
 from dotenv import load_dotenv
 
@@ -32,7 +34,6 @@ class ArxivMemory:
 
     Storage strategy:
     - Base location: agents/ResearchAgent/database/
-    - Legacy single DB (read-only): arxiv_metada.duckdb or arxiv_metadata.duckdb under base dir
     - Segmented DBs (read/write): base_dir/segments/<YYYYH1|YYYYH2>/
         Each segment directory contains a ScalableMemory instance (DuckDB + index)
 
@@ -58,7 +59,7 @@ class ArxivMemory:
         # Embedding model fixed as requested
         self.embed_model: str = "text-embedding-3-large"
 
-        # Base dir for all arXiv memories (legacy + segments)
+        # Base dir for all arXiv memories (segments)
         self.persist_dir: Path = get_current_file_dir() / 'database'
         self.segments_dir: Path = self.persist_dir
         try:
@@ -69,37 +70,9 @@ class ArxivMemory:
         # Cache for segment ScalableMemory instances
         self._segment_memories: Dict[str, ScalableMemory] = {}
 
-        # Detect legacy DB name if present
-        self._legacy_name: Optional[str] = self._detect_legacy_name()
-        self._legacy_memory: Optional[ScalableMemory] = None
-
         self.logger.info("ArxivMemory initialized with segmented storage (half-year) and Azure embeddings")
 
     # ------------------------------ Internal helpers ------------------------------
-    def _detect_legacy_name(self) -> Optional[str]:
-        """Detect legacy single-DB name under base dir.
-
-        Returns either 'arxiv_metada' (legacy typo) or 'arxiv_metadata', or None if not found.
-        """
-        candidates = ["arxiv_metada", "arxiv_metadata"]
-        for name in candidates:
-            db_file = self.persist_dir / f"{name}.duckdb"
-            if db_file.exists():
-                return name
-        return None
-
-    def _get_legacy_memory(self) -> Optional[ScalableMemory]:
-        if self._legacy_name is None:
-            return None
-        if self._legacy_memory is None:
-            self._legacy_memory = ScalableMemory(
-                name=self._legacy_name,
-                llm_client=self.llm_client,
-                embed_model=self.embed_model,
-                persist_dir=self.persist_dir,
-            )
-        return self._legacy_memory
-
     def _extract_date_str(self, md: Dict[str, Any]) -> Optional[str]:
         """Extract YYYYMMDD from metadata best-effort."""
         ts = md.get("timestamp") or md.get("submittedDate") or md.get("published") or ""
@@ -163,17 +136,14 @@ class ArxivMemory:
         return out
 
     def _iter_all_memories_for_read(self) -> List[ScalableMemory]:
-        """Return all memories to search (segments first in chronological order, then legacy)."""
+        """Return all memories to search (segments in chronological order)."""
         mems: List[ScalableMemory] = []
         for seg in self._list_existing_segments():
             mems.append(self._get_segment_memory(seg))
-        legacy = self._get_legacy_memory()
-        if legacy is not None:
-            mems.append(legacy)
         return mems
 
     def _exists_with_vector(self, item_id: str) -> bool:
-        """Check across segments and legacy if the item exists with a stored vector."""
+        """Check across segments if the item exists with a stored vector."""
         for mem in self._iter_all_memories_for_read():
             try:
                 _c, vec, _m = mem.get_by_id(item_id)
@@ -194,7 +164,7 @@ class ArxivMemory:
         - metadata: paper.info (dict)
 
         Optimization:
-        - Before embedding, check if the id already exists in any segment or legacy AND has a stored vector; if so, skip to avoid token cost.
+        - Before embedding, check if the id already exists in any segment AND has a stored vector; if so, skip to avoid token cost.
         """
         if not papers:
             return []
@@ -227,7 +197,7 @@ class ArxivMemory:
             md = dict(p.info)
             md["id"] = pid
 
-            # Check existing record and vector across segments and legacy
+            # Check existing record and vector across segments
             try:
                 exists = self._exists_with_vector(pid)
             except Exception as e:
@@ -235,7 +205,7 @@ class ArxivMemory:
                 exists = False
 
             if exists:
-                self.logger.info(f"Skip id={pid}: already stored with vector (any segment/legacy)")
+                self.logger.info(f"Skip id={pid}: already stored with vector (any segment)")
                 continue
 
             # Need embedding
@@ -262,7 +232,7 @@ class ArxivMemory:
             date_str = self._extract_date_str(it.metadata) or ""
             seg = self._segment_key_from_date(date_str) or "unknown"
             if seg == "unknown":
-                # Fallback: put undated items into legacy-compatible new segment 'unknown'
+                # Fallback: put undated items into new segment 'unknown'
                 seg = "undated"
             payload_by_segment.setdefault(seg, []).append({
                 "id": it.id,
@@ -282,7 +252,7 @@ class ArxivMemory:
         return stored_ids
 
     def get_by_id(self, arxiv_id: str) -> List[Dict[str, Any]]:
-        """Get metadata by id across segmented DBs (and legacy).
+        """Get metadata by id across segmented DBs.
 
         If version is omitted, return all versions including non-version form.
 
@@ -294,7 +264,7 @@ class ArxivMemory:
         if not cid:
             return []
 
-        # If contains version suffix 'v<digits>', return exact (first hit wins: segments in order, then legacy)
+        # If contains version suffix 'v<digits>', return exact (first hit wins: segments in order)
         if re.search(r"v\d+$", cid):
             for mem in self._iter_all_memories_for_read():
                 content, _vec, md = mem.get_by_id(cid)
@@ -327,7 +297,7 @@ class ArxivMemory:
         return results
 
     def histogram_by_day(self) -> List[Tuple[str, int]]:
-        """Return a histogram of papers per day across segmented DBs (and legacy)."""
+        """Return a histogram of papers per day across segmented DBs."""
         counts: Dict[str, int] = {}
 
         def _consume_md(md_list: List[Dict[str, Any]]) -> None:
@@ -349,17 +319,20 @@ class ArxivMemory:
 
         return sorted(counts.items(), key=lambda x: x[0])
 
-    @pyinstrument.profile()
-    def get_by_month(self, yyyymm: str, categories: Optional[List[str]] = None) -> List[Tuple[str, List[float], Dict[str, Any]]]:
+    # @pyinstrument.profile()
+    def get_by_month(self, yyyymm: str, categories: Optional[List[str]] = None, *, include_vector: bool = True, limit: Optional[int] = None, batch_size: int = 5000) -> List[Tuple[str, List[float], Dict[str, Any]]]:
         """Return all (content, vector, metadata) for a specific month and optional categories.
 
         Args:
             yyyymm: Month in 'YYYYMM' format.
             categories: Optional list of category strings (e.g., ['cs.AI', 'cs.LG']). If provided,
                 an item is included when it has any overlap with the given categories.
+            include_vector: If False, vectors are not loaded (returned as empty lists).
+            limit: Optional maximum number of results to return across all memories.
+            batch_size: Rows per page per memory when scanning DB.
 
         Notes:
-            - Searches the corresponding half-year segment first if it exists, then the legacy DB if present.
+            - Searches the corresponding half-year segment first if it exists.
             - Date is extracted from metadata using the same logic as ingestion.
         """
         cid = str(yyyymm).strip()
@@ -376,7 +349,7 @@ class ArxivMemory:
             raise ValueError("Month should be between 01 and 12")
         seg_key = f"{year}{'H1' if month <= 6 else 'H2'}"
 
-        # Build list of memories to read: target segment (if exists), then legacy
+        # Build list of memories to read: target segment (if exists)
         memories: List[ScalableMemory] = []
         try:
             existing = set(self._list_existing_segments())
@@ -384,19 +357,27 @@ class ArxivMemory:
             existing = set()
         if seg_key in existing:
             memories.append(self._get_segment_memory(seg_key))
-        legacy = self._get_legacy_memory()
-        if legacy is not None:
-            memories.append(legacy)
 
         # Normalize category filter
         category_set = set([c.strip() for c in categories]) if categories else None
 
         results: List[Tuple[str, List[float], Dict[str, Any]]] = []
         seen_ids: set = set()
-        for mem in memories:
-            try:
-                # Prefer DB-side filtering to avoid loading all vectors/content into memory
-                like_patterns = [
+
+        def _build_where_and_params(mem_backend: str) -> Tuple[str, List[str]]:
+            params: List[str] = []
+            if mem_backend == "duckdb":
+                # Use JSON extraction for faster predicate evaluation
+                month_clause = (
+                    "("
+                    "json_extract_string(metadata, '$.timestamp') LIKE ? OR "
+                    "json_extract_string(metadata, '$.submittedDate') LIKE ? OR "
+                    "json_extract_string(metadata, '$.published') LIKE ?"
+                    ")"
+                )
+                params.extend([f"{cid}%", f"{cid}%", f"{cid}%"])
+            else:
+                month_patterns = [
                     f'%"timestamp": "{cid}%',
                     f'%"timestamp":"{cid}%',
                     f'%"submittedDate": "{cid}%',
@@ -404,19 +385,41 @@ class ArxivMemory:
                     f'%"published": "{cid}%',
                     f'%"published":"{cid}%'
                 ]
-                where_clause = " OR ".join(["metadata LIKE ?" for _ in like_patterns])
-                try:
-                    cur = mem.db.execute(f"SELECT id, metadata FROM items WHERE {where_clause}", tuple(like_patterns))
+                month_clause = "(" + " OR ".join(["metadata LIKE ?" for _ in month_patterns]) + ")"
+                params.extend(month_patterns)
+
+            if category_set is not None and len(category_set) > 0:
+                # Fallback to LIKE; JSON array membership functions are not guaranteed across backends
+                cat_patterns = [f'%"{c}"%' for c in category_set]
+                cat_clause = "(" + " OR ".join(["metadata LIKE ?" for _ in cat_patterns]) + ")"
+                where = month_clause + " AND " + cat_clause
+                params.extend(cat_patterns)
+            else:
+                where = month_clause
+            return where, params
+
+        for mem in memories:
+            try:
+                mem_backend = getattr(mem.db, "backend", "sqlite")
+                where_clause, params = _build_where_and_params(mem_backend)
+                # Decide projected columns
+                cols = "id, content, metadata, vector" if include_vector else "id, content, metadata"
+                offset = 0
+                # Loop with pagination
+                while True:
+                    sql = f"SELECT {cols} FROM items WHERE {where_clause} LIMIT {int(batch_size)} OFFSET {int(offset)}"
+                    cur = mem.db.execute(sql, tuple(params))
                     rows = mem.db.fetchall(cur)
-                    candidate_ids: List[str] = []
+                    if not rows:
+                        break
                     for r in rows:
                         mid = r[0]
+                        if mid in seen_ids:
+                            continue
+                        # Parse metadata and verify month/categories precisely
                         try:
-                            md = r[1]
-                            md_dict = md if isinstance(md, dict) else {}
-                            if not md_dict:
-                                import json as _json
-                                md_dict = _json.loads(md) if isinstance(md, str) and md else {}
+                            md = r[2]
+                            md_dict = md if isinstance(md, dict) else (json.loads(md) if isinstance(md, str) and md else {})
                         except Exception:
                             md_dict = {}
                         d = self._extract_date_str(md_dict)
@@ -432,29 +435,28 @@ class ArxivMemory:
                                 cats_list = []
                             if not set(cats_list).intersection(category_set):
                                 continue
-                        candidate_ids.append(mid)
-                    # If SQL returned no rows, optionally fall back to Python metadata scan
-                    if not candidate_ids:
-                        for md in mem.get_all_metadata():
-                            d = self._extract_date_str(md)
-                            if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
-                                continue
-                            if category_set is not None:
-                                cats = md.get("categories", [])
-                                if isinstance(cats, str):
-                                    cats_list = [cats]
-                                elif isinstance(cats, list):
-                                    cats_list = [str(x) for x in cats]
+
+                        content = r[1]
+                        if include_vector:
+                            try:
+                                vblob = r[3]
+                                if vblob is None:
+                                    vec: List[float] = []
                                 else:
-                                    cats_list = []
-                                if not set(cats_list).intersection(category_set):
-                                    continue
-                            mid = md.get("id")
-                            if isinstance(mid, str):
-                                candidate_ids.append(mid)
-                except Exception:
-                    # Fallback: filter by metadata in Python (still avoids loading vectors)
-                    candidate_ids = []
+                                    vec = np.frombuffer(vblob, dtype=np.float32).tolist()
+                            except Exception:
+                                vec = []
+                        else:
+                            vec = []
+
+                        seen_ids.add(mid)
+                        results.append((content, vec, md_dict))
+                        if limit is not None and len(results) >= int(limit):
+                            return results
+                    offset += len(rows)
+
+                # If no rows matched via SQL, fallback to Python metadata scan (no vectors)
+                if offset == 0:
                     for md in mem.get_all_metadata():
                         d = self._extract_date_str(md)
                         if not (isinstance(d, str) and len(d) >= 6 and d[:6] == cid):
@@ -470,24 +472,16 @@ class ArxivMemory:
                             if not set(cats_list).intersection(category_set):
                                 continue
                         mid = md.get("id")
-                        if isinstance(mid, str):
-                            candidate_ids.append(mid)
-
-                # Fetch triples for candidates only; avoid duplicates across memories
-                for mid in candidate_ids:
-                    if mid in seen_ids:
-                        continue
-                    seen_ids.add(mid)
-                    try:
-                        content, vector, md = mem.get_by_id(mid)
+                        if not isinstance(mid, str) or mid in seen_ids:
+                            continue
+                        content, vector, _md = mem.get_by_id(mid)
                         if content is None:
                             continue
-                        # Ensure vector type
-                        if vector is None:
-                            vector = []
-                        results.append((content, vector, md))
-                    except Exception as e:
-                        self.logger.warning(f"Failed to load item {mid} from memory: {e}")
+                        vec = vector or []
+                        seen_ids.add(mid)
+                        results.append((content, vec if include_vector else [], md))
+                        if limit is not None and len(results) >= int(limit):
+                            return results
             except Exception as e:
                 self.logger.warning(f"Failed to read from a memory for month {cid}: {e}")
 
@@ -527,7 +521,7 @@ class ArxivMemory:
 
 
 if __name__ == "__main__":
-    # print(ArxivMemory().histogram_by_day())
     mem = ArxivMemory()
+    # print(mem.histogram_by_day())
     triples = mem.get_by_month("202406")
     print(len(triples))

@@ -10,7 +10,7 @@ requires-python = ">=3.13.5"
 dependencies = [
     "a2a-sdk[http-server]>=0.3.1",
     "holos-sdk>=0.1.0",
-    "numpy>=2.3.2",
+    "numpy>=1.24",
     "openai>=1.100.2",
     "pytz>=2025.2",
     "pyyaml>=6.0.2",
@@ -39,6 +39,10 @@ opts = [
     "jupyter>=1.1.1",
     "matplotlib>=3.10.5",
     "docling>=2.45.0",
+    "llvmlite>=0.44.0",
+    "numba==0.61.2",
+    "umap-learn>=0.5.9.post2",
+    "plotly>=6.3.0",
 ]
 
 [build-system]

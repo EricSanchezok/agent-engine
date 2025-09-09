@@ -291,11 +291,11 @@ if __name__ == "__main__":
 
     # 1) 精确 KNN
     knn_est = KNNVectorDensityEstimator(metric="cosine", method="knn_average", self_exclude=True)
-    density_knn = knn_est.estimate_density(query, vectors, k=50)
+    density_knn = knn_est.estimate_density(query, vectors, k=100)
     print("KNN density:", density_knn)
 
     # 2) 近似 HNSW
     hnsw_est = HNSWVectorDensityEstimator(metric="cosine", method="knn_average", self_exclude=True)
     hnsw_est.build(vectors)
-    density_hnsw = hnsw_est.estimate_density(query, k=50)
+    density_hnsw = hnsw_est.estimate_density(query, k=100)
     print("HNSW density:", density_hnsw)
