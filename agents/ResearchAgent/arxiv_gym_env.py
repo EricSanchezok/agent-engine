@@ -332,7 +332,8 @@ class ResearchArxivEnv:
         """Trigger background preloading."""
         if self._preload_enabled and self._preload_task is None:
             try:
-                loop = asyncio.get_event_loop()
+                # Use get_running_loop() instead of deprecated get_event_loop()
+                loop = asyncio.get_running_loop()
                 self._preload_task = loop.create_task(self._preload_next_months())
             except RuntimeError:
                 # No event loop running, skip preloading
@@ -506,7 +507,7 @@ class ResearchArxivEnv:
         
         # Load from database with timing
         load_start_time = time.time()
-        triples = self._memory.get_by_month(yyyymm, categories=self.categories, include_vector=True)
+        triples = self._memory.get_by_month(yyyymm, categories=self.categories, include_vector=True, batch_size=100000)
         
         # Pre-allocate arrays for better performance
         max_items = self.max_vectors_per_month or len(triples)

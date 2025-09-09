@@ -399,12 +399,12 @@ class ArxivMemory:
             else:
                 # Optimized SQLite patterns - use more specific patterns first
                 month_patterns = [
-                    f'%"timestamp":"{cid}%',  # Most common format first
-                    f'%"timestamp": "{cid}%',
-                    f'%"submittedDate":"{cid}%',
+                    f'%"timestamp": "{cid}%',  # Most common format first (with space)
+                    f'%"timestamp":"{cid}%',   # Fallback without space
                     f'%"submittedDate": "{cid}%',
-                    f'%"published":"{cid}%',
-                    f'%"published": "{cid}%'
+                    f'%"submittedDate":"{cid}%',
+                    f'%"published": "{cid}%',
+                    f'%"published":"{cid}%'
                 ]
                 month_clause = "(" + " OR ".join(["metadata LIKE ?" for _ in month_patterns]) + ")"
                 params.extend(month_patterns)
