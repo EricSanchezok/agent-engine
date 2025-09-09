@@ -11,6 +11,7 @@ from agent_engine.llm_client import AzureClient
 from agent_engine.prompt import PromptLoader
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.utils import get_current_file_dir
+from agent_engine.memory import ScalableMemory
 
 
 # Local imports
@@ -45,7 +46,46 @@ class RiskDiagnosis:
             self._prompt_loader = None
         self.risks_table = RisksTable()
 
+        # Persistent non-vector cache for risk diagnosis results
+        try:
+            persist_dir = get_current_file_dir() / "database"
+            self._cache_mem = ScalableMemory(
+                name="icu_risk_cache",
+                persist_dir=str(persist_dir),
+                enable_vectors=False,
+            )
+        except Exception as e:
+            self.logger.warning(f"Risk cache init failed: {e}. Caching disabled.")
+            self._cache_mem = None
+
+    def _extract_event_id(self, event: dict) -> Optional[str]:
+        if not isinstance(event, dict):
+            return None
+        try:
+            return (
+                event.get("event_id")
+                or event.get("id")
+                or (event.get("metadata") or {}).get("id")
+            )
+        except Exception:
+            return None
+
     async def invoke(self, event: dict) -> list:
+        # Cache hit short-circuit by event id
+        event_id = self._extract_event_id(event)
+        if event_id and getattr(self, "_cache_mem", None) is not None:
+            try:
+                cached_content, _vec, _md = self._cache_mem.get_by_id(event_id)
+                if cached_content:
+                    try:
+                        risks_cached = json.loads(cached_content)
+                        if isinstance(risks_cached, list):
+                            return risks_cached
+                    except Exception:
+                        pass
+            except Exception as e:
+                self.logger.warning(f"Cache lookup failed for {event_id}: {e}")
+
         event_content = event.get("event_content", "")
         if not event_content:
             return []
@@ -62,14 +102,13 @@ class RiskDiagnosis:
         )
 
         initial_diagnosis = {}
-        
         try:
             response = await self._llm.chat(system_prompt, user_prompt, model_name='o3-mini', max_tokens=8192)
             response = re.sub(r'\$\s*\{', '{', response)
             initial_diagnosis = json.loads(response)
         except Exception as e:
             logger.error(f"Error predicting risks: {e}")
-            initial_diagnosis = {}
+            return []
 
         system_prompt = self._prompt_loader.get_prompt(
             section="risk_audit",
@@ -91,7 +130,19 @@ class RiskDiagnosis:
             logger.error(f"Error auditing risks: {e}")
             return []
 
-        return final_diagnosis.get("risks", [])
+        risks = final_diagnosis.get("risks", [])
+
+        # Persist into cache (non-vector) when possible
+        if event_id and risks and getattr(self, "_cache_mem", None) is not None:
+            try:
+                await self._cache_mem.add(
+                    content=json.dumps(risks, ensure_ascii=False),
+                    item_id=event_id,
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to cache risks for {event_id}: {e}")
+
+        return risks
 
 
 
