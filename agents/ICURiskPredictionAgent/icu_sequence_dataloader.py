@@ -203,13 +203,23 @@ class ICUSequenceDataLoader:
             if not vectors:
                 continue
 
-            X = np.asarray(vectors, dtype=np.float32)
+            # Calculate time deltas
+            time_deltas = self._calculate_time_deltas(timestamps)
+            
+            # Add time delta as the last dimension to each vector
+            vectors_with_time = []
+            for i, vec in enumerate(vectors):
+                vec_with_time = vec + [time_deltas[i]]
+                vectors_with_time.append(vec_with_time)
+
+            X = np.asarray(vectors_with_time, dtype=np.float32)
             Y = np.stack(labels, axis=0).astype(np.float32)
 
             yield {
                 "patient_id": patient_id,
                 "event_ids": event_ids,
                 "timestamps": timestamps,
+                "time_deltas": time_deltas,
                 "vectors": X,
                 "labels": Y,
             }
@@ -272,6 +282,28 @@ class ICUSequenceDataLoader:
     def _min_dt(self) -> np.datetime64:
         return np.datetime64("1970-01-01T00:00:00+00:00")
 
+    def _timestamp_to_seconds(self, timestamp: str) -> float:
+        """Convert timestamp string to seconds since epoch."""
+        dt = self._to_datetime(timestamp)
+        if dt is None:
+            return 0.0
+        # Convert to seconds since epoch
+        return float((dt - np.datetime64('1970-01-01T00:00:00+00:00')) / np.timedelta64(1, 's'))
+
+    def _calculate_time_deltas(self, timestamps: List[str]) -> List[float]:
+        """Calculate time deltas between consecutive timestamps in seconds."""
+        if not timestamps:
+            return []
+        
+        time_deltas = [0.0]  # First event has delta 0
+        for i in range(1, len(timestamps)):
+            prev_seconds = self._timestamp_to_seconds(timestamps[i-1])
+            curr_seconds = self._timestamp_to_seconds(timestamps[i])
+            delta = curr_seconds - prev_seconds
+            time_deltas.append(max(0.0, delta))  # Ensure non-negative
+        
+        return time_deltas
+
     def _build_label_vector(self, event: Dict[str, Any]) -> np.ndarray:
         y = np.zeros(self.label_size, dtype=np.float32)
         risks = event.get("risks") if isinstance(event, dict) else None
@@ -304,6 +336,25 @@ if __name__ == "__main__":
     for sample in loader.iter_patient_sequences("train"):
         X = sample["vectors"]
         Y = sample["labels"]
-
-    print(X.shape)
-    print(Y.shape)
+        time_deltas = sample["time_deltas"]
+        timestamps = sample["timestamps"]
+        
+        print(f"Vector shape: {X.shape}")
+        print(f"Label shape: {Y.shape}")
+        print(f"Time deltas shape: {len(time_deltas)}")
+        print()
+        
+        # Show first 10 time deltas and corresponding timestamps
+        print("First 10 time deltas (in seconds):")
+        for i in range(min(10, len(time_deltas))):
+            print(f"  Event {i}: {time_deltas[i]:.2f} seconds (timestamp: {timestamps[i]})")
+        
+        # Show statistics
+        if len(time_deltas) > 1:
+            print(f"\nTime delta statistics:")
+            print(f"  Min: {min(time_deltas[1:]):.2f} seconds")
+            print(f"  Max: {max(time_deltas[1:]):.2f} seconds")
+            print(f"  Mean: {np.mean(time_deltas[1:]):.2f} seconds")
+            print(f"  Median: {np.median(time_deltas[1:]):.2f} seconds")
+        
+        break  # Only process first patient for demo
