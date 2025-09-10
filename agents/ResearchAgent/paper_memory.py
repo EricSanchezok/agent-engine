@@ -24,7 +24,9 @@ class PaperMemoryConfig:
     """Config for PaperMemory.
 
     dsn_template: e.g. "postgresql://user:pass@host:port/{db}". The {db} placeholder will be
-    replaced by segment key such as "2024H1".
+    replaced by remote database name derived from segment key:
+      - "2024H1" -> "h1_2024"
+      - "2024H2" -> "h2_2024"
 
     If dsn_map is provided, it overrides the template for given segment keys.
     """
@@ -41,7 +43,10 @@ class PaperMemoryConfig:
 class PaperMemory:
     """UltraMemory-backed segmented memory for arXiv papers (half-year segments).
 
-    Segment policy: YYYYH1 or YYYYH2. Each segment is a dedicated Postgres database
+    Segment policy: YYYYH1 or YYYYH2. Each segment maps to a dedicated Postgres database
+    named as:
+      - YYYYH1 -> h1_YYYY
+      - YYYYH2 -> h2_YYYY
     already present on the remote server. We connect to the DB and create a collection
     named by config.collection_name (default: "papers").
 
@@ -93,17 +98,24 @@ class PaperMemory:
         if self.cfg.dsn_map and segment_key in self.cfg.dsn_map:
             return self.cfg.dsn_map[segment_key]
         tpl = self.cfg.dsn_template
+        # Map YYYYH1/YYYYH2 -> h1_YYYY/h2_YYYY
+        db_name = segment_key
+        m = re.match(r"^(\d{4})H([12])$", segment_key)
+        if m:
+            year = m.group(1)
+            half = m.group(2)
+            db_name = f"h{half}_{year}"
         if "{db}" in tpl:
-            return tpl.replace("{db}", segment_key)
+            return tpl.replace("{db}", db_name)
         # Fallback: append database at the end
         if tpl.rstrip('/').count('/') >= 3:
             # Looks like already includes a database; replace the last path segment
             try:
                 prefix = tpl.rsplit('/', 1)[0]
-                return prefix + '/' + segment_key
+                return prefix + '/' + db_name
             except Exception:
-                return tpl.rstrip('/') + '/' + segment_key
-        return tpl.rstrip('/') + '/' + segment_key
+                return tpl.rstrip('/') + '/' + db_name
+        return tpl.rstrip('/') + '/' + db_name
 
     def _get_segment_um(self, segment_key: str) -> UltraMemory:
         um = self._segments.get(segment_key)

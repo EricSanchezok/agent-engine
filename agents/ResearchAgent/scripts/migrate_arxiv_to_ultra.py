@@ -13,19 +13,25 @@ from dotenv import load_dotenv
 from agent_engine.agent_logger.agent_logger import AgentLogger
 from agents.ResearchAgent.paper_memory import PaperMemory, PaperMemoryConfig
 from agent_engine.memory.ultra_memory import Record
+try:
+    from agents.ResearchAgent.config import PAPER_DSN_TEMPLATE as CFG_PAPER_DSN_TEMPLATE  # type: ignore
+except Exception:
+    CFG_PAPER_DSN_TEMPLATE = None
 
 
 # ----------------------------- User configuration -----------------------------
-# Set your remote Postgres DSN template here. {db} will be replaced by segment key
-# like "2024H1", "2024H2" etc.
-DSN_TEMPLATE: str = os.getenv("PAPER_DSN_TEMPLATE", "postgresql://USER:PASS@HOST:PORT/{db}")
+# Set your remote Postgres DSN template here. {db} will be replaced by remote DB name
+# derived from segment:
+#   - 2024H1 -> h1_2024
+#   - 2024H2 -> h2_2024
+DSN_TEMPLATE: str = os.getenv("PAPER_DSN_TEMPLATE") or (CFG_PAPER_DSN_TEMPLATE or "postgresql://USER:PASS@HOST:PORT/{db}")
 
 # Optional allow-list of target databases present on the remote server.
 ALLOWED_SEGMENTS: Optional[List[str]] = [
     "2022H1", "2022H2",
     "2023H1", "2023H2",
     "2024H1", "2024H2",
-    "2025H1",
+    "2025H1", "2025H2",
 ]
 
 # Collection & vector schema in UltraMemory
@@ -211,7 +217,7 @@ def migrate() -> None:
     load_dotenv()
 
     if ("USER:PASS@HOST:PORT" in DSN_TEMPLATE) or ("USER" in DSN_TEMPLATE and "PASS" in DSN_TEMPLATE):
-        logger.error("Please set DSN_TEMPLATE to your remote Postgres server before running migration.")
+        logger.error("Please set PAPER_DSN_TEMPLATE in env or agents/ResearchAgent/config.py before running migration.")
         return
 
     pm = PaperMemory(PaperMemoryConfig(
