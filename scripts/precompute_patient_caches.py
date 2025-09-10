@@ -27,7 +27,7 @@ from agents.ICUMemoryAgent.agent import ICUMemoryAgent
 
 # Parameters
 PATIENT_ID = "1125112810"
-CONCURRENCY = 64
+CONCURRENCY = 128
 
 
 async def translate_all(ingestion: ICUDataIngestionAgent, *, logger: AgentLogger) -> Tuple[int, int]:

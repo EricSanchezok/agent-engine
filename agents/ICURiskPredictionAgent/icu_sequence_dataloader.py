@@ -36,6 +36,10 @@ class ICUSequenceDataLoader:
         test_ratio: float = 0.0,
         shuffle_patients: bool = False,
         random_seed: int = 42,
+        # Risk smoothing hyperparameters
+        debounce_window_hours: float = 48.0,
+        risk_growth_rate: float = 2.0,
+        risk_decay_rate: float = 4.0,
     ) -> None:
         self.logger = AgentLogger(self.__class__.__name__)
         self.data_dir: Path = Path(data_dir).resolve()
@@ -45,6 +49,11 @@ class ICUSequenceDataLoader:
         self.memory_agent: ICUMemoryAgent = memory_agent or ICUMemoryAgent()
         self.indexer = RiskLabelIndexer()
         self.label_size: int = self.indexer.size
+        
+        # Risk smoothing hyperparameters
+        self.debounce_window_hours: float = debounce_window_hours
+        self.risk_growth_rate: float = risk_growth_rate
+        self.risk_decay_rate: float = risk_decay_rate
 
         # List all patient JSON files deterministically
         files = sorted([p for p in self.data_dir.glob("*.json") if p.is_file()])
@@ -216,7 +225,7 @@ class ICUSequenceDataLoader:
             Y = np.stack(labels, axis=0).astype(np.float32)
             
             # Apply temporal smoothing to risk labels
-            Y_smoothed = self._smooth_risk_labels(Y)
+            Y_smoothed = self._smooth_risk_labels(Y, events)
 
             yield {
                 "patient_id": patient_id,
@@ -308,14 +317,15 @@ class ICUSequenceDataLoader:
         
         return time_deltas
 
-    def _smooth_risk_labels(self, labels: np.ndarray) -> np.ndarray:
+    def _smooth_risk_labels(self, labels: np.ndarray, events: List[Dict[str, Any]]) -> np.ndarray:
         """
-        Apply temporal smoothing to risk labels.
+        Apply temporal smoothing to risk labels based on diagnostic breakpoints and time intervals.
         
-        For each risk:
-        1. Backward mapping: When risk first appears, linearly decay from 1.0 to 0.0 from first occurrence to start
-        2. Forward mapping: When risk is present, keep all intermediate values at 1.0
-        3. Decay mapping: When risk last appears, linearly decay from 1.0 to 0.0 from last occurrence to end
+        Logic:
+        1. Identify diagnostic breakpoints based on risk_confirm_subtypes.json
+        2. Convert timestamps to cumulative hours from admission
+        3. For each risk, smooth between consecutive breakpoints based on time intervals
+        4. Linear interpolation: 0.0 -> 1.0 when risk appears, 1.0 -> 0.0 when risk disappears
         """
         if labels.size == 0:
             return labels
@@ -323,39 +333,316 @@ class ICUSequenceDataLoader:
         num_events, num_risks = labels.shape
         smoothed_labels = labels.copy().astype(np.float32)
         
+        # Load diagnostic subtypes configuration
+        confirm_subtypes = self._load_confirm_subtypes()
+        
+        # Find diagnostic breakpoints (events with confirm subtypes)
+        breakpoints = self._find_diagnostic_breakpoints(events, confirm_subtypes)
+        
+        if len(breakpoints) == 0:
+            # No breakpoints found, return original labels
+            return smoothed_labels
+        
+        # Convert timestamps to cumulative hours from admission
+        timestamps = [event.get("timestamp", "") for event in events]
+        cumulative_hours = self._calculate_cumulative_hours_from_timestamps(timestamps)
+        
+        # Step 1: Apply debouncing (dilation) to remove short-term risk spikes
+        debounced_labels = self._debounce_risk_labels(labels, cumulative_hours, window_hours=self.debounce_window_hours)
+        
+        # Step 2: Apply erosion to fill gaps between 0.0 values
+        eroded_labels = self._erode_risk_labels(debounced_labels, cumulative_hours, window_hours=self.debounce_window_hours)
+        
+        # Process each risk separately
+        for risk_idx in range(num_risks):
+            risk_sequence = eroded_labels[:, risk_idx]
+            
+            # Get risk states at each breakpoint
+            risk_states = []
+            breakpoint_times = []
+            for bp_idx in breakpoints:
+                risk_states.append(risk_sequence[bp_idx])
+                breakpoint_times.append(cumulative_hours[bp_idx])
+            
+            # Apply smoothing between consecutive breakpoints
+            for i in range(len(breakpoints) - 1):
+                current_bp = breakpoints[i]
+                next_bp = breakpoints[i + 1]
+                current_state = risk_states[i]
+                next_state = risk_states[i + 1]
+                current_time = breakpoint_times[i]
+                next_time = breakpoint_times[i + 1]
+                
+                # Apply exponential interpolation between breakpoints based on time
+                if current_state != next_state:
+                    # State change: exponential interpolation based on time
+                    for event_idx in range(current_bp, next_bp + 1):
+                        if event_idx < num_events:
+                            event_time = cumulative_hours[event_idx]
+                            
+                            # Calculate interpolation factor based on time (0.0 to 1.0)
+                            if next_time > current_time:
+                                time_factor = (event_time - current_time) / (next_time - current_time)
+                            else:
+                                time_factor = 0.0
+                            
+                            # Apply exponential interpolation
+                            smoothed_labels[event_idx, risk_idx] = self._exponential_interpolation(
+                                time_factor, current_state, next_state, 
+                                growth_rate=self.risk_growth_rate, decay_rate=self.risk_decay_rate
+                            )
+                else:
+                    # No state change: keep constant value
+                    for event_idx in range(current_bp, next_bp + 1):
+                        if event_idx < num_events:
+                            smoothed_labels[event_idx, risk_idx] = current_state
+            
+            # Handle events before first breakpoint
+            if breakpoints[0] > 0:
+                first_state = risk_states[0]
+                for event_idx in range(breakpoints[0]):
+                    smoothed_labels[event_idx, risk_idx] = first_state
+            
+            # Handle events after last breakpoint
+            if breakpoints[-1] < num_events - 1:
+                last_state = risk_states[-1]
+                for event_idx in range(breakpoints[-1] + 1, num_events):
+                    smoothed_labels[event_idx, risk_idx] = last_state
+        
+        return smoothed_labels
+
+    def _debounce_risk_labels(self, labels: np.ndarray, cumulative_hours: List[float], window_hours: float = 48.0) -> np.ndarray:
+        """
+        Remove short-term risk spikes by filling gaps between risk occurrences within a time window.
+        
+        Args:
+            labels: Original risk labels array (num_events, num_risks)
+            cumulative_hours: Cumulative hours from admission for each event
+            window_hours: Time window in hours for debouncing (default: 48 hours)
+        
+        Returns:
+            Debounced labels array with short-term gaps filled
+        """
+        if labels.size == 0:
+            return labels
+        
+        num_events, num_risks = labels.shape
+        debounced_labels = labels.copy().astype(np.float32)
+        
         for risk_idx in range(num_risks):
             risk_sequence = labels[:, risk_idx]
             
             # Find all positions where this risk is present (value = 1.0)
             risk_positions = np.where(risk_sequence == 1.0)[0]
             
-            if len(risk_positions) == 0:
-                # No occurrences of this risk, keep all zeros
+            if len(risk_positions) < 2:
+                # Not enough occurrences to debounce
                 continue
             
-            # Get first and last occurrence positions
-            first_occurrence = risk_positions[0]
-            last_occurrence = risk_positions[-1]
+            # Group consecutive risk occurrences within the time window
+            risk_groups = []
+            current_group = [risk_positions[0]]
             
-            # 1. Backward mapping: from first occurrence to start (index 0)
-            if first_occurrence > 0:
-                # Linear decay from 1.0 to 0.0
-                for i in range(first_occurrence):
-                    decay_factor = i / first_occurrence  # 0 to 1
-                    smoothed_labels[i, risk_idx] = 1.0 - decay_factor
+            for i in range(1, len(risk_positions)):
+                current_pos = risk_positions[i]
+                prev_pos = risk_positions[i-1]
+                
+                # Calculate time difference
+                time_diff = cumulative_hours[current_pos] - cumulative_hours[prev_pos]
+                
+                if time_diff <= window_hours:
+                    # Within window, add to current group
+                    current_group.append(current_pos)
+                else:
+                    # Outside window, start new group
+                    risk_groups.append(current_group)
+                    current_group = [current_pos]
             
-            # 2. Forward mapping: keep all intermediate values at 1.0
-            # (This is already handled by the original labels)
+            # Add the last group
+            risk_groups.append(current_group)
             
-            # 3. Decay mapping: from last occurrence to end
-            if last_occurrence < num_events - 1:
-                # Linear decay from 1.0 to 0.0
-                decay_length = num_events - 1 - last_occurrence
-                for i in range(last_occurrence + 1, num_events):
-                    decay_factor = (i - last_occurrence) / decay_length  # 0 to 1
-                    smoothed_labels[i, risk_idx] = 1.0 - decay_factor
+            # Fill gaps within each group
+            for group in risk_groups:
+                if len(group) < 2:
+                    continue
+                
+                # Get start and end positions of the group
+                start_pos = group[0]
+                end_pos = group[-1]
+                
+                # Fill all positions between start and end with 1.0
+                for pos in range(start_pos, end_pos + 1):
+                    if pos < num_events:
+                        debounced_labels[pos, risk_idx] = 1.0
         
-        return smoothed_labels
+        return debounced_labels
+
+    def _erode_risk_labels(self, labels: np.ndarray, cumulative_hours: List[float], window_hours: float = 48.0) -> np.ndarray:
+        """
+        Apply erosion to risk labels: fill gaps between 0.0 values within window_hours.
+        This is the "corrosion" step after "dilation" (debouncing).
+        
+        Args:
+            labels: Risk labels array (num_events, num_risks)
+            cumulative_hours: Cumulative hours from admission for each event
+            window_hours: Time window for erosion (default: 48.0)
+        
+        Returns:
+            Eroded labels array
+        """
+        num_events, num_risks = labels.shape
+        eroded_labels = labels.copy()
+        
+        for risk_idx in range(num_risks):
+            risk_sequence = labels[:, risk_idx]
+            
+            # Find positions where risk is 0.0
+            zero_positions = [i for i, val in enumerate(risk_sequence) if val == 0.0]
+            
+            if len(zero_positions) < 2:
+                continue
+            
+            # Group consecutive 0.0 positions within window_hours
+            zero_groups = []
+            current_group = [zero_positions[0]]
+            
+            for i in range(1, len(zero_positions)):
+                current_pos = zero_positions[i]
+                prev_pos = zero_positions[i-1]
+                
+                # Calculate time difference
+                time_diff = cumulative_hours[current_pos] - cumulative_hours[prev_pos]
+                
+                if time_diff <= window_hours:
+                    # Within window, add to current group
+                    current_group.append(current_pos)
+                else:
+                    # Outside window, start new group
+                    zero_groups.append(current_group)
+                    current_group = [current_pos]
+            
+            # Add the last group
+            zero_groups.append(current_group)
+            
+            # Fill gaps within each group with 0.0
+            for group in zero_groups:
+                if len(group) < 2:
+                    continue
+                
+                # Get start and end positions of the group
+                start_pos = group[0]
+                end_pos = group[-1]
+                
+                # Fill all positions between start and end with 0.0
+                for pos in range(start_pos, end_pos + 1):
+                    if pos < num_events:
+                        eroded_labels[pos, risk_idx] = 0.0
+        
+        return eroded_labels
+
+    def _exponential_interpolation(self, t: float, start_state: float, end_state: float, 
+                                 growth_rate: float = 2.0, decay_rate: float = 4.0) -> float:
+        """
+        Apply exponential interpolation between two states.
+        
+        Args:
+            t: Interpolation factor (0.0 to 1.0)
+            start_state: Starting state value
+            end_state: Ending state value
+            growth_rate: Controls the steepness of risk growth (higher = steeper)
+            decay_rate: Controls the steepness of risk decay (higher = steeper)
+        
+        Returns:
+            Interpolated value using exponential function
+        """
+        if start_state == end_state:
+            return start_state
+        
+        # Clamp t to [0, 1] range
+        t = max(0.0, min(1.0, t))
+        
+        if start_state == 0.0 and end_state == 1.0:
+            # Risk appears: 0.0 -> 1.0
+            # Use exponential growth: starts slow, accelerates near 1.0
+            # Formula: t^growth_rate (higher growth_rate = faster acceleration)
+            return t ** growth_rate
+        elif start_state == 1.0 and end_state == 0.0:
+            # Risk disappears: 1.0 -> 0.0
+            # Use exponential decay: starts slow, accelerates near 0.0 (symmetric to growth)
+            # Formula: (1-t)^decay_rate (higher decay_rate = faster acceleration toward 0)
+            return (1.0 - t) ** decay_rate
+        else:
+            # No state change or other cases
+            return start_state
+
+    def _calculate_cumulative_hours_from_timestamps(self, timestamps: List[str]) -> List[float]:
+        """Calculate cumulative hours from admission for each timestamp."""
+        if not timestamps:
+            return []
+        
+        cumulative_hours = []
+        start_time = None
+        
+        for ts in timestamps:
+            if not ts:
+                cumulative_hours.append(0.0)
+                continue
+            
+            try:
+                # Parse timestamp
+                if ts.endswith('Z'):
+                    ts = ts[:-1] + '+00:00'
+                
+                try:
+                    dt = self._to_datetime(ts)
+                except Exception:
+                    dt = None
+                
+                if dt is None:
+                    cumulative_hours.append(0.0)
+                    continue
+                
+                # Convert to seconds since epoch
+                seconds = self._timestamp_to_seconds(ts)
+                
+                if start_time is None:
+                    start_time = seconds
+                
+                # Calculate hours from start
+                hours = (seconds - start_time) / 3600.0
+                cumulative_hours.append(hours)
+                
+            except Exception as e:
+                self.logger.warning(f"Failed to parse timestamp '{ts}': {e}")
+                cumulative_hours.append(0.0)
+        
+        return cumulative_hours
+
+    def _load_confirm_subtypes(self) -> List[str]:
+        """Load diagnostic subtypes from risk_confirm_subtypes.json."""
+        try:
+            config_path = Path(__file__).parent / "risk_confirm_subtypes.json"
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            return [item["sub_type"] for item in config]
+        except Exception as e:
+            self.logger.warning(f"Failed to load confirm subtypes config: {e}")
+            return ["exam", "lab", "blood_gas", "surgery"]  # Default fallback
+
+    def _find_diagnostic_breakpoints(self, events: List[Dict[str, Any]], confirm_subtypes: List[str]) -> List[int]:
+        """Find event indices that are diagnostic breakpoints based on event_type."""
+        breakpoints = []
+        
+        for i, event in enumerate(events):
+            if not isinstance(event, dict):
+                continue
+            
+            # Check if event has event_type information that matches confirm subtypes
+            event_type = event.get("sub_type")
+            if event_type in confirm_subtypes:
+                breakpoints.append(i)
+        
+        return breakpoints
 
     def _build_label_vector(self, event: Dict[str, Any]) -> np.ndarray:
         y = np.zeros(self.label_size, dtype=np.float32)
@@ -403,44 +690,3 @@ if __name__ == "__main__":
         print("First 10 time deltas (in seconds):")
         for i in range(min(10, len(time_deltas))):
             print(f"  Event {i}: {time_deltas[i]:.2f} seconds (timestamp: {timestamps[i]})")
-        
-        # Show statistics
-        if len(time_deltas) > 1:
-            print(f"\nTime delta statistics:")
-            print(f"  Min: {min(time_deltas[1:]):.2f} seconds")
-            print(f"  Max: {max(time_deltas[1:]):.2f} seconds")
-            print(f"  Mean: {np.mean(time_deltas[1:]):.2f} seconds")
-            print(f"  Median: {np.median(time_deltas[1:]):.2f} seconds")
-        
-        # Show risk smoothing statistics
-        print(f"\nRisk smoothing statistics:")
-        print(f"  Original labels - Non-zero count: {np.count_nonzero(Y)}")
-        print(f"  Smoothed labels - Non-zero count: {np.count_nonzero(Y_smoothed)}")
-        print(f"  Original labels - Max value: {np.max(Y):.3f}")
-        print(f"  Smoothed labels - Max value: {np.max(Y_smoothed):.3f}")
-        print(f"  Original labels - Mean value: {np.mean(Y):.3f}")
-        print(f"  Smoothed labels - Mean value: {np.mean(Y_smoothed):.3f}")
-        
-        # Show example of smoothing for a specific risk
-        print(f"\nExample risk smoothing (first risk with occurrences):")
-        for risk_idx in range(Y.shape[1]):
-            if np.any(Y[:, risk_idx] > 0):
-                print(f"  Risk {risk_idx}:")
-                # Find first and last occurrence
-                risk_positions = np.where(Y[:, risk_idx] == 1.0)[0]
-                first_pos = risk_positions[0]
-                last_pos = risk_positions[-1]
-                print(f"    First occurrence at event {first_pos}")
-                print(f"    Last occurrence at event {last_pos}")
-                
-                # Show smoothing around first occurrence
-                start_show = max(0, first_pos - 5)
-                end_show = min(Y.shape[0], first_pos + 6)
-                print(f"    Values around first occurrence (events {start_show}-{end_show-1}):")
-                for i in range(start_show, end_show):
-                    orig_val = Y[i, risk_idx]
-                    smooth_val = Y_smoothed[i, risk_idx]
-                    print(f"      Event {i}: Original={orig_val:.3f}, Smoothed={smooth_val:.3f}")
-                break
-        
-        break  # Only process first patient for demo

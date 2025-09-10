@@ -12,6 +12,8 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.dates as mdates
+from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
 # Add parent directory to path to import ICUSequenceDataLoader
@@ -32,11 +34,64 @@ def get_distinct_colors(n: int) -> List[str]:
         return plt.cm.viridis(np.linspace(0, 1, n))
 
 
+def convert_timestamps_to_datetime(timestamps: List[str]) -> List[datetime]:
+    """Convert timestamp strings to datetime objects for plotting."""
+    datetime_objects = []
+    
+    for ts in timestamps:
+        if not ts:
+            # Use a default datetime if timestamp is empty
+            datetime_objects.append(datetime.now())
+            continue
+            
+        try:
+            # Handle different timestamp formats
+            if ts.endswith('Z'):
+                ts = ts[:-1] + '+00:00'
+            
+            # Try parsing with different formats
+            try:
+                dt = datetime.fromisoformat(ts)
+            except ValueError:
+                # Try parsing without microseconds
+                ts_no_micro = ts.split('.')[0]
+                dt = datetime.fromisoformat(ts_no_micro)
+            
+            datetime_objects.append(dt)
+            
+        except Exception as e:
+            print(f"Warning: Failed to parse timestamp '{ts}': {e}")
+            # Use a default datetime
+            datetime_objects.append(datetime.now())
+    
+    return datetime_objects
+
+
+def calculate_cumulative_hours(datetime_objects: List[datetime]) -> List[float]:
+    """Calculate cumulative hours from the first timestamp."""
+    if not datetime_objects:
+        return []
+    
+    start_time = datetime_objects[0]
+    cumulative_hours = []
+    
+    for dt in datetime_objects:
+        delta = dt - start_time
+        hours = delta.total_seconds() / 3600.0  # Convert to hours
+        cumulative_hours.append(hours)
+    
+    return cumulative_hours
+
+
 def plot_risk_timeline(
     patient_id: str,
     data_dir: str = "database/icu_patients",
     max_risks: int = 20,
-    figsize: tuple = (15, 10)
+    figsize: tuple = (15, 10),
+    # Risk smoothing hyperparameters
+    debounce_window_hours: float = 48.0,
+    risk_growth_rate: float = 2.0,
+    risk_decay_rate: float = 4.0,
 ):
     """
     Plot risk timeline for a specific patient.
@@ -46,6 +101,9 @@ def plot_risk_timeline(
         data_dir: Directory containing patient data
         max_risks: Maximum number of risks to display (to avoid overcrowding)
         figsize: Figure size for the plot
+        debounce_window_hours: Time window for debouncing risk spikes (default: 48.0)
+        risk_growth_rate: Exponential rate for risk appearance (default: 2.0)
+        risk_decay_rate: Exponential rate for risk disappearance (default: 4.0)
     """
     # Load data
     print(f"Loading data for patient {patient_id}...")
@@ -54,6 +112,9 @@ def plot_risk_timeline(
         only_patient_id=patient_id,
         train_ratio=0.6,
         shuffle_patients=False,
+        debounce_window_hours=debounce_window_hours,
+        risk_growth_rate=risk_growth_rate,
+        risk_decay_rate=risk_decay_rate,
     )
     
     # Get risk indexer for risk names
@@ -75,6 +136,13 @@ def plot_risk_timeline(
     time_deltas = sample["time_deltas"]
     
     print(f"Data loaded: {Y_original.shape[0]} events, {Y_original.shape[1]} risks")
+    
+    # Convert timestamps to datetime objects and calculate cumulative hours
+    datetime_objects = convert_timestamps_to_datetime(timestamps)
+    cumulative_hours = calculate_cumulative_hours(datetime_objects)
+    
+    print(f"Time range: {cumulative_hours[0]:.2f} to {cumulative_hours[-1]:.2f} hours")
+    print(f"Total duration: {cumulative_hours[-1]:.2f} hours ({cumulative_hours[-1]/24:.2f} days)")
     
     # Find risks that have at least one occurrence
     risk_occurrences = np.any(Y_original > 0, axis=0)
@@ -103,7 +171,7 @@ def plot_risk_timeline(
     # Plot original labels
     ax1.set_title(f"Original Risk Labels - Patient {patient_id}", fontsize=14, fontweight='bold')
     ax1.set_ylabel("Risk Value", fontsize=12)
-    ax1.set_xlabel("Event Index", fontsize=12)
+    ax1.set_xlabel("Time (Hours from Admission)", fontsize=12)
     ax1.grid(True, alpha=0.3)
     
     for i, risk_idx in enumerate(active_risk_indices):
@@ -111,9 +179,9 @@ def plot_risk_timeline(
         # Only plot non-zero segments to make it cleaner
         non_zero_mask = risk_values > 0
         if np.any(non_zero_mask):
-            event_indices = np.arange(len(risk_values))[non_zero_mask]
+            time_points = np.array(cumulative_hours)[non_zero_mask]
             values = risk_values[non_zero_mask]
-            ax1.plot(event_indices, values, 'o-', color=colors[i], 
+            ax1.plot(time_points, values, 'o-', color=colors[i], 
                     label=f"Risk {risk_idx}", markersize=2, linewidth=1)
     
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
@@ -122,14 +190,14 @@ def plot_risk_timeline(
     # Plot smoothed labels
     ax2.set_title(f"Smoothed Risk Labels - Patient {patient_id}", fontsize=14, fontweight='bold')
     ax2.set_ylabel("Risk Value", fontsize=12)
-    ax2.set_xlabel("Event Index", fontsize=12)
+    ax2.set_xlabel("Time (Hours from Admission)", fontsize=12)
     ax2.grid(True, alpha=0.3)
     
     for i, risk_idx in enumerate(active_risk_indices):
         risk_values = Y_smoothed[:, risk_idx]
         # Only plot if there are non-zero values
         if np.any(risk_values > 0):
-            ax2.plot(risk_values, '-', color=colors[i], 
+            ax2.plot(cumulative_hours, risk_values, '-', color=colors[i], 
                     label=f"Risk {risk_idx}", linewidth=1.5)
     
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
@@ -142,11 +210,6 @@ def plot_risk_timeline(
         fig.legend(risk_names, bbox_to_anchor=(0.02, 0.5), loc='center left', fontsize=8)
     
     plt.tight_layout()
-    
-    # Save plot
-    output_path = f"risk_timeline_patient_{patient_id}.png"
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"Plot saved as: {output_path}")
     
     # Show plot
     plt.show()
@@ -169,61 +232,6 @@ def plot_risk_timeline(
         print(f"    Smoothed mean value: {smoothed_mean:.4f}")
 
 
-def plot_individual_risk(patient_id: str, risk_index: int, data_dir: str = "database/icu_patients"):
-    """Plot a specific risk in detail."""
-    print(f"Loading data for patient {patient_id}, risk {risk_index}...")
-    
-    loader = ICUSequenceDataLoader(
-        data_dir=data_dir,
-        only_patient_id=patient_id,
-        train_ratio=0.6,
-        shuffle_patients=False,
-    )
-    
-    indexer = RiskLabelIndexer()
-    
-    for sample in loader.iter_patient_sequences("train"):
-        Y_original = sample["labels"]
-        Y_smoothed = sample["labels_smoothed"]
-        timestamps = sample["timestamps"]
-        
-        if risk_index >= Y_original.shape[1]:
-            print(f"Risk index {risk_index} out of range (max: {Y_original.shape[1]-1})")
-            return
-        
-        risk_name = indexer.index_to_risk(risk_index)
-        print(f"Risk name: {risk_name}")
-        
-        # Check if risk has any occurrences
-        if not np.any(Y_original[:, risk_index] > 0):
-            print(f"Risk {risk_index} has no occurrences")
-            return
-        
-        # Create detailed plot
-        fig, ax = plt.subplots(figsize=(15, 6))
-        
-        # Plot both original and smoothed
-        ax.plot(Y_original[:, risk_index], 'o-', label='Original', markersize=3, alpha=0.7)
-        ax.plot(Y_smoothed[:, risk_index], '-', label='Smoothed', linewidth=2)
-        
-        ax.set_title(f"Risk {risk_index}: {risk_name} - Patient {patient_id}", fontsize=14, fontweight='bold')
-        ax.set_xlabel("Event Index", fontsize=12)
-        ax.set_ylabel("Risk Value", fontsize=12)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.set_ylim(-0.1, 1.1)
-        
-        plt.tight_layout()
-        
-        # Save plot
-        output_path = f"risk_{risk_index}_patient_{patient_id}.png"
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"Individual risk plot saved as: {output_path}")
-        
-        plt.show()
-        break
-
-
 if __name__ == "__main__":
     # Default patient ID
     patient_id = "1125112810"
@@ -235,13 +243,7 @@ if __name__ == "__main__":
     print(f"Visualizing risk timeline for patient: {patient_id}")
     
     try:
-        # Main visualization
         plot_risk_timeline(patient_id, max_risks=1)
-        
-        # Optional: Plot individual risks
-        # Uncomment the following lines to plot specific risks in detail
-        # plot_individual_risk(patient_id, 0)  # First risk
-        # plot_individual_risk(patient_id, 1)  # Second risk
         
     except Exception as e:
         print(f"Error: {e}")
