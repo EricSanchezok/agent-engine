@@ -53,6 +53,7 @@ class RiskDiagnosis:
                 name="icu_risk_cache",
                 persist_dir=str(persist_dir),
                 enable_vectors=False,
+                db_backend="duckdb",
             )
         except Exception as e:
             self.logger.warning(f"Risk cache init failed: {e}. Caching disabled.")

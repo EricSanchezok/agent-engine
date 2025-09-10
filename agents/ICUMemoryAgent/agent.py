@@ -53,6 +53,7 @@ class ICUMemoryAgent:
             llm_client=self.llm_client,
             embed_model=self.embed_model,
             persist_dir=Path(self.persist_dir),
+            db_backend="duckdb",
         )
 
         # Patient memory cache in process
@@ -689,6 +690,7 @@ class ICUMemoryAgent:
                 llm_client=self.llm_client,
                 embed_model=self.embed_model,
                 persist_dir=Path(self.persist_dir),
+                db_backend="duckdb",
             )
             self._patient_memories[patient_id] = mem
             return mem

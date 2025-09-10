@@ -50,6 +50,7 @@ class UMLSClinicalTranslator:
             name="icu_translation_cache",
             persist_dir=str(persist_dir),
             enable_vectors=False,
+            db_backend="duckdb",
         )
 
         # No runner; use async methods directly

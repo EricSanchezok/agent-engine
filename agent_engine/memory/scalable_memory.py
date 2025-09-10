@@ -3,7 +3,7 @@ High-performance, scalable vector memory for agents.
 
 This module provides a scalable memory implementation with:
 - Optional approximate nearest neighbor index (HNSW via hnswlib; fallback to Annoy; fallback to brute force)
-- Persistent storage (DuckDB preferred; fallback to SQLite with WAL)
+- Persistent storage (SQLite with WAL by default; DuckDB optional)
 - Custom ID support and upsert semantics
 - Batch ingestion and efficient retrieval
 - Thread-safe read/write with a simple RWLock
@@ -105,12 +105,12 @@ def _from_blob(blob: bytes) -> List[float]:
 
 
 class _DB:
-    """Simple DB adapter that prefers DuckDB and falls back to SQLite.
+    """Simple DB adapter supporting SQLite (default, WAL) and optional DuckDB.
 
     For SQLite we enable WAL and performance pragmas.
     """
 
-    def __init__(self, db_path: Path, prefer_duckdb: bool = True) -> None:
+    def __init__(self, db_path: Path, prefer_duckdb: bool = False) -> None:
         self.db_path = db_path
         self.prefer_duckdb = prefer_duckdb
         self.backend: str
@@ -616,7 +616,7 @@ class ScalableMemory:
     """Scalable vector memory using ANN index and persistent DB.
 
     Storage layout under project_root/.memory/{name}/:
-    - db: {name}.duckdb or {name}.sqlite3
+    - db: {name}.sqlite3 (default) or {name}.duckdb (if configured)
     - index: index_hnsw.bin / index_annoy.ann / index_bruteforce.json
     - meta table in DB keeps vector_dimension and schema version
     - labels table in DB maps numeric labels used by the ANN index to user IDs
@@ -656,8 +656,8 @@ class ScalableMemory:
         base_dir.mkdir(parents=True, exist_ok=True)
         self.base_dir = base_dir
 
-        # DB
-        prefer_duckdb = (db_backend or os.getenv("AGENT_ENGINE_MEMORY_DB", "duckdb")).lower() == "duckdb"
+        # DB (default to SQLite unless AGENT_ENGINE_MEMORY_DB=duckdb or db_backend='duckdb')
+        prefer_duckdb = (db_backend or os.getenv("AGENT_ENGINE_MEMORY_DB", "sqlite")).lower() == "duckdb"
         db_filename = f"{name}.duckdb" if prefer_duckdb else f"{name}.sqlite3"
         self.db = _DB(base_dir / db_filename, prefer_duckdb=prefer_duckdb)
 

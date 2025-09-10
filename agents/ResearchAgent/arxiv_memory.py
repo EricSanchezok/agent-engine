@@ -116,11 +116,22 @@ class ArxivMemory:
             seg_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
             pass
+        # Prefer SQLite if an SQLite DB already exists or no DB exists yet; otherwise use DuckDB for backward-compat reads
+        sqlite_path = seg_dir / "arxiv_metadata.sqlite3"
+        duckdb_path = seg_dir / "arxiv_metadata.duckdb"
+        if sqlite_path.exists():
+            chosen_backend = "sqlite"
+        elif duckdb_path.exists():
+            chosen_backend = "duckdb"
+        else:
+            chosen_backend = "sqlite"
+
         mem = ScalableMemory(
             name="arxiv_metadata",
             llm_client=self.llm_client,
             embed_model=self.embed_model,
             persist_dir=seg_dir,
+            db_backend=chosen_backend,
         )
         self._segment_memories[segment_key] = mem
         return mem
