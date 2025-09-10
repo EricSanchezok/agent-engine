@@ -37,7 +37,8 @@ class ICUSequenceDataLoader:
         shuffle_patients: bool = False,
         random_seed: int = 42,
         # Risk smoothing hyperparameters
-        debounce_window_hours: float = 48.0,
+        dilation_window_hours: float = 48.0,
+        erosion_window_hours: float = 24.0,
         risk_growth_rate: float = 2.0,
         risk_decay_rate: float = 4.0,
     ) -> None:
@@ -51,7 +52,8 @@ class ICUSequenceDataLoader:
         self.label_size: int = self.indexer.size
         
         # Risk smoothing hyperparameters
-        self.debounce_window_hours: float = debounce_window_hours
+        self.dilation_window_hours: float = dilation_window_hours
+        self.erosion_window_hours: float = erosion_window_hours
         self.risk_growth_rate: float = risk_growth_rate
         self.risk_decay_rate: float = risk_decay_rate
 
@@ -347,11 +349,11 @@ class ICUSequenceDataLoader:
         timestamps = [event.get("timestamp", "") for event in events]
         cumulative_hours = self._calculate_cumulative_hours_from_timestamps(timestamps)
         
-        # Step 1: Apply debouncing (dilation) to remove short-term risk spikes
-        debounced_labels = self._debounce_risk_labels(labels, cumulative_hours, window_hours=self.debounce_window_hours)
+        # Step 1: Apply dilation to remove short-term risk spikes
+        dilated_labels = self._debounce_risk_labels(labels, cumulative_hours, window_hours=self.dilation_window_hours)
         
         # Step 2: Apply erosion to fill gaps between 0.0 values
-        eroded_labels = self._erode_risk_labels(debounced_labels, cumulative_hours, window_hours=self.debounce_window_hours)
+        eroded_labels = self._erode_risk_labels(dilated_labels, cumulative_hours, window_hours=self.erosion_window_hours)
         
         # Process each risk separately
         for risk_idx in range(num_risks):
