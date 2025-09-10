@@ -31,7 +31,11 @@ PROXY_SETTINGS: Dict[str, Any] = {
     # - If "api_keys" is non-empty, incoming requests must include header: X-API-Key: <key>
     # - If empty, authentication is disabled
     "auth": {
-        "api_keys": [],  # e.g., ["change-me-123"]
+        "api_keys": [
+            "eric_vpn_hZP35c3L6oH47OgyejnSNn7JEpOENnbO",
+            "eric_vpn_0MFLIdC0DRMSzVzDKZmsUNHuC5vtQ8LR",
+            "eric_vpn_lzIIt2-d0Mw3Dyb86tVE5vLacT5Wl-wb"
+        ],
         # Reserved for JWT in the future
         "jwt": {
             "enabled": False,
@@ -69,8 +73,8 @@ PROXY_SETTINGS: Dict[str, Any] = {
         "default_allowed_cidrs": [],
 
         # Size limits (in bytes)
-        "max_request_body_bytes": 10 * 1024 * 1024,   # 10MB
-        "max_response_body_bytes": 50 * 1024 * 1024,  # 50MB
+        "max_request_body_bytes": 100 * 1024 * 1024,   # 100MB
+        "max_response_body_bytes": 500 * 1024 * 1024,  # 500MB
 
         # Default timeouts (seconds)
         "timeouts": {
@@ -104,6 +108,18 @@ PROXY_SETTINGS: Dict[str, Any] = {
     # Route table: map logical route name to upstream base URL and policies
     # Callers will request: /r/{route_name}/{path}
     "routes": {
+        # API service route - handles all sub-paths under /api/v1
+        "holos_api": {
+            "base_url": "http://10.244.12.219:8000/api/v1",
+            "allowed_methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+            "allow_private": True,                 # Allow private IPs for this internal service
+            "allowed_cidrs": ["10.244.0.0/16"],   # Restrict to your internal network
+            "preserve_host": False,                # Let httpx set Host based on target URL
+            "request_headers_allowlist": None,     # Use global allowlist
+            "timeouts": None,                      # Use global timeouts
+            "limits": None,                        # Use global limits
+            "add_x_forwarded_headers": True,
+        },
         # Example route (disabled by default, adjust as needed)
         # "example_httpbin": {
         #     "base_url": "https://httpbin.org",
