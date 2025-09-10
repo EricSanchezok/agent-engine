@@ -636,7 +636,7 @@ class ScalableMemory:
         persist_dir: Optional[str] = None,
         llm_client: Optional[Any] = None,
         embed_model: Optional[str] = None,
-        enable_vectors: bool = True,
+        enable_vectors: bool = False,
     ) -> None:
         if not name:
             raise ValueError("Memory name is required")

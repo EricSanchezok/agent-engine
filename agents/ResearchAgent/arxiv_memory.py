@@ -313,6 +313,65 @@ class ArxivMemory:
         results.sort(key=_version_key)
         return results
 
+    def get_item_by_id(self, arxiv_id: str) -> Optional[Tuple[str, List[float], Dict[str, Any]]]:
+        """Return a single (content, vector, metadata) tuple for the given id.
+
+        Preference order:
+        1) Exact id match including version suffix if provided
+        2) If base id provided (no version), return the base id if present
+        3) Otherwise, return the highest version available (vN with largest N)
+        """
+        cid = str(arxiv_id).strip()
+        if not cid:
+            return None
+
+        # If contains version suffix 'v<digits>', return exact
+        if re.search(r"v\d+$", cid):
+            for mem in self._iter_all_memories_for_read():
+                content, vector, md = mem.get_by_id(cid)
+                if content is not None:
+                    return content, (vector or []), md
+            return None
+
+        # No version specified: find base first, otherwise highest version
+        best: Optional[Tuple[str, List[float], Dict[str, Any]]] = None
+        best_version: int = -1
+        base = cid
+        for mem in self._iter_all_memories_for_read():
+            for content, vector, md in mem.get_all():
+                mid = md.get("id") if isinstance(md, dict) else None
+                if not isinstance(mid, str):
+                    continue
+                if mid == base:
+                    return content, (vector or []), md
+                if mid.startswith(base + "v"):
+                    m = re.search(r"v(\d+)$", mid)
+                    ver = int(m.group(1)) if m else 0
+                    if ver > best_version:
+                        best_version = ver
+                        best = (content, (vector or []), md)
+        return best
+
+    def get_items_by_ids(self, arxiv_ids: List[str]) -> Dict[str, Tuple[str, List[float], Dict[str, Any]]]:
+        """Batch get items by ids with vectors and metadata.
+
+        Returns a mapping from requested id to (content, vector, metadata).
+        When a base id is requested (no version suffix), the chosen item follows
+        the same rule as get_item_by_id.
+        """
+        out: Dict[str, Tuple[str, List[float], Dict[str, Any]]] = {}
+        if not arxiv_ids:
+            return out
+        for aid in arxiv_ids:
+            try:
+                item = self.get_item_by_id(aid)
+            except Exception as e:
+                self.logger.warning(f"Failed to fetch item for id={aid}: {e}")
+                item = None
+            if item is not None:
+                out[str(aid)] = item
+        return out
+
     def histogram_by_day(self) -> List[Tuple[str, int]]:
         """Return a histogram of papers per day across segmented DBs."""
         counts: Dict[str, int] = {}
