@@ -39,6 +39,7 @@ class ICUSequenceDataLoader:
         # Risk smoothing hyperparameters
         dilation_window_hours: float = 48.0,
         erosion_window_hours: float = 24.0,
+        rise_max_window_hours: float = 168.0,
         risk_growth_rate: float = 2.0,
         risk_decay_rate: float = 4.0,
     ) -> None:
@@ -54,6 +55,7 @@ class ICUSequenceDataLoader:
         # Risk smoothing hyperparameters
         self.dilation_window_hours: float = dilation_window_hours
         self.erosion_window_hours: float = erosion_window_hours
+        self.rise_max_window_hours: float = rise_max_window_hours
         self.risk_growth_rate: float = risk_growth_rate
         self.risk_decay_rate: float = risk_decay_rate
 
@@ -355,7 +357,7 @@ class ICUSequenceDataLoader:
         # Step 2: Apply erosion to fill gaps between 0.0 values
         eroded_labels = self._erode_risk_labels(dilated_labels, cumulative_hours, window_hours=self.erosion_window_hours)
         
-        # Process each risk separately
+        # Process each risk separately with connected smoothing
         for risk_idx in range(num_risks):
             risk_sequence = eroded_labels[:, risk_idx]
             
@@ -366,52 +368,151 @@ class ICUSequenceDataLoader:
                 risk_states.append(risk_sequence[bp_idx])
                 breakpoint_times.append(cumulative_hours[bp_idx])
             
-            # Apply smoothing between consecutive breakpoints
-            for i in range(len(breakpoints) - 1):
-                current_bp = breakpoints[i]
-                next_bp = breakpoints[i + 1]
-                current_state = risk_states[i]
-                next_state = risk_states[i + 1]
-                current_time = breakpoint_times[i]
-                next_time = breakpoint_times[i + 1]
-                
-                # Apply exponential interpolation between breakpoints based on time
-                if current_state != next_state:
-                    # State change: exponential interpolation based on time
-                    for event_idx in range(current_bp, next_bp + 1):
-                        if event_idx < num_events:
-                            event_time = cumulative_hours[event_idx]
-                            
-                            # Calculate interpolation factor based on time (0.0 to 1.0)
-                            if next_time > current_time:
-                                time_factor = (event_time - current_time) / (next_time - current_time)
-                            else:
-                                time_factor = 0.0
-                            
-                            # Apply exponential interpolation
-                            smoothed_labels[event_idx, risk_idx] = self._exponential_interpolation(
-                                time_factor, current_state, next_state, 
-                                growth_rate=self.risk_growth_rate, decay_rate=self.risk_decay_rate
-                            )
-                else:
-                    # No state change: keep constant value
-                    for event_idx in range(current_bp, next_bp + 1):
-                        if event_idx < num_events:
-                            smoothed_labels[event_idx, risk_idx] = current_state
-            
-            # Handle events before first breakpoint
-            if breakpoints[0] > 0:
-                first_state = risk_states[0]
-                for event_idx in range(breakpoints[0]):
-                    smoothed_labels[event_idx, risk_idx] = first_state
-            
-            # Handle events after last breakpoint
-            if breakpoints[-1] < num_events - 1:
-                last_state = risk_states[-1]
-                for event_idx in range(breakpoints[-1] + 1, num_events):
-                    smoothed_labels[event_idx, risk_idx] = last_state
+            # Apply connected smoothing logic
+            smoothed_labels[:, risk_idx] = self._apply_connected_smoothing(
+                risk_sequence, breakpoints, risk_states, breakpoint_times, 
+                cumulative_hours, num_events
+            )
         
         return smoothed_labels
+
+    def _apply_connected_smoothing(self, risk_sequence: np.ndarray, breakpoints: List[int], 
+                                 risk_states: List[float], breakpoint_times: List[float],
+                                 cumulative_hours: List[float], num_events: int) -> np.ndarray:
+        """
+        Two-phase connected smoothing:
+        Phase 1 (decline): For every 1.0→0.0 breakpoint pair (n→n+1), interpolate 1.0→0.0 across [n, n+1].
+        Phase 2 (rise): For every 1.0 breakpoint at index n, find the previous 1.0 breakpoint m (< n-1).
+          Use the immediate next breakpoint after m, i.e., (m+1), as the start (which must be 0.0 after phase 1),
+          and interpolate 0.0→1.0 across [(m+1)→n]. If no previous 1.0 exists, start from the first breakpoint.
+        Constant segments (adjacent equal states) remain constant (e.g., 1.0 between adjacent 1.0 breakpoints).
+        
+        Args:
+            risk_sequence: Risk values at each event
+            breakpoints: List of breakpoint indices
+            risk_states: Risk values at each breakpoint
+            breakpoint_times: Time values at each breakpoint
+            cumulative_hours: Cumulative hours for all events
+            num_events: Total number of events
+        
+        Returns:
+            Smoothed risk sequence
+        """
+        smoothed_sequence = np.zeros(num_events, dtype=float)
+
+        # Baseline: fill constant segments between consecutive breakpoints
+        for i in range(len(breakpoints) - 1):
+            current_bp = breakpoints[i]
+            next_bp = breakpoints[i + 1]
+            current_state = risk_states[i]
+            for event_idx in range(current_bp, min(next_bp + 1, num_events)):
+                smoothed_sequence[event_idx] = current_state
+
+        # Events before first breakpoint
+        if breakpoints[0] > 0:
+            first_state = risk_states[0]
+            for event_idx in range(0, breakpoints[0]):
+                smoothed_sequence[event_idx] = first_state
+
+        # Events after last breakpoint
+        if breakpoints[-1] < num_events - 1:
+            last_state = risk_states[-1]
+            for event_idx in range(breakpoints[-1] + 1, num_events):
+                smoothed_sequence[event_idx] = last_state
+
+        # Phase 1: Declines (1.0 → 0.0) applied first
+        for i in range(len(breakpoints) - 1):
+            current_bp = breakpoints[i]
+            next_bp = breakpoints[i + 1]
+            current_state = risk_states[i]
+            next_state = risk_states[i + 1]
+            if current_state == 1.0 and next_state == 0.0:
+                start_time = breakpoint_times[i]
+                end_time = breakpoint_times[i + 1]
+                for event_idx in range(current_bp, min(next_bp + 1, num_events)):
+                    event_time = cumulative_hours[event_idx]
+                    if end_time > start_time:
+                        t = (event_time - start_time) / (end_time - start_time)
+                    else:
+                        t = 0.0
+                    t = max(0.0, min(1.0, t))
+                    smoothed_sequence[event_idx] = self._exponential_interpolation(
+                        t, 1.0, 0.0, growth_rate=self.risk_growth_rate, decay_rate=self.risk_decay_rate
+                    )
+
+        # Phase 2: Rises (0.0 → 1.0) connected from (previous 1.0's next breakpoint) to current 1.0
+        for n in range(len(breakpoints)):
+            if risk_states[n] != 1.0:
+                continue
+            # Find previous 1.0 breakpoint m with m < n-1
+            m: Optional[int] = None
+            j = n - 1
+            while j >= 0:
+                if risk_states[j] == 1.0:
+                    m = j
+                    break
+                j -= 1
+            if m is not None and m >= n - 1:
+                # Adjacent or invalid; skip because segment between them should already be constant 1.0
+                continue
+            # Determine start index in terms of breakpoint list
+            if m is None:
+                start_bp_idx = 0
+            else:
+                start_bp_idx = m + 1  # start at the breakpoint right after previous 1.0 (which is 0.0 after phase 1)
+            end_bp_idx = n
+            if start_bp_idx >= end_bp_idx:
+                continue
+            start_bp = breakpoints[start_bp_idx]
+            end_bp = breakpoints[end_bp_idx]
+            start_time = breakpoint_times[start_bp_idx]
+            end_time = breakpoint_times[end_bp_idx]
+
+            # Enforce a maximum rise window: if (end_time - start_time) > self.rise_max_window_hours,
+            # advance start_bp_idx forward to the furthest breakpoint within the threshold window.
+            if (end_time - start_time) > self.rise_max_window_hours:
+                threshold_time = end_time - self.rise_max_window_hours
+                k = start_bp_idx
+                while k < end_bp_idx and breakpoint_times[k] < threshold_time:
+                    k += 1
+                if k < end_bp_idx:
+                    start_bp_idx = k
+                    start_bp = breakpoints[start_bp_idx]
+                    start_time = breakpoint_times[start_bp_idx]
+
+            if end_time <= start_time:
+                continue
+            for event_idx in range(start_bp, min(end_bp + 1, num_events)):
+                event_time = cumulative_hours[event_idx]
+                t = (event_time - start_time) / (end_time - start_time)
+                t = max(0.0, min(1.0, t))
+                smoothed_sequence[event_idx] = self._exponential_interpolation(
+                    t, 0.0, 1.0, growth_rate=self.risk_growth_rate, decay_rate=self.risk_decay_rate
+                )
+
+        return smoothed_sequence
+
+    def _find_furthest_zero_breakpoint(self, breakpoints: List[int], risk_states: List[float], 
+                                     breakpoint_times: List[float], current_index: int) -> tuple[int, float]:
+        """
+        Find the furthest previous breakpoint with 0.0 value.
+        
+        Args:
+            breakpoints: List of breakpoint indices
+            risk_states: Risk values at each breakpoint
+            breakpoint_times: Time values at each breakpoint
+            current_index: Current breakpoint index
+        
+        Returns:
+            Tuple of (breakpoint_index, breakpoint_time)
+        """
+        # Look backwards from current index
+        for i in range(current_index - 1, -1, -1):
+            if risk_states[i] == 0.0:
+                return breakpoints[i], breakpoint_times[i]
+        
+        # If no previous 0.0 found, use the first breakpoint
+        return breakpoints[0], breakpoint_times[0]
 
     def _debounce_risk_labels(self, labels: np.ndarray, cumulative_hours: List[float], window_hours: float = 48.0) -> np.ndarray:
         """

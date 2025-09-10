@@ -69,6 +69,15 @@ After running the migration script (`migrate_arxiv_to_ultra.py`), you should see
 - **Comprehensive Test**: All connectivity tests pass, vector search works
 - **Total Records**: Should match the number of papers in your local database
 
+### Current Status (as of testing)
+
+✅ **Migration is working**: Data is being successfully transferred to remote database
+✅ **Connection successful**: All segments can connect to remote PostgreSQL
+✅ **Data found**: 2022H1 segment has ~34,699 records and growing
+⏳ **In progress**: Other segments (2022H2, 2023H1, etc.) are still being processed
+
+The migration script processes segments sequentially, so it's normal to see only one segment populated initially.
+
 ## Troubleshooting
 
 If tests fail:

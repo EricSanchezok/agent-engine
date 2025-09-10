@@ -67,8 +67,22 @@ def quick_check() -> None:
                 from agent_engine.memory.ultra_memory import Filter
                 sample_records = um.query("papers", Filter(limit=1))
                 if sample_records:
-                    record = sample_records[0]
-                    has_content = bool(record.content and len(record.content.strip()) > 0)
+                    record_data = sample_records[0]
+                    # Handle both Record objects and dict results
+                    if hasattr(record_data, 'content'):
+                        record = record_data
+                    else:
+                        # Convert dict to Record-like object
+                        class RecordLike:
+                            def __init__(self, data):
+                                self.id = data.get('id')
+                                self.content = data.get('content')
+                                self.vector = data.get('vector')
+                                self.attributes = data.get('attributes', {})
+                                self.timestamp = data.get('timestamp')
+                        record = RecordLike(record_data)
+                    
+                    has_content = bool(record.content and len(str(record.content).strip()) > 0)
                     has_vector = bool(record.vector and len(record.vector) == 3072)
                     has_attributes = bool(record.attributes)
                     has_timestamp = bool(record.timestamp)
