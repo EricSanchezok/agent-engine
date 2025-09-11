@@ -44,14 +44,15 @@ def main():
     logger.info(f"Migrating {old_vector_cache.count()} items")
     index = 1
     total = 0
-    for batch in old_vector_cache.iterate_all(100):
+    for batch in old_vector_cache.iterate_all(10000):
         logger.info(f"Migrating batch {index}, {total} items migrated")
+        items = []
         for item in batch:
-            record = Record(
+            items.append(Record(
                 id=item[2]["id"],
                 vector=item[1],
-            )
-            event_cache.add(record)
+            ))
+        event_cache.add_batch(items)
         index += 1
         total += len(batch)
     logger.info(f"Migration complete, {total} items migrated")

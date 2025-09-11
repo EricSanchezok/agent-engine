@@ -156,7 +156,55 @@ class EventCache:
         
         logger.debug(f"Added record {result_id} to shard {shard_id}")
         return result_id
-    
+
+    def add_batch(self, records: List[Record]) -> List[str]:
+        """
+        Add multiple records to the cache in batch.
+        
+        Args:
+            records: List of Record objects to add
+            
+        Returns:
+            List of record IDs
+        """
+        if not records:
+            return []
+        
+        # Generate IDs for records that don't have them
+        for record in records:
+            if not record.id:
+                import uuid
+                record.id = str(uuid.uuid4())
+        
+        # Group records by shard
+        shard_groups: Dict[int, List[Record]] = {}
+        
+        for record in records:
+            shard_id = self._get_shard_for_record(record.id)
+            
+            # Ensure shard exists
+            if shard_id not in self._shards:
+                with self._lock:
+                    if shard_id not in self._shards:
+                        # Create missing shards up to this ID
+                        while self._shard_count <= shard_id:
+                            self._create_new_shard()
+            
+            if shard_id not in shard_groups:
+                shard_groups[shard_id] = []
+            shard_groups[shard_id].append(record)
+        
+        # Add records to each shard in batch
+        all_record_ids = []
+        for shard_id, shard_records in shard_groups.items():
+            shard = self._shards[shard_id]
+            record_ids = shard.add_batch(shard_records)
+            all_record_ids.extend(record_ids)
+            logger.debug(f"Added {len(shard_records)} records to shard {shard_id}")
+        
+        logger.info(f"Added {len(records)} records to EventCache in batch across {len(shard_groups)} shards")
+        return all_record_ids
+
     def get(self, record_id: str) -> Optional[Record]:
         """
         Get a record by ID.

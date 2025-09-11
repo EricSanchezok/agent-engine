@@ -235,6 +235,76 @@ class EMemory:
             logger.debug(f"Added record {record_id} to EMemory")
             return record_id
 
+    def add_batch(self, records: List[Record]) -> List[str]:
+        """
+        Add multiple records to the memory in batch.
+        
+        Args:
+            records: List of Record objects to add
+            
+        Returns:
+            List of record IDs
+        """
+        if not records:
+            return []
+        
+        with self._lock:
+            record_ids = []
+            vectors_to_add = []
+            int_ids_for_vectors = []
+            
+            # Prepare all records for database insertion
+            db_data = []
+            for record in records:
+                # Generate ID and timestamp if not provided
+                record_id = record.id or self._generate_id()
+                record_timestamp = record.timestamp or self._get_current_timestamp()
+                record_attributes = record.attributes or {}
+                
+                record_ids.append(record_id)
+                
+                # Prepare database data
+                db_data.append((
+                    record_id,
+                    json.dumps(record_attributes),
+                    record.content,
+                    self._vector_to_blob(record.vector) if record.vector else None,
+                    record_timestamp
+                ))
+                
+                # Prepare vector data for HNSW index
+                if record.vector:
+                    int_id = self._get_or_create_int_id(record_id)
+                    vectors_to_add.append(record.vector)
+                    int_ids_for_vectors.append(int_id)
+            
+            # Batch insert into database
+            with sqlite3.connect(self.db_path) as conn:
+                conn.executemany("""
+                    INSERT OR REPLACE INTO records (id, attributes, content, vector, timestamp)
+                    VALUES (?, ?, ?, ?, ?)
+                """, db_data)
+                conn.commit()
+            
+            # Batch add to HNSW index if vectors are provided
+            if vectors_to_add:
+                try:
+                    # Mark existing IDs as deleted first
+                    for int_id in int_ids_for_vectors:
+                        try:
+                            self.hnsw_index.mark_deleted(int_id)
+                        except RuntimeError:
+                            pass  # ID doesn't exist, which is fine
+                    
+                    # Add all vectors at once
+                    self.hnsw_index.add_items(vectors_to_add, int_ids_for_vectors)
+                    self.hnsw_index.save_index(str(self.index_path))
+                except Exception as e:
+                    logger.error(f"Failed to add vectors to HNSW index: {e}")
+            
+            logger.debug(f"Added {len(records)} records to EMemory in batch")
+            return record_ids
+
     def get(self, id: str) -> Optional[Record]:
         """
         Get a record by ID.
