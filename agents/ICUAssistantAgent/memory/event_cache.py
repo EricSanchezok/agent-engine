@@ -85,26 +85,31 @@ class EventCache:
     def _create_new_shard(self) -> int:
         """Create a new EMemory shard."""
         with self._lock:
-            shard_id = self._shard_count
-            shard_name = f"{self.name}_shard_{shard_id}"
-            shard_dir = self.persist_dir / shard_name
-            
-            # Create EMemory instance for this shard
-            shard = EMemory(
-                name=shard_name,
-                persist_dir=str(shard_dir),
-                dimension=self.dimension,
-                max_elements=self.max_elements_per_shard,
-                ef_construction=self.ef_construction,
-                M=self.M,
-                space=self.space
-            )
-            
-            self._shards[shard_id] = shard
-            self._shard_count += 1
-            
-            logger.info(f"Created new shard {shard_id} with name '{shard_name}'")
-            return shard_id
+            return self._create_new_shard_unlocked()
+    
+    def _create_new_shard_unlocked(self) -> int:
+        """Create a new EMemory shard without acquiring lock (assumes lock is already held)."""
+        shard_id = self._shard_count
+        shard_name = f"{self.name}_shard_{shard_id}"
+        shard_dir = self.persist_dir / shard_name
+        
+        # Create EMemory instance for this shard
+        shard = EMemory(
+            name=shard_name,
+            persist_dir=str(shard_dir),
+            dimension=self.dimension,
+            max_elements=self.max_elements_per_shard,
+            ef_construction=self.ef_construction,
+            M=self.M,
+            space=self.space
+        )
+        
+        self._shards[shard_id] = shard
+        self._shard_count += 1
+        self._current_shard = shard_id  # Update current shard pointer
+        
+        logger.info(f"Created new shard {shard_id} with name '{shard_name}'")
+        return shard_id
     
     def _get_shard_for_record(self, record_id: str) -> int:
         """Get the shard ID for a given record ID using consistent hashing."""
@@ -122,7 +127,8 @@ class EventCache:
                 return self._current_shard
             
             # Current shard is full, create a new one
-            return self._create_new_shard()
+            # Don't use lock here to avoid deadlock
+            return self._create_new_shard_unlocked()
     
     def add(self, record: Record) -> str:
         """
@@ -139,16 +145,8 @@ class EventCache:
             import uuid
             record.id = str(uuid.uuid4())
         
-        # Determine shard for this record
-        shard_id = self._get_shard_for_record(record.id)
-        
-        # Ensure shard exists
-        if shard_id not in self._shards:
-            with self._lock:
-                if shard_id not in self._shards:
-                    # Create missing shards up to this ID
-                    while self._shard_count <= shard_id:
-                        self._create_new_shard()
+        # Get an available shard (capacity-based selection)
+        shard_id = self._get_available_shard()
         
         # Add to appropriate shard
         shard = self._shards[shard_id]
@@ -176,19 +174,12 @@ class EventCache:
                 import uuid
                 record.id = str(uuid.uuid4())
         
-        # Group records by shard
+        # Group records by shard using capacity-based distribution
         shard_groups: Dict[int, List[Record]] = {}
         
         for record in records:
-            shard_id = self._get_shard_for_record(record.id)
-            
-            # Ensure shard exists
-            if shard_id not in self._shards:
-                with self._lock:
-                    if shard_id not in self._shards:
-                        # Create missing shards up to this ID
-                        while self._shard_count <= shard_id:
-                            self._create_new_shard()
+            # Find a shard with available capacity
+            shard_id = self._get_available_shard()
             
             if shard_id not in shard_groups:
                 shard_groups[shard_id] = []
