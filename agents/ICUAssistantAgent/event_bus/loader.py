@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent_engine.agent_logger import AgentLogger
+from agent_engine.utils import get_current_file_dir
 
 logger = AgentLogger(__name__)
 
@@ -112,9 +113,9 @@ class Loader:
 
 async def test():
     loader = Loader()
-    loader.load_patient("database/icu_patients/1125112810.json")
+    loader.load_patient(get_current_file_dir().parent / "database" / "icu_patients" / "1125112810.json")
     for _ in range(10):
-        print(await loader.update())
+        print(await loader.next_event())
 
 if __name__ == "__main__":
     asyncio.run(test())
