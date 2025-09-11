@@ -1,75 +1,63 @@
 """
-EventCache - A sharded memory cache using multiple EMemory instances.
+PodEMemory - A sharded memory implementation using multiple EMemory instances.
 
-This module provides a high-capacity memory cache that manages multiple EMemory
-instances to handle large datasets (500k+ records) efficiently.
+This module provides a high-capacity memory implementation that manages multiple EMemory
+instances to handle large datasets efficiently by distributing records across multiple shards.
 """
 
-import os
 import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-import threading
 
-from agent_engine.memory.e_memory import EMemory, Record
-from agent_engine.agent_logger.agent_logger import AgentLogger
+from .core import EMemory
+from .models import Record
+from ...agent_logger.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
 
 
-def get_current_file_dir() -> Path:
-    """Get the directory of the current file."""
-    return Path(__file__).parent
-
-
-class EventCache:
+class PodEMemory:
     """
-    A sharded memory cache using multiple EMemory instances.
+    A sharded memory implementation using multiple EMemory instances.
     
     This class manages multiple EMemory instances to handle large datasets
-    efficiently by distributing records across multiple shards.
+    efficiently by distributing records across multiple shards. Each shard
+    is an independent EMemory instance with its own SQLite + ChromaDB files.
     """
     
     def __init__(
         self,
-        name: str = "event_cache",
+        name: str,
         persist_dir: Optional[str] = None,
-        dimension: int = 3072,
-        max_elements_per_shard: int = 50000,
-        ef_construction: int = 300,
-        M: int = 24,
-        space: str = "cosine"
+        dimension: int = 1536,
+        max_elements_per_shard: int = 100000,
+        distance_metric: str = "cosine"
     ):
         """
-        Initialize EventCache with multiple EMemory shards.
+        Initialize PodEMemory with multiple EMemory shards.
         
         Args:
-            name: Cache name
-            persist_dir: Storage directory (defaults to database directory)
+            name: Pod name (used for subdirectory creation)
+            persist_dir: Storage directory (optional, defaults to root/.memory/name)
             dimension: Vector dimension
             max_elements_per_shard: Maximum elements per EMemory shard
-            ef_construction: HNSW construction parameter
-            M: HNSW M parameter
-            space: Distance metric ('cosine', 'l2', 'ip')
+            distance_metric: Distance metric ('cosine', 'l2', 'ip')
         """
         self.name = name
         self.dimension = dimension
         self.max_elements_per_shard = max_elements_per_shard
-        self.ef_construction = ef_construction
-        self.M = M
-        self.space = space
+        self.distance_metric = distance_metric
         
         # Determine storage directory
         if persist_dir is None:
-            self.persist_dir = get_current_file_dir().parent / "database" / "event_cache"
+            from ...utils.project_root import get_project_root
+            root = get_project_root()
+            self.persist_dir = root / ".memory" / name
         else:
-            self.persist_dir = Path(persist_dir)
+            self.persist_dir = Path(persist_dir) / name
         
         # Create directory if it doesn't exist
         self.persist_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Thread safety
-        self._lock = threading.Lock()
         
         # Shard management
         self._shards: Dict[int, EMemory] = {}
@@ -79,16 +67,11 @@ class EventCache:
         # Initialize first shard
         self._create_new_shard()
         
-        logger.info(f"EventCache '{name}' initialized at {self.persist_dir}")
+        logger.info(f"PodEMemory '{name}' initialized at {self.persist_dir}")
         logger.info(f"Max elements per shard: {max_elements_per_shard}")
     
     def _create_new_shard(self) -> int:
         """Create a new EMemory shard."""
-        with self._lock:
-            return self._create_new_shard_unlocked()
-    
-    def _create_new_shard_unlocked(self) -> int:
-        """Create a new EMemory shard without acquiring lock (assumes lock is already held)."""
         shard_id = self._shard_count
         shard_name = f"{self.name}_shard_{shard_id}"
         shard_dir = self.persist_dir / shard_name
@@ -98,10 +81,7 @@ class EventCache:
             name=shard_name,
             persist_dir=str(shard_dir),
             dimension=self.dimension,
-            max_elements=self.max_elements_per_shard,
-            ef_construction=self.ef_construction,
-            M=self.M,
-            space=self.space
+            distance_metric=self.distance_metric
         )
         
         self._shards[shard_id] = shard
@@ -120,19 +100,17 @@ class EventCache:
     
     def _get_available_shard(self) -> int:
         """Get an available shard for new records."""
-        with self._lock:
-            # Check if current shard has space
-            current_shard = self._shards[self._current_shard]
-            if current_shard.count() < self.max_elements_per_shard:
-                return self._current_shard
-            
-            # Current shard is full, create a new one
-            # Don't use lock here to avoid deadlock
-            return self._create_new_shard_unlocked()
+        # Check if current shard has space
+        current_shard = self._shards[self._current_shard]
+        if current_shard.count() < self.max_elements_per_shard:
+            return self._current_shard
+        
+        # Current shard is full, create a new one
+        return self._create_new_shard()
     
     def add(self, record: Record) -> str:
         """
-        Add a record to the cache.
+        Add a record to the pod.
         
         Args:
             record: Record object to add
@@ -157,7 +135,7 @@ class EventCache:
 
     def add_batch(self, records: List[Record]) -> List[str]:
         """
-        Add multiple records to the cache in batch.
+        Add multiple records to the pod in batch.
         
         Args:
             records: List of Record objects to add
@@ -193,7 +171,7 @@ class EventCache:
             all_record_ids.extend(record_ids)
             logger.debug(f"Added {len(shard_records)} records to shard {shard_id}")
         
-        logger.info(f"Added {len(records)} records to EventCache in batch across {len(shard_groups)} shards")
+        logger.info(f"Added {len(records)} records to PodEMemory in batch across {len(shard_groups)} shards")
         return all_record_ids
 
     def get(self, record_id: str) -> Optional[Record]:
@@ -357,35 +335,33 @@ class EventCache:
     
     def clear(self) -> None:
         """Clear all records from all shards."""
-        with self._lock:
-            for shard in self._shards.values():
-                shard.clear()
-            logger.info("Cleared all records from EventCache")
+        for shard in self._shards.values():
+            shard.clear()
+        logger.info("Cleared all records from PodEMemory")
     
     def get_stats(self) -> Dict[str, Any]:
         """
-        Get cache statistics.
+        Get pod statistics.
         
         Returns:
             Statistics dictionary
         """
-        with self._lock:
-            total_records = self.count()
-            shard_stats = []
-            
-            for shard_id, shard in self._shards.items():
-                shard_stat = shard.get_stats()
-                shard_stat["shard_id"] = shard_id
-                shard_stats.append(shard_stat)
-            
-            return {
-                "name": self.name,
-                "total_records": total_records,
-                "shard_count": self._shard_count,
-                "max_elements_per_shard": self.max_elements_per_shard,
-                "persist_dir": str(self.persist_dir),
-                "shards": shard_stats
-            }
+        total_records = self.count()
+        shard_stats = []
+        
+        for shard_id, shard in self._shards.items():
+            shard_stat = shard.get_stats()
+            shard_stat["shard_id"] = shard_id
+            shard_stats.append(shard_stat)
+        
+        return {
+            "name": self.name,
+            "total_records": total_records,
+            "shard_count": self._shard_count,
+            "max_elements_per_shard": self.max_elements_per_shard,
+            "persist_dir": str(self.persist_dir),
+            "shards": shard_stats
+        }
     
     def get_shard_info(self) -> List[Dict[str, Any]]:
         """
