@@ -12,7 +12,7 @@ def main() -> None:
         return
 
     # Wire adapter manually for now
-    um = UltraMemory(UltraMemoryConfig(backend="timescaledb", mode="timeseries", dsn=dsn))
+    um = UltraMemory(UltraMemoryConfig(backend="timescaledb", dsn=dsn))
     # Create a collection representing the metric namespace
     um.create_collection(CollectionSpec(name="cpu", mode="timeseries"))
 

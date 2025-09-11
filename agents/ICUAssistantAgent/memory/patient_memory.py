@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 
 # Agent Engine imports
-from agent_engine.memory import ScalableMemory
+from agent_engine.memory.e_memory import EMemory, Record
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.llm_client import AzureClient
 from agent_engine.utils import get_current_file_dir, generate_unique_id
@@ -35,7 +35,7 @@ class PatientMemory:
         self.persist_dir: str | Path = get_current_file_dir().parent / "database" / "patient_memory" / content_id
         self.persist_dir.mkdir(parents=True, exist_ok=True)
 
-        self.memory = ScalableMemory(
+        self.memory = EMemory(
             name=patient_id,
             llm_client=self.llm_client,
             embed_model=self.embed_model,

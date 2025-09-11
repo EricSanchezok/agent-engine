@@ -5,7 +5,6 @@ from agent_engine.memory.ultra_memory import UltraMemory, UltraMemoryConfig, Col
 
 def main() -> None:
     cfg = UltraMemoryConfig(
-        mode="mixed",
         backend="postgres_pgvector",
         dsn="postgresql://placeholder",  # not used in in-memory placeholder
     )

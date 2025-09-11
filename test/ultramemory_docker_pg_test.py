@@ -10,7 +10,7 @@ def main() -> None:
         print("Failed to prepare dockerized PostgreSQL. See logs.")
         return
 
-    cfg = UltraMemoryConfig(mode="mixed", backend="postgres_pgvector", dsn=dsn)
+    cfg = UltraMemoryConfig(backend="postgres_pgvector", dsn=dsn)
     um = UltraMemory(cfg)
     um.create_collection(CollectionSpec(name="papers", mode="vector", vector_dimensions={"text_vec": 3}, metric="cosine", index_params={"lists": 50}))
 
