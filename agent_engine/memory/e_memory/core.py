@@ -41,8 +41,8 @@ class EMemory:
         persist_dir: Optional[str] = None,
         dimension: int = 1536,  # Default OpenAI embedding dimension
         max_elements: int = 10000,
-        ef_construction: int = 200,
-        M: int = 16,
+        ef_construction: int = 300,
+        M: int = 24,
         space: str = "cosine"
     ):
         """
@@ -73,7 +73,7 @@ class EMemory:
         self.persist_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize database and index
-        self.db_path = self.persist_dir / "memory.db"
+        self.db_path = self.persist_dir / "memory.sqlite"
         self.index_path = self.persist_dir / "index.bin"
         
         # Thread safety

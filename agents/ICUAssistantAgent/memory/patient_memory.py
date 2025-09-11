@@ -37,10 +37,12 @@ class PatientMemory:
 
         self.memory = EMemory(
             name=patient_id,
-            llm_client=self.llm_client,
-            embed_model=self.embed_model,
             persist_dir=self.persist_dir,
-            enable_vectors=True
+            dimension=3072,
+            max_elements=30000,
+            ef_construction=1000,
+            M=24,
+            space="cosine"
         )
 
         self._vector_cache = ScalableMemory(
