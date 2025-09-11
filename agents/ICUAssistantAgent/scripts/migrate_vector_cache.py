@@ -52,10 +52,7 @@ def main():
         for item in batch:
             items.append(Record(
                 id=item[2]["id"],
-                vector=item[1],
-                content=item[2].get("content", ""),  # 添加 content 字段
-                attributes=item[2].get("attributes", {}),  # 添加 attributes 字段
-                timestamp=item[2].get("timestamp", "")  # 添加 timestamp 字段
+                vector=item[1]
             ))
         event_cache.add_batch(items)
         index += 1

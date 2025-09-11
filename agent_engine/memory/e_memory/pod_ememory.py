@@ -64,11 +64,64 @@ class PodEMemory:
         self._shard_count = 0
         self._current_shard = 0
         
-        # Initialize first shard
-        self._create_new_shard()
+        # Load existing shards or create first shard
+        self._load_existing_shards()
         
         logger.info(f"PodEMemory '{name}' initialized at {self.persist_dir}")
         logger.info(f"Max elements per shard: {max_elements_per_shard}")
+    
+    def _load_existing_shards(self) -> None:
+        """Load existing shards from the persist directory."""
+        if not self.persist_dir.exists():
+            # No existing directory, create first shard
+            self._create_new_shard()
+            return
+        
+        # Find existing shard directories
+        shard_dirs = []
+        for item in self.persist_dir.iterdir():
+            if item.is_dir() and item.name.startswith(f"{self.name}_shard_"):
+                try:
+                    # Extract shard ID from directory name
+                    shard_id = int(item.name.split("_shard_")[1])
+                    shard_dirs.append((shard_id, item))
+                except (ValueError, IndexError):
+                    # Skip directories that don't match expected pattern
+                    continue
+        
+        if not shard_dirs:
+            # No existing shards found, create first shard
+            self._create_new_shard()
+            return
+        
+        # Sort by shard ID and load existing shards
+        shard_dirs.sort(key=lambda x: x[0])
+        for shard_id, shard_dir in shard_dirs:
+            try:
+                shard_name = f"{self.name}_shard_{shard_id}"
+                shard = EMemory(
+                    name=shard_name,
+                    persist_dir=str(shard_dir),
+                    dimension=self.dimension,
+                    distance_metric=self.distance_metric
+                )
+                
+                self._shards[shard_id] = shard
+                self._shard_count = max(self._shard_count, shard_id + 1)
+                self._current_shard = shard_id  # Set current shard to the last loaded one
+                
+                logger.info(f"Loaded existing shard {shard_id} with {shard.count()} records")
+                
+            except Exception as e:
+                logger.error(f"Failed to load shard {shard_id} from {shard_dir}: {e}")
+                continue
+        
+        if not self._shards:
+            # No shards could be loaded, create first shard
+            logger.warning("No existing shards could be loaded, creating new shard")
+            self._create_new_shard()
+        else:
+            logger.info(f"Loaded {len(self._shards)} existing shards")
     
     def _create_new_shard(self) -> int:
         """Create a new EMemory shard."""
@@ -99,7 +152,9 @@ class PodEMemory:
         return hash_value % max(1, self._shard_count)
     
     def _get_available_shard(self) -> int:
-        """Get an available shard for new records."""
+        """Get an available shard for new records using consistent hashing."""
+        # For new records without ID, we need to generate one first
+        # But since we don't have the ID yet, we'll use a capacity-based approach
         # Check if current shard has space
         current_shard = self._shards[self._current_shard]
         if current_shard.count() < self.max_elements_per_shard:
@@ -123,8 +178,12 @@ class PodEMemory:
             import uuid
             record.id = str(uuid.uuid4())
         
-        # Get an available shard (capacity-based selection)
-        shard_id = self._get_available_shard()
+        # Use consistent hashing to determine shard
+        shard_id = self._get_shard_for_record(record.id)
+        
+        # Ensure the target shard exists, create if necessary
+        while shard_id >= self._shard_count:
+            self._create_new_shard()
         
         # Add to appropriate shard
         shard = self._shards[shard_id]
@@ -152,12 +211,16 @@ class PodEMemory:
                 import uuid
                 record.id = str(uuid.uuid4())
         
-        # Group records by shard using capacity-based distribution
+        # Group records by shard using consistent hashing
         shard_groups: Dict[int, List[Record]] = {}
         
         for record in records:
-            # Find a shard with available capacity
-            shard_id = self._get_available_shard()
+            # Use consistent hashing to determine shard
+            shard_id = self._get_shard_for_record(record.id)
+            
+            # Ensure the target shard exists, create if necessary
+            while shard_id >= self._shard_count:
+                self._create_new_shard()
             
             if shard_id not in shard_groups:
                 shard_groups[shard_id] = []
