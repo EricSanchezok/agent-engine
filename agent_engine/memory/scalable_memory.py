@@ -1292,6 +1292,66 @@ class ScalableMemory:
             items.append((content, vector, md))
         return items
 
+    def iterate_all(
+        self, 
+        batch_size: Optional[int] = None, 
+        total_limit: Optional[int] = None
+    ) -> Iterable[List[Tuple[str, List[float], Dict[str, Any]]]]:
+        """Iterate through all items in batches.
+        
+        Args:
+            batch_size: Number of items per batch. If None, defaults to 1.
+            total_limit: Maximum total number of items to return. If None, returns all items.
+            
+        Yields:
+            List of tuples (content, vector, metadata) for each batch.
+        """
+        if batch_size is None:
+            batch_size = 1
+        
+        # Calculate offset and limit for SQL query
+        offset = 0
+        items_returned = 0
+        
+        while True:
+            # Determine how many items to fetch in this batch
+            if total_limit is not None:
+                remaining = total_limit - items_returned
+                if remaining <= 0:
+                    break
+                current_batch_size = min(batch_size, remaining)
+            else:
+                current_batch_size = batch_size
+            
+            # Fetch batch from database
+            cur = self.db.execute(
+                "SELECT id, content, vector, metadata FROM items ORDER BY id LIMIT ? OFFSET ?",
+                (current_batch_size, offset)
+            )
+            rows = self.db.fetchall(cur)
+            
+            if not rows:
+                break
+            
+            # Process batch
+            batch_items: List[Tuple[str, List[float], Dict[str, Any]]] = []
+            for row in rows:
+                content = row[1]
+                vector = _from_blob(row[2]) if (self._enable_vectors and row[2] is not None) else []
+                md = json.loads(row[3]) if row[3] else {}
+                md["id"] = row[0]
+                batch_items.append((content, vector, md))
+            
+            yield batch_items
+            
+            # Update counters
+            items_returned += len(batch_items)
+            offset += len(batch_items)
+            
+            # If we got fewer items than requested, we've reached the end
+            if len(batch_items) < current_batch_size:
+                break
+
     def get_all_contents(self) -> List[str]:
         cur = self.db.execute("SELECT content FROM items")
         return [r[0] for r in self.db.fetchall(cur)]
