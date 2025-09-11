@@ -50,12 +50,12 @@ class PatientMemory:
             dimension=3072
         )
 
-    def add_event(self, event: Event) -> None:
+    async def add_event(self, event: Event) -> None:
         event_id = event.id
         _vector_cache: Optional[Record] = self._event_cache.get(event_id)
         
         if not _vector_cache:
-            vector = self.llm_client.embedding(event.event_content, model_name=self.embed_model)
+            vector = await self.llm_client.embedding(event.event_content, model_name=self.embed_model)
             _cache_record = Record(
                 id=event_id,
                 vector=vector,
