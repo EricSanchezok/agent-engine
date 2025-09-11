@@ -15,18 +15,11 @@ from dotenv import load_dotenv
 from agent_engine.agent_logger.agent_logger import AgentLogger
 from agents.ResearchAgent.paper_memory import PaperMemory, PaperMemoryConfig
 from agent_engine.memory.ultra_memory import Record
-try:
-    from agents.ResearchAgent.config import PAPER_DSN_TEMPLATE as CFG_PAPER_DSN_TEMPLATE  # type: ignore
-except Exception:
-    CFG_PAPER_DSN_TEMPLATE = None
 
 
-# ----------------------------- User configuration -----------------------------
-# Set your remote Postgres DSN template here. {db} will be replaced by remote DB name
-# derived from segment:
-#   - 2024H1 -> h1_2024
-#   - 2024H2 -> h2_2024
-DSN_TEMPLATE: str = os.getenv("PAPER_DSN_TEMPLATE") or (CFG_PAPER_DSN_TEMPLATE or "postgresql://USER:PASS@HOST:PORT/{db}")
+# ----------------------------- Local server configuration -----------------------------
+# Local database connection since we're running on the same server as the database
+DSN_TEMPLATE: str = "postgresql://postgres:postgres777@127.0.0.1:5432/{db}"
 
 # Optional allow-list of target databases present on the remote server.
 ALLOWED_SEGMENTS: Optional[List[str]] = [
@@ -42,18 +35,18 @@ VECTOR_FIELD = "text_vec"
 VECTOR_DIM = 3072
 VECTOR_METRIC = "cosine"
 
-# Batch & behavior controls
-BATCH_FLUSH = 5000                 # how many records to aggregate per segment before flush  
-BULK_UPSERT_CHUNK = 2000           # how many rows per single SQL in bulk upsert
+# Batch & behavior controls - optimized for local database access
+BATCH_FLUSH = 10000                # Larger batch size for local database
+BULK_UPSERT_CHUNK = 5000           # Larger chunk size for better performance
 OVERWRITE_EXISTING = False         # False: INSERT ... ON CONFLICT DO NOTHING; True: DO UPDATE
-MIGRATION_MAX_RECORDS: Optional[int] = 2000   # limit total WRITTEN records for safety; None for all
+MIGRATION_MAX_RECORDS: Optional[int] = None   # No limit for full migration
 USE_COPY_LOAD = True               # Use COPY into temp table + merge for faster loads
-PREFETCH_EXISTING_IDS = False      # Query remote for existing ids to skip before upsert
-PREFETCH_BATCH = 2000
-DISABLE_INDEXES_DURING_LOAD = True   # Drop heavy indexes before load and recreate after
+PREFETCH_EXISTING_IDS = True       # Query database for existing ids to skip before upsert
+PREFETCH_BATCH = 10000             # Larger prefetch batch for local database
+DISABLE_INDEXES_DURING_LOAD = True # Drop heavy indexes before load and recreate after
 
 
-logger = AgentLogger("MigrateArxivToUltra")
+logger = AgentLogger("MigrateArxivToUltraLocal")
 
 
 def _extract_date_str(md: Dict[str, Any]) -> Optional[str]:
@@ -211,9 +204,35 @@ def _vec_literal(vec: Optional[List[float]]) -> Optional[str]:
         return None
 
 
-def _bulk_upsert_segment(pm: PaperMemory, seg: str, recs: List[Record]) -> Tuple[int, List[str]]:
-    if not recs:
+def _get_existing_record_count(pm: PaperMemory, seg: str) -> int:
+    """Get the count of existing records in the target segment"""
+    try:
+        um = pm._get_segment_um(seg)
+        adapter = getattr(um, "adapter", None)
+        conn = getattr(adapter, "_conn", None)
+        if conn is None:
+            return 0
+        
+        tbl = adapter._tbl(pm.cfg.collection_name)
+        cur = conn.cursor()
+        try:
+            cur.execute(f'SELECT COUNT(*) FROM "{tbl}"')
+            result = cur.fetchone()
+            return result[0] if result else 0
+        finally:
+            cur.close()
+    except Exception as e:
+        logger.warning(f"Failed to get existing record count for segment {seg}: {e}")
         return 0
+
+
+def _bulk_upsert_segment(pm: PaperMemory, seg: str, recs: List[Record]) -> Tuple[int, List[str], int]:
+    """
+    Returns: (inserted_count, inserted_ids, skipped_count)
+    """
+    if not recs:
+        return 0, [], 0
+    
     # Ensure UM and collection exist; grab adapter & table/column names
     um = pm._get_segment_um(seg)
     adapter = getattr(um, "adapter", None)
@@ -221,11 +240,13 @@ def _bulk_upsert_segment(pm: PaperMemory, seg: str, recs: List[Record]) -> Tuple
     if conn is None:
         # Fallback to per-record upsert through adapter API (slower)
         inserted = um.upsert(pm.cfg.collection_name, recs)
-        return (len(inserted), [str(x) for x in inserted])
+        return (len(inserted), [str(x) for x in inserted], 0)
+    
     tbl = adapter._tbl(pm.cfg.collection_name)  # type: ignore[attr-defined]
     vec_col = adapter._col(pm.cfg.vector_field)  # type: ignore[attr-defined]
 
-    # Optionally prefetch existing ids to skip duplicates
+    # Prefetch existing ids to skip duplicates
+    skipped_count = 0
     if PREFETCH_EXISTING_IDS and recs:
         try:
             existing: set = set()
@@ -242,10 +263,15 @@ def _bulk_upsert_segment(pm: PaperMemory, seg: str, recs: List[Record]) -> Tuple
                         existing.add(str(row[0]))
             finally:
                 cur.close()
+            
             if existing:
+                original_count = len(recs)
                 recs = [r for r in recs if str(r.id) not in existing]
+                skipped_count = original_count - len(recs)
+                logger.info(f"Skipping {skipped_count} existing records in segment {seg}")
+                
             if not recs:
-                return (0, [])
+                return (0, [], skipped_count)
         except Exception as e:
             logger.warning(f"Prefetch existing ids failed, continue without prefilter: {e}")
 
@@ -303,7 +329,7 @@ def _bulk_upsert_segment(pm: PaperMemory, seg: str, recs: List[Record]) -> Tuple
                 except Exception:
                     pass
             ids = [str(r.id) for r in recs if r.id]
-            return (len(recs), ids)
+            return (len(recs), ids, skipped_count)
         except Exception as e:
             logger.warning(f"COPY path failed, falling back to VALUES upsert: {e}")
             try:
@@ -369,13 +395,18 @@ def _bulk_upsert_segment(pm: PaperMemory, seg: str, recs: List[Record]) -> Tuple
                 conn.autocommit = old_autocommit
             except Exception:
                 pass
-        return (total_written, inserted_ids)
+        return (total_written, inserted_ids, skipped_count)
     finally:
         cur.close()
 
 
-def _flush(pm: PaperMemory, bucket: Dict[str, List[Record]]) -> int:
-    total = 0
+def _flush(pm: PaperMemory, bucket: Dict[str, List[Record]]) -> Tuple[int, int]:
+    """
+    Returns: (total_inserted, total_skipped)
+    """
+    total_inserted = 0
+    total_skipped = 0
+    
     for seg, recs in list(bucket.items()):
         if not recs:
             continue
@@ -384,22 +415,28 @@ def _flush(pm: PaperMemory, bucket: Dict[str, List[Record]]) -> int:
             bucket[seg] = []
             continue
         try:
-            written_cnt, _ = _bulk_upsert_segment(pm, seg, recs)
-            total += written_cnt
-            logger.info(f"Flushed {written_cnt} records to segment {seg}")
+            existing_count = _get_existing_record_count(pm, seg)
+            logger.info(f"Segment {seg}: {existing_count} records already exist in database")
+            
+            written_cnt, _, skipped_cnt = _bulk_upsert_segment(pm, seg, recs)
+            total_inserted += written_cnt
+            total_skipped += skipped_cnt
+            
+            new_count = _get_existing_record_count(pm, seg)
+            logger.info(f"Segment {seg}: inserted {written_cnt} new records, skipped {skipped_cnt} existing records, total now: {new_count}")
         except Exception as e:
             logger.error(f"Failed to flush {len(recs)} records to {seg}: {e}")
         finally:
             bucket[seg] = []
-    return total
+    
+    return total_inserted, total_skipped
 
 
 def migrate() -> None:
     load_dotenv()
 
-    if ("USER:PASS@HOST:PORT" in DSN_TEMPLATE) or ("USER" in DSN_TEMPLATE and "PASS" in DSN_TEMPLATE):
-        logger.error("Please set PAPER_DSN_TEMPLATE in env or agents/ResearchAgent/config.py before running migration.")
-        return
+    logger.info("Starting local migration from ArXiv memory to UltraMemory database")
+    logger.info(f"Database connection: {DSN_TEMPLATE.split('@')[1] if '@' in DSN_TEMPLATE else DSN_TEMPLATE}")
 
     pm = PaperMemory(PaperMemoryConfig(
         dsn_template=DSN_TEMPLATE,
@@ -415,59 +452,90 @@ def migrate() -> None:
         logger.error(f"Legacy database directory not found: {str(base_dir)}")
         return
 
+    logger.info(f"Scanning source directory: {base_dir}")
+    
+    # Get initial statistics
+    total_segments = 0
+    for seg_dir in _iter_source_segments(base_dir):
+        total_segments += 1
+        sqlite_path = seg_dir / "arxiv_metadata.sqlite3"
+        duckdb_path = seg_dir / "arxiv_metadata.duckdb"
+        
+        if sqlite_path.exists():
+            logger.info(f"Found SQLite database: {seg_dir.name}")
+        elif duckdb_path.exists():
+            logger.info(f"Found DuckDB database: {seg_dir.name}")
+        else:
+            logger.warning(f"No database file found in {seg_dir.name}")
+    
+    logger.info(f"Total segments to process: {total_segments}")
+
     bucket: Dict[str, List[Record]] = {}
     scanned = 0
     written_total = 0
+    skipped_total = 0
 
-    processed = 0
+    segment_count = 0
     for seg_dir in _iter_source_segments(base_dir):
+        segment_count += 1
         sqlite_path = seg_dir / "arxiv_metadata.sqlite3"
         duckdb_path = seg_dir / "arxiv_metadata.duckdb"
+        
         it: Iterable[Tuple[str, str, Dict[str, Any], Optional[List[float]]]]
         if sqlite_path.exists():
-            logger.info(f"Scanning SQLite segment: {seg_dir.name}")
+            logger.info(f"[{segment_count}/{total_segments}] Processing SQLite segment: {seg_dir.name}")
             it = _iter_items_from_sqlite(sqlite_path)
         elif duckdb_path.exists():
-            logger.info(f"Scanning DuckDB segment: {seg_dir.name}")
+            logger.info(f"[{segment_count}/{total_segments}] Processing DuckDB segment: {seg_dir.name}")
             it = _iter_items_from_duckdb(duckdb_path)
         else:
-            logger.warning(f"No DB file found in {seg_dir}")
+            logger.warning(f"[{segment_count}/{total_segments}] No DB file found in {seg_dir}")
             continue
 
+        segment_scanned = 0
         for rid, content, md, vec in it:
             scanned += 1
+            segment_scanned += 1
+            
             # Decide target segment by metadata date
             date_str = _extract_date_str(md) or ""
             seg = _segment_key_from_date(date_str) or "undated"
             ts = _to_iso_ts(md)
+            
             # Vector dim validation
             if vec is not None and len(vec) != VECTOR_DIM:
                 # Keep content/metadata but drop vector if dimension mismatch
                 vec = None
+            
             rec = Record(id=str(rid), attributes=md, content=str(content or ""), vector=vec, timestamp=ts)
             arr = bucket.setdefault(seg, [])
             arr.append(rec)
+            
             if len(arr) >= BATCH_FLUSH:
-                batch_written = _flush(pm, {seg: arr})
-                written_total += batch_written
+                batch_inserted, batch_skipped = _flush(pm, {seg: arr})
+                written_total += batch_inserted
+                skipped_total += batch_skipped
                 arr.clear()
-                if MIGRATION_MAX_RECORDS is not None and written_total >= MIGRATION_MAX_RECORDS:
-                    logger.info(f"Reached MIGRATION_MAX_RECORDS={MIGRATION_MAX_RECORDS} written records; stopping early")
-                    logger.info(f"Scanned {scanned} records, written {written_total}")
-                    logger.info("Final flush of remaining batches...")
-                    written_total += _flush(pm, bucket)
-                    logger.info(f"Migration finished (early stop). Scanned={scanned}, written={written_total}")
-                    return
+                
             if scanned % 5000 == 0:
-                logger.info(f"Scanned {scanned} records, written {written_total}")
+                logger.info(f"Progress: scanned {scanned} records (current segment: {segment_scanned}), "
+                          f"inserted {written_total}, skipped {skipped_total}")
 
+        logger.info(f"Completed segment {seg_dir.name}: scanned {segment_scanned} records")
+        
         # Flush remainder for this segment directory
-        written_total += _flush(pm, bucket)
+        segment_inserted, segment_skipped = _flush(pm, bucket)
+        written_total += segment_inserted
+        skipped_total += segment_skipped
 
-    logger.info(f"Migration finished. Scanned={scanned}, written={written_total}")
+    logger.info("=" * 60)
+    logger.info("Migration completed successfully!")
+    logger.info(f"Total records scanned: {scanned}")
+    logger.info(f"Total records inserted: {written_total}")
+    logger.info(f"Total records skipped (already existed): {skipped_total}")
+    logger.info(f"Total records processed: {written_total + skipped_total}")
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":
     migrate()
-
-
