@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent_engine.agent_logger.agent_logger import AgentLogger
+import pyinstrument
 
 from .models import CollectionSpec, Record, Point, Filter
 from .adapters.base import StorageAdapter
@@ -63,6 +64,7 @@ class UltraMemory:
             return int(getattr(self.adapter, "delete_by_filter")(collection, flt))
         raise NotImplementedError("delete_by_filter not implemented for this backend")
 
+    @pyinstrument.profile()
     def query(self, collection: str, flt: Filter) -> List[Dict[str, Any]]:
         return self.adapter.query(collection, flt)
 
@@ -84,5 +86,18 @@ class UltraMemory:
 
     def close(self) -> None:
         self.adapter.close()
+
+    # ---- Utility ops ----
+    def count(self, collection: str, flt: Filter) -> int:
+        if hasattr(self.adapter, "count"):
+            return int(getattr(self.adapter, "count")(collection, flt))
+        # Fallback: query then len (not recommended for large tables)
+        return len(self.query(collection, flt))
+
+    def exists(self, collection: str, flt: Filter) -> bool:
+        if hasattr(self.adapter, "exists"):
+            return bool(getattr(self.adapter, "exists")(collection, flt))
+        res = self.query(collection, Filter(expr=flt.expr, limit=1))
+        return bool(res)
 
 

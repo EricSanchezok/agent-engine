@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from typing import Dict, List
+import pyinstrument
 
 from agent_engine.agent_logger.agent_logger import AgentLogger
 from agents.ResearchAgent.config import PAPER_DSN_TEMPLATE
@@ -10,7 +11,7 @@ from agents.ResearchAgent.paper_memory import PaperMemory, PaperMemoryConfig
 
 logger = AgentLogger("QuickDataCheck")
 
-
+@pyinstrument.profile()
 def quick_check() -> None:
     """Quick check to see if data exists in remote database."""
     logger.info("Starting quick data check...")
@@ -53,18 +54,16 @@ def quick_check() -> None:
             # Get UltraMemory for this segment
             um = pm._get_segment_um(seg)
             
-            # Count records by querying with empty filter
+            # Count with server-side COUNT(*)
             from agent_engine.memory.ultra_memory import Filter
-            records = um.query("papers", Filter())
-            count = len(records)
+            count = um.count("papers", Filter())
             total_records += count
             
             if count > 0:
                 segments_with_data += 1
                 logger.info(f"  ✓ {count:,} records found")
                 
-                # Get a sample record to verify content
-                from agent_engine.memory.ultra_memory import Filter
+                # Get a sample record to verify content (limit=1)
                 sample_records = um.query("papers", Filter(limit=1))
                 if sample_records:
                     record_data = sample_records[0]
@@ -72,7 +71,6 @@ def quick_check() -> None:
                     if hasattr(record_data, 'content'):
                         record = record_data
                     else:
-                        # Convert dict to Record-like object
                         class RecordLike:
                             def __init__(self, data):
                                 self.id = data.get('id')

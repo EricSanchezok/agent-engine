@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICU Agent - 智能重症监护助手 (兼容版本)</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-background text-foreground">
+    <!-- Global Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="header-title">
+                    <h1>ICU Agent</h1>
+                    <span class="subtitle">智能重症监护助手 (兼容版本)</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator">
+                    <div class="status-dot online"></div>
+                    <span>系统在线</span>
+                </div>
+                <div class="user-menu">
+                    <button class="user-button">
+                        <span>Dr. Zhang</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Patient Hub Bar -->
+    <div class="patient-hub-bar" id="patientHubBar">
+        <div class="patient-hub-content" id="patientHubContent">
+            <!-- State 1: No patient selected -->
+            <div class="patient-hub-empty" id="patientHubEmpty">
+                <button class="select-patient-btn" id="selectPatientBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="2"/>
+                        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>请点击此处选择或搜索病人</span>
+                </button>
+            </div>
+
+            <!-- State 2: Patient selected -->
+            <div class="patient-hub-selected hidden" id="patientHubSelected">
+                <div class="current-patient-info">
+                    <div class="patient-avatar">
+                        <span id="patientInitials">张</span>
+                    </div>
+                    <div class="patient-details">
+                        <h3 id="patientName">张某某</h3>
+                        <span class="patient-meta">
+                            <span id="patientBed">床号: A-101</span>
+                            <span class="separator">•</span>
+                            <span id="patientRisk" class="risk-level medium">中风险</span>
+                        </span>
+                    </div>
+                </div>
+                <button class="switch-patient-btn" id="switchPatientBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M14 7H21V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    切换病人
+                </button>
+            </div>
+        </div>
+
+        <!-- Patient Selection Panel -->
+        <div class="patient-selection-panel hidden" id="patientSelectionPanel">
+            <div class="panel-header">
+                <div class="search-box">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="M21 21L16.65 16.65" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <input type="text" placeholder="搜索病人姓名或床号..." id="patientSearchInput">
+                </div>
+                <button class="close-panel-btn" id="closePanelBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="patient-list" id="patientList">
+                <!-- Patient cards will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Left Sidebar: Real-time Patient Info -->
+        <aside class="left-sidebar" id="leftSidebar">
+            <div class="sidebar-header">
+                <button class="toggle-sidebar-btn" id="toggleLeftSidebar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/>
+                        <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2"/>
+                        <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+                <h3>病人监控</h3>
+            </div>
+
+            <!-- Collapsed State -->
+            <div class="sidebar-collapsed" id="sidebarCollapsed">
+                <div class="icon-indicator risk-indicator" id="riskIndicator">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10.29 3.86L1.82 18A2 2 0 0 0 3.54 21H20.46A2 2 0 0 0 22.18 18L13.71 3.86A2 2 0 0 0 10.29 3.86Z" stroke="currentColor" stroke-width="2"/>
+                        <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="12" cy="17" r="1" fill="currentColor"/>
+                    </svg>
+                    <span class="badge" id="riskBadge">3</span>
+                </div>
+                <div class="icon-indicator event-indicator" id="eventIndicator">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span class="notification-dot" id="eventDot"></span>
+                </div>
+            </div>
+
+            <!-- Expanded State -->
+            <div class="sidebar-expanded" id="sidebarExpanded">
+                <div class="risk-panel">
+                    <h4>风险预警</h4>
+                    <div class="risk-list" id="riskList">
+                        <!-- Risk items will be populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="events-panel">
+                    <h4>事件序列</h4>
+                    <div class="events-timeline" id="eventsTimeline">
+                        <!-- Event items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Central Main Area: Chat Interface -->
+        <section class="central-area" id="centralArea">
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-header">
+                    <h3>医患交互对话</h3>
+                    <div class="chat-status" id="chatStatus">
+                        <span class="status-text">等待输入...</span>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <div class="agent-avatar">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <div class="message-content">
+                            <p>您好！我是ICU智能助手。请先选择一位病人，然后您可以询问有关临床诊断、治疗方案或风险评估的问题。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-area" id="chatInputArea">
+                    <div class="input-container">
+                        <textarea 
+                            id="chatInput" 
+                            placeholder="请输入您的问题..." 
+                            rows="3"
+                            disabled
+                        ></textarea>
+                        <button class="send-btn" id="sendBtn" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="22" y1="2" x2="11" y2="13" stroke="currentColor" stroke-width="2"/>
+                                <polygon points="22,2 15,22 11,13 2,9" fill="currentColor"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Sidebar: Agent Workflow -->
+        <aside class="right-sidebar" id="rightSidebar">
+            <div class="workflow-container" id="workflowContainer">
+                <div class="workflow-header">
+                    <h3>Agent 工作流程</h3>
+                    <div class="workflow-status" id="workflowStatus">待命中</div>
+                </div>
+                <div class="workflow-steps" id="workflowSteps">
+                    <div class="workflow-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                            <path d="M19.4 15A1.65 1.65 0 0 0 21 13.35V10.65A1.65 1.65 0 0 0 19.4 9L17.6 7.5A7.81 7.81 0 0 0 16 6.5L15.28 4.6A1.65 1.65 0 0 0 13.93 3.5H10.07A1.65 1.65 0 0 0 8.72 4.6L8 6.5A7.81 7.81 0 0 0 6.4 7.5L4.6 9A1.65 1.65 0 0 0 3 10.65V13.35A1.65 1.65 0 0 0 4.6 15L6.4 16.5A7.81 7.81 0 0 0 8 17.5L8.72 19.4A1.65 1.65 0 0 0 10.07 20.5H13.93A1.65 1.65 0 0 0 15.28 19.4L16 17.5A7.81 7.81 0 0 0 17.6 16.5Z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <p>Agent 正在待命中</p>
+                        <span>当您发送问题时，这里将显示 Agent 的思考过程</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Scripts -->
+    <script src="script-compatible.js"></script>
+</body>
+</html>

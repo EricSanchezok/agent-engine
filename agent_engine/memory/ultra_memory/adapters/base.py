@@ -27,6 +27,12 @@ class StorageAdapter:
     def query(self, collection: str, flt: Filter) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
+    def count(self, collection: str, flt: Filter) -> int:
+        raise NotImplementedError
+
+    def exists(self, collection: str, flt: Filter) -> bool:
+        raise NotImplementedError
+
     def search_vectors(self, collection: str, vector_or_text: Any, *, top_k: int, flt: Optional[Filter] = None, threshold: float = 0.0, ef_search: Optional[int] = None, vector_field: Optional[str] = None) -> List[Tuple[str, float, Dict[str, Any]]]:
         raise NotImplementedError
 

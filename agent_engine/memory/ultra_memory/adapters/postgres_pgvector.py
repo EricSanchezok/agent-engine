@@ -4,10 +4,11 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent_engine.agent_logger.agent_logger import AgentLogger
+import pyinstrument
 
 from ..models import CollectionSpec, Record, Point, Filter
 from .base import StorageAdapter
-from ..dsl import build_select, build_where
+from ..dsl import build_select, build_where, build_count, build_exists
 
 
 class PostgresPgvectorAdapter(StorageAdapter):
@@ -73,6 +74,11 @@ class PostgresPgvectorAdapter(StorageAdapter):
         # Indexes
         try:
             self._exec(f'CREATE INDEX IF NOT EXISTS idx_{tbl}_attrs ON "{tbl}" USING GIN (attributes)')
+        except Exception:
+            pass
+        # Time index for range queries
+        try:
+            self._exec(f'CREATE INDEX IF NOT EXISTS idx_{tbl}_ts ON "{tbl}" (ts)')
         except Exception:
             pass
         # Optional vector index (IVFFLAT/HNSW) on first vector column
@@ -152,6 +158,7 @@ class PostgresPgvectorAdapter(StorageAdapter):
         self.logger.debug(f"Upsert into {collection}: {len(records)} records (postgres)")
         return ids
 
+    @pyinstrument.profile()
     def query(self, collection: str, flt: Filter) -> List[Dict[str, Any]]:
         if self._conn is None:
             self.logger.debug(f"Query on {collection}: {flt.expr} (in-memory)")
@@ -187,6 +194,33 @@ class PostgresPgvectorAdapter(StorageAdapter):
                 "timestamp": row[3],
             })
         return out
+
+    def count(self, collection: str, flt: Filter) -> int:
+        if self._conn is None:
+            # In-memory fallback
+            col = self._store.get(collection, {})
+            return sum(1 for r in col.values() if _match(r, flt.expr or {}))
+        tbl = self._tbl(collection)
+        sql, params = build_count(tbl, flt)
+        rows = self._fetchall(sql, tuple(params))
+        if not rows:
+            return 0
+        try:
+            return int(rows[0][0])
+        except Exception:
+            return 0
+
+    def exists(self, collection: str, flt: Filter) -> bool:
+        if self._conn is None:
+            col = self._store.get(collection, {})
+            for r in col.values():
+                if _match(r, flt.expr or {}):
+                    return True
+            return False
+        tbl = self._tbl(collection)
+        sql, params = build_exists(tbl, flt)
+        rows = self._fetchall(sql, tuple(params))
+        return bool(rows)
 
     def search_vectors(self, collection: str, vector_or_text: Any, *, top_k: int, flt: Optional[Filter] = None, threshold: float = 0.0, ef_search: Optional[int] = None, vector_field: Optional[str] = None) -> List[Tuple[str, float, Dict[str, Any]]]:
         if self._conn is None:
@@ -333,6 +367,7 @@ class PostgresPgvectorAdapter(StorageAdapter):
         finally:
             cur.close()
 
+    @pyinstrument.profile()
     def _fetchall(self, sql: str, params: Optional[Tuple[Any, ...]] = None) -> List[Tuple[Any, ...]]:
         if self._conn is None:
             return []

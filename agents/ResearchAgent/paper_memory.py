@@ -216,9 +216,30 @@ class PaperMemory:
         except Exception:
             return None
 
+    def _segment_key_from_arxiv_id(self, arxiv_id: str) -> Optional[str]:
+        """Best-effort derive segment from arXiv id (e.g., 2301.01234 -> 2023H1)."""
+        try:
+            base = str(arxiv_id).split('v', 1)[0]
+            m = re.match(r"^(\d{2})(\d{2})[.\-_]", base)
+            if not m:
+                return None
+            yy = int(m.group(1))
+            mm = int(m.group(2))
+            year = 2000 + yy if yy < 70 else 1900 + yy
+            half = "H1" if 1 <= mm <= 6 else "H2"
+            return f"{year}{half}"
+        except Exception:
+            return None
+
     # ------------------------------ Existence checks ------------------------------
     def _exists_with_any_segment(self, item_id: str) -> bool:
-        for seg in self._list_existing_segments():
+        # Prefer segment derived from arXiv id to avoid scanning all segments
+        first_seg = self._segment_key_from_arxiv_id(item_id)
+        ordered: List[str] = []
+        if first_seg:
+            ordered.append(first_seg)
+        ordered.extend([s for s in self._list_existing_segments() if s != first_seg])
+        for seg in ordered:
             try:
                 um = self._get_segment_um(seg)
                 rows = um.query(self.cfg.collection_name, Filter(expr={"eq": ["id", str(item_id)]}, limit=1))
@@ -303,7 +324,12 @@ class PaperMemory:
         out: List[Dict[str, Any]] = []
         # If version specified, return exact first hit
         if re.search(r"v\d+$", cid):
-            for seg in self._list_existing_segments():
+            first_seg = self._segment_key_from_arxiv_id(cid)
+            ordered: List[str] = []
+            if first_seg:
+                ordered.append(first_seg)
+            ordered.extend([s for s in self._list_existing_segments() if s != first_seg])
+            for seg in ordered:
                 try:
                     um = self._get_segment_um(seg)
                     rows = um.query(self.cfg.collection_name, Filter(expr={"eq": ["id", cid]}, limit=1))
@@ -316,7 +342,12 @@ class PaperMemory:
             return []
 
         base = cid
-        for seg in self._list_existing_segments():
+        first_seg = self._segment_key_from_arxiv_id(base)
+        ordered2: List[str] = []
+        if first_seg:
+            ordered2.append(first_seg)
+        ordered2.extend([s for s in self._list_existing_segments() if s != first_seg])
+        for seg in ordered2:
             try:
                 um = self._get_segment_um(seg)
                 # Fetch by scanning ids in this segment; use LIKE to minimize load
@@ -392,7 +423,12 @@ class PaperMemory:
         if not cid:
             return None
         if re.search(r"v\d+$", cid):
-            for seg in self._list_existing_segments():
+            first_seg = self._segment_key_from_arxiv_id(cid)
+            ordered: List[str] = []
+            if first_seg:
+                ordered.append(first_seg)
+            ordered.extend([s for s in self._list_existing_segments() if s != first_seg])
+            for seg in ordered:
                 row = self._fetch_vector_row(seg, cid)
                 if row is not None:
                     return row
@@ -402,7 +438,12 @@ class PaperMemory:
         best: Optional[Tuple[str, List[float], Dict[str, Any]]] = None
         best_ver = -1
         base = cid
-        for seg in self._list_existing_segments():
+        first_seg = self._segment_key_from_arxiv_id(base)
+        ordered2: List[str] = []
+        if first_seg:
+            ordered2.append(first_seg)
+        ordered2.extend([s for s in self._list_existing_segments() if s != first_seg])
+        for seg in ordered2:
             try:
                 um = self._get_segment_um(seg)
                 rows = um.query(self.cfg.collection_name, Filter(expr={"like": ["id", f"{base}%"]}, limit=10000))

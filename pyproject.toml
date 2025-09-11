@@ -44,6 +44,11 @@ opts = [
     "numba==0.61.2",
     "umap-learn>=0.5.9.post2",
     "plotly>=6.3.0",
+    "flask-socketio>=5.5.1",
+    "python-socketio>=5.13.0",
+    "python-engineio>=4.12.2",
+    "eventlet>=0.40.3",
+    "flask-cors>=6.0.1",
 ]
 
 [build-system]

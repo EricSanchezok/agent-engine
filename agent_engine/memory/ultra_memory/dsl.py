@@ -88,3 +88,17 @@ def build_where(flt: Filter) -> Tuple[str, List[Any]]:
     return where_sql, params
 
 
+def build_count(table: str, flt: Filter) -> Tuple[str, List[Any]]:
+    params: List[Any] = []
+    where_sql = _build_expr(flt.expr or {}, params)
+    sql = f'SELECT COUNT(*) FROM "{table}" WHERE {where_sql}'
+    return sql, params
+
+
+def build_exists(table: str, flt: Filter) -> Tuple[str, List[Any]]:
+    params: List[Any] = []
+    where_sql = _build_expr(flt.expr or {}, params)
+    sql = f'SELECT 1 FROM "{table}" WHERE {where_sql} LIMIT 1'
+    return sql, params
+
+
