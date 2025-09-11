@@ -13,7 +13,7 @@ from agent_engine.memory.e_memory import PodEMemory, Record
 from agent_engine.utils import get_current_file_dir
 from agent_engine.llm_client import AzureClient
 
-CONCURRENCY = 128
+CONCURRENCY = 32
 sem = asyncio.Semaphore(CONCURRENCY)
 data_dir = "agents/ICUAssistantAgent/database/icu_patients"
 
@@ -102,8 +102,35 @@ async def preload_single_event(event_info: EventInfo) -> Tuple[str, bool, str]:
             logger.error(f"Error preloading event {event_info.event_id}: {e}")
             return event_info.event_id, False, f"error: {str(e)}"
 
+async def preload_batch(events_batch: List[EventInfo]) -> Tuple[int, int, int, List[str]]:
+    """Preload a batch of events"""
+    batch_cached = 0
+    batch_preloaded = 0
+    batch_errors = 0
+    batch_failed_ids = []
+    
+    # Process batch concurrently
+    tasks = [preload_single_event(event) for event in events_batch]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            batch_errors += 1
+            batch_failed_ids.append(events_batch[i].event_id)
+        else:
+            event_id, success, status = result
+            if status == "already_cached":
+                batch_cached += 1
+            elif status == "success":
+                batch_preloaded += 1
+            else:
+                batch_errors += 1
+                batch_failed_ids.append(event_id)
+    
+    return batch_cached, batch_preloaded, batch_errors, batch_failed_ids
+
 async def concurrent_preload():
-    """Concurrent preloading of all events with detailed progress logging"""
+    """Concurrent preloading of all events with batch processing"""
     start_time = time.time()
     
     # Get initial cache count
@@ -119,61 +146,114 @@ async def concurrent_preload():
     total_events = len(all_events)
     logger.info(f"Total events to process: {total_events}")
     
-    # Create tasks for concurrent execution
-    tasks = [preload_single_event(event) for event in all_events]
+    # Calculate how many events need to be processed (not already cached)
+    events_to_process = total_events - initial_cache_count
+    expected_final_count = total_events  # All events should be cached
+    logger.info(f"Events already cached: {initial_cache_count}")
+    logger.info(f"Events to process: {events_to_process}")
+    logger.info(f"Expected final cache count: {expected_final_count}")
     
-    logger.info(f"Starting concurrent preload with {CONCURRENCY} concurrent workers")
-    logger.info("Progress will be logged every 50 completed events")
+    # Process in batches
+    BATCH_SIZE = 64
+    total_batches = (total_events + BATCH_SIZE - 1) // BATCH_SIZE
+    logger.info(f"Processing {total_events} events in {total_batches} batches of {BATCH_SIZE}")
     
-    # Execute all tasks concurrently and track progress
-    completed_count = 0
-    cached_count = 0
-    preloaded_count = 0
-    error_count = 0
-    last_log_time = time.time()
+    # Track progress
+    total_cached = 0
+    total_preloaded = 0
+    total_errors = 0
+    processed_events = 0
+    failed_event_ids = []  # Store failed event IDs
     
-    # Process results as they complete
-    for task in asyncio.as_completed(tasks):
-        event_id, success, status = await task
-        completed_count += 1
+    # Track timing for preloaded events only
+    preload_start_time = None
+    total_preload_time = 0
+    
+    batch_start_time = start_time
+    
+    for batch_idx in range(total_batches):
+        batch_start = batch_idx * BATCH_SIZE
+        batch_end = min(batch_start + BATCH_SIZE, total_events)
+        events_batch = all_events[batch_start:batch_end]
         
-        if status == "already_cached":
-            cached_count += 1
-        elif status == "success":
-            preloaded_count += 1
-        else:
-            error_count += 1
+        logger.info(f"Processing batch {batch_idx + 1}/{total_batches} "
+                   f"(events {batch_start + 1}-{batch_end})")
         
-        # Log progress every 50 events or every 10 seconds
-        current_time = time.time()
-        if completed_count % 50 == 0 or (current_time - last_log_time) >= 10:
-            elapsed = current_time - start_time
-            rate = completed_count / elapsed if elapsed > 0 else 0
-            
-            logger.info(f"Progress: {completed_count}/{total_events} ({completed_count/total_events*100:.1f}%) "
-                       f"- Cached: {cached_count}, Preloaded: {preloaded_count}, Errors: {error_count} "
-                       f"- Rate: {rate:.1f} events/sec")
-            
-            last_log_time = current_time
+        # Process batch
+        batch_start_time = time.time()
+        batch_cached, batch_preloaded, batch_errors, batch_failed_ids = await preload_batch(events_batch)
+        
+        # Update totals
+        total_cached += batch_cached
+        total_preloaded += batch_preloaded
+        total_errors += batch_errors
+        processed_events += len(events_batch)
+        failed_event_ids.extend(batch_failed_ids)
+        
+        # Track timing for preloaded events only
+        if batch_preloaded > 0:
+            if preload_start_time is None:
+                preload_start_time = batch_start_time
+            total_preload_time += time.time() - batch_start_time
+        
+        # Calculate batch timing and rate (only for actual preloaded events)
+        batch_elapsed = time.time() - batch_start_time
+        batch_rate = batch_preloaded / batch_elapsed if batch_elapsed > 0 and batch_preloaded > 0 else 0
+        
+        # Calculate overall progress
+        current_cache_count = event_cache.count()
+        new_events_added = current_cache_count - initial_cache_count
+        progress_percentage = (new_events_added / events_to_process * 100) if events_to_process > 0 else 100
+        
+        # Calculate preload rate (only for events that were actually preloaded)
+        preload_rate = total_preloaded / total_preload_time if total_preload_time > 0 and total_preloaded > 0 else 0
+        
+        logger.info(f"Batch {batch_idx + 1} completed in {batch_elapsed:.2f}s")
+        if batch_preloaded > 0:
+            logger.info(f"Batch preload rate: {batch_rate:.1f} events/sec")
+        logger.info(f"Batch results - Cached: {batch_cached}, Preloaded: {batch_preloaded}, Errors: {batch_errors}")
+        logger.info(f"Overall progress: {new_events_added}/{events_to_process} events processed "
+                   f"({progress_percentage:.1f}%) - Total cached: {current_cache_count}/{expected_final_count}")
+        if total_preloaded > 0:
+            logger.info(f"Preload rate: {preload_rate:.1f} events/sec")
+        logger.info("-" * 60)
+    
+    # Save failed event IDs to JSON file
+    if failed_event_ids:
+        failed_events_file = Path(get_current_file_dir().parent / "database" / "failed_events.json")
+        failed_events_data = {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "total_failed_events": len(failed_event_ids),
+            "failed_event_ids": failed_event_ids
+        }
+        
+        try:
+            with open(failed_events_file, "w", encoding="utf-8") as f:
+                json.dump(failed_events_data, f, indent=2, ensure_ascii=False)
+            logger.info(f"Failed event IDs saved to: {failed_events_file}")
+        except Exception as e:
+            logger.error(f"Failed to save failed events file: {e}")
     
     # Final statistics
     final_cache_count = event_cache.count()
     total_elapsed = time.time() - start_time
-    overall_rate = completed_count / total_elapsed if total_elapsed > 0 else 0
     
     logger.info("=" * 80)
     logger.info("PRELOAD COMPLETED")
     logger.info("=" * 80)
-    logger.info(f"Total events processed: {completed_count}")
-    logger.info(f"Events already cached: {cached_count}")
-    logger.info(f"Events preloaded: {preloaded_count}")
-    logger.info(f"Errors: {error_count}")
+    logger.info(f"Total events processed: {processed_events}")
+    logger.info(f"Events already cached: {total_cached}")
+    logger.info(f"Events preloaded: {total_preloaded}")
+    logger.info(f"Errors: {total_errors}")
     logger.info(f"Initial cache count: {initial_cache_count}")
     logger.info(f"Final cache count: {final_cache_count}")
     logger.info(f"New events added: {final_cache_count - initial_cache_count}")
     logger.info(f"Total time: {total_elapsed:.2f} seconds")
-    logger.info(f"Average rate: {overall_rate:.1f} events/second")
-    logger.info(f"Success rate: {(completed_count - error_count) / completed_count * 100:.1f}%")
+    if total_preloaded > 0:
+        logger.info(f"Preload rate: {total_preloaded / total_preload_time:.1f} events/second")
+    logger.info(f"Success rate: {(processed_events - total_errors) / processed_events * 100:.1f}%")
+    if failed_event_ids:
+        logger.info(f"Failed events saved to: {failed_events_file}")
 
 if __name__ == "__main__":
     # Configuration: manually set the action here

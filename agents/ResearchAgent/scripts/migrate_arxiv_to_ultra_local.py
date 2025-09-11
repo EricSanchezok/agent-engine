@@ -16,12 +16,11 @@ from agent_engine.agent_logger.agent_logger import AgentLogger
 from agents.ResearchAgent.paper_memory import PaperMemory, PaperMemoryConfig
 from agent_engine.memory.ultra_memory import Record
 
-from agents.ResearchAgent.config import DSN_TEMPLATE_LOCAL
 
 
 # ----------------------------- Local server configuration -----------------------------
 # Local database connection since we're running on the same server as the database
-DSN_TEMPLATE: str = DSN_TEMPLATE_LOCAL
+DSN_TEMPLATE: str = os.getenv('DSN_TEMPLATE_LOCAL')
 
 # Optional allow-list of target databases present on the remote server.
 ALLOWED_SEGMENTS: Optional[List[str]] = [

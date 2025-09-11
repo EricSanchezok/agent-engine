@@ -29,15 +29,33 @@ class PaperMemoryConfig:
       - "2024H2" -> "h2_2024"
 
     If dsn_map is provided, it overrides the template for given segment keys.
+    
+    If dsn_template is not provided, it will be automatically determined based on
+    REMOTE_PAPER_DB environment variable:
+      - If REMOTE_PAPER_DB is set to "u盐城" or "remote", uses REMOTE_PAPER_DB_DSN
+      - Otherwise, uses LOCAL_PAPER_DB_DSN
     """
 
-    dsn_template: str
+    dsn_template: Optional[str] = None
     dsn_map: Optional[Dict[str, str]] = None
     collection_name: str = "papers"
     vector_field: str = "text_vec"
     vector_dim: int = 3072
     metric: str = "cosine"
     index_params: Dict[str, Any] = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        """Auto-determine DSN template from environment variables if not provided."""
+        if self.dsn_template is None:
+            remote_paper_db = os.getenv("REMOTE_PAPER_DB", "").strip()
+            if remote_paper_db in ["u盐城", "remote"]:
+                self.dsn_template = os.getenv("REMOTE_PAPER_DB_DSN", "")
+                if not self.dsn_template:
+                    raise ValueError("REMOTE_PAPER_DB_DSN environment variable is required when REMOTE_PAPER_DB is set to 'u盐城' or 'remote'")
+            else:
+                self.dsn_template = os.getenv("LOCAL_PAPER_DB_DSN", "")
+                if not self.dsn_template:
+                    raise ValueError("LOCAL_PAPER_DB_DSN environment variable is required when REMOTE_PAPER_DB is not set to 'u盐城' or 'remote'")
 
 
 class PaperMemory:
@@ -672,8 +690,8 @@ class PaperMemory:
 
 
 if __name__ == "__main__":
-    # Example usage (requires valid DSN template)
-    cfg = PaperMemoryConfig(dsn_template=os.getenv("PAPERMEMORY_DSN_TEMPLATE", "postgresql://user:pass@host:port/{db}"))
+    # Example usage (auto-determines DSN from environment variables)
+    cfg = PaperMemoryConfig()
     pm = PaperMemory(cfg)
     # print(pm.histogram_by_day())
     # rows = pm.get_by_month("202406", categories=["cs.AI"])  # will not include vectors unless DB is available
