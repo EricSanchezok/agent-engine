@@ -278,8 +278,11 @@ async def route_proxy(route_name: str, full_path: str, request: Request):
 
     try:
         async with client.stream(request.method, target_url, headers=fwd_headers, content=body_iter()) as upstream:
-            # response headers
+            # response headers - remove Content-Length to avoid mismatch
             resp_headers = {k: v for k, v in upstream.headers.items() if k.lower() not in HOP_BY_HOP_HEADERS}
+            # Remove Content-Length header to avoid length mismatch issues
+            resp_headers.pop("content-length", None)
+            resp_headers.pop("Content-Length", None)
 
             # response body size limiter
             max_resp = PROXY_SETTINGS.get("security", {}).get("max_response_body_bytes", 50 * 1024 * 1024)
