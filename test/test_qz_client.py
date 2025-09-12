@@ -30,10 +30,13 @@ async def test_qz_client_embedding():
         return
     
     logger.info("🚀 Starting QzClient embedding tests")
+
+    base_url = "https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn"
+    base_url = "http://eric-vpn.cpolar.top/r/eric_qwen3_embedding_8b"
     
     # Initialize QzClient
     try:
-        client = QzClient(api_key=api_key, base_url="https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn")
+        client = QzClient(api_key=api_key, base_url=base_url)
         logger.info("✅ QzClient initialized successfully")
     except Exception as e:
         logger.error(f"❌ Failed to initialize QzClient: {e}")
@@ -75,45 +78,11 @@ async def test_qz_client_embedding():
         await client.close()
         logger.info("✅ QzClient connection closed")
 
-async def test_qz_client_chat():
-    """Test QzClient chat functionality (if supported)"""
-    
-    api_key = os.getenv("INF_API_KEY")
-    if not api_key:
-        logger.error("❌ INF_API_KEY not found in environment variables")
-        return
-    
-    logger.info("\n🚀 Testing QzClient chat functionality")
-    
-    try:
-        client = QzClient(api_key=api_key)
-        
-        # Test chat functionality
-        response = await client.chat(
-            system_prompt="You are a helpful assistant.",
-            user_prompt="Hello, can you tell me what you are?",
-            model_name="gpt-3.5-turbo"
-        )
-        
-        if response:
-            logger.info(f"✅ Chat successful: {response}")
-        else:
-            logger.warning("⚠️ Chat failed or not supported by this endpoint")
-        
-        await client.close()
-        
-    except Exception as e:
-        logger.error(f"❌ Chat test failed: {e}")
-
 async def main():
     """Main test function"""
     logger.info("🧪 Starting QzClient comprehensive tests")
     
-    # Test embedding functionality (primary focus)
     await test_qz_client_embedding()
-    
-    # Test chat functionality (secondary)
-    # await test_qz_client_chat()
     
     logger.info("🏁 All tests completed")
 

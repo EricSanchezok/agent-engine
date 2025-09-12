@@ -119,7 +119,7 @@ PROXY_SETTINGS: Dict[str, Any] = {
         "eric_qwen3_embedding_8b": {
             "base_url": "https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn",
             "allowed_methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
-            "allow_private": False,                # External API, no private IPs
+            "allow_private": True,                 # Allow private IPs for this external API
             "allowed_cidrs": [],                   # No CIDR restrictions for external API
             "preserve_host": True,                 # Preserve original Host header for external API
             "request_headers_allowlist": [         # Allow necessary headers for API calls
