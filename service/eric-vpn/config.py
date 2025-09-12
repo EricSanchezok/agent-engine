@@ -31,11 +31,7 @@ PROXY_SETTINGS: Dict[str, Any] = {
     # - If "api_keys" is non-empty, incoming requests must include header: X-API-Key: <key>
     # - If empty, authentication is disabled
     "auth": {
-        "api_keys": [
-            "eric_vpn_hZP35c3L6oH47OgyejnSNn7JEpOENnbO",
-            "eric_vpn_0MFLIdC0DRMSzVzDKZmsUNHuC5vtQ8LR",
-            "eric_vpn_lzIIt2-d0Mw3Dyb86tVE5vLacT5Wl-wb"
-        ],
+        "api_keys": [],
         # Reserved for JWT in the future
         "jwt": {
             "enabled": False,
@@ -109,7 +105,7 @@ PROXY_SETTINGS: Dict[str, Any] = {
     # Callers will request: /r/{route_name}/{path}
     "routes": {
         # API service route - handles all sub-paths under /api/v1
-        "holos_api": {
+        "holos": {
             "base_url": "http://10.244.12.219:8000/api/v1",
             "allowed_methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
             "allow_private": True,                 # Allow private IPs for this internal service
@@ -117,6 +113,31 @@ PROXY_SETTINGS: Dict[str, Any] = {
             "preserve_host": False,                # Let httpx set Host based on target URL
             "request_headers_allowlist": None,     # Use global allowlist
             "timeouts": None,                      # Use global timeouts
+            "limits": None,                        # Use global limits
+            "add_x_forwarded_headers": True,
+        },
+        "eric_qwen3_embedding_8b": {
+            "base_url": "https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn",
+            "allowed_methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+            "allow_private": False,                # External API, no private IPs
+            "allowed_cidrs": [],                   # No CIDR restrictions for external API
+            "preserve_host": True,                 # Preserve original Host header for external API
+            "request_headers_allowlist": [         # Allow necessary headers for API calls
+                "accept",
+                "accept-encoding", 
+                "accept-language",
+                "content-type",
+                "authorization",                   # Important for Bearer token
+                "user-agent",
+                "x-request-id",
+                "content-length",
+            ],
+            "timeouts": {                          # Longer timeouts for embedding API
+                "connect": 10.0,
+                "read": 120.0,
+                "write": 120.0,
+                "pool": 120.0,
+            },
             "limits": None,                        # Use global limits
             "add_x_forwarded_headers": True,
         },
