@@ -1,0 +1,321 @@
+import asyncio
+import json
+from typing import Optional, List, Union, Dict, Any, AsyncIterator
+import httpx
+
+from .llm_client import LLMClient
+
+class QzClient(LLMClient):
+    """Qz API client implementation using HTTP requests"""
+    
+    def __init__(self, api_key: str, base_url: str = 'https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn'):
+        super().__init__()
+        self.api_key = api_key
+        self.base_url = base_url.rstrip('/')
+        
+        # Validate API key
+        if not self.api_key:
+            self.logger.error("❌ API key not provided")
+            raise ValueError("API key is required")
+        
+        # Initialize HTTP client
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url,
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {self.api_key}'
+            },
+            timeout=httpx.Timeout(60.0)
+        )
+        
+        self.logger.info(f"✅ QzClient initialized with endpoint: {self.base_url}")
+    
+    async def close(self):
+        """Close the HTTP client connection"""
+        if self.client:
+            await self.client.aclose()
+            self.logger.info("✅ QzClient connection closed")
+    
+    async def call_llm(
+        self, 
+        model_name: str,
+        messages: List[Dict[str, str]],
+        max_tokens: int = 8000,
+        temperature: Optional[float] = None,
+        **kwargs
+    ) -> Optional[str]:
+        """Call Qz API chat completion"""
+        trace_id = None
+        if hasattr(self, "monitor") and self.monitor is not None:
+            try:
+                trace_id = self.monitor.new_trace_id()
+                # Persist start record
+                params_for_record: Dict[str, Any] = {
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                }
+                params_for_record.update(kwargs or {})
+                await self.monitor.start_chat(
+                    trace_id=trace_id,
+                    provider="qz",
+                    model_name=model_name,
+                    messages=messages,
+                    params=params_for_record,
+                )
+            except Exception as e:
+                self.logger.warning(f"LLM monitor start failed: {e}")
+
+        self.logger.info(f"🚀 Requesting Qz API: model={model_name}, max_tokens={max_tokens}, trace_id={trace_id}")
+        
+        async def api_call():
+            params = self._prepare_chat_params(
+                model_name=model_name,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                **kwargs
+            )
+            
+            response = await self.client.post("/v1/chat/completions", json=params)
+            response.raise_for_status()
+            return response.json()
+        
+        try:
+            completion = await self.async_retry_on_exception(
+                api_call,
+                max_retries=3,
+                delay=5,
+                backoff=2
+            )
+            
+            # Extract content from response
+            if 'choices' in completion and len(completion['choices']) > 0:
+                content = completion['choices'][0]['message']['content']
+            else:
+                self.logger.error("❌ Invalid response format from Qz API")
+                return None
+            
+            self.logger.info(f"✅ Qz API response received successfully, trace_id={trace_id}")
+
+            # Extract usage if available
+            usage: Optional[Dict[str, Any]] = None
+            try:
+                if 'usage' in completion:
+                    usage_obj = completion['usage']
+                    usage = {
+                        "input_tokens": usage_obj.get("prompt_tokens") or usage_obj.get("input_tokens"),
+                        "output_tokens": usage_obj.get("completion_tokens") or usage_obj.get("output_tokens"),
+                        "total_tokens": usage_obj.get("total_tokens"),
+                    }
+            except Exception:
+                usage = None
+
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.complete_chat(
+                        trace_id=trace_id,
+                        response_text=content,
+                        usage=usage,
+                        raw=completion,
+                    )
+                except Exception as e:
+                    self.logger.warning(f"LLM monitor complete failed: {e}")
+            return content
+            
+        except Exception as e:
+            self.logger.error(f"❌ Failed to call Qz API after all retries: {e}, trace_id={trace_id}")
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.fail_chat(
+                        trace_id=trace_id,
+                        error_message=str(e),
+                        raw=None,
+                    )
+                except Exception as e2:
+                    self.logger.warning(f"LLM monitor fail record failed: {e2}")
+            return None
+    
+    async def get_embeddings(
+        self,
+        model_name: str,
+        text: Union[str, List[str]],
+        **kwargs
+    ) -> Optional[Union[List[float], List[List[float]]]]:
+        """Get embeddings from Qz API"""
+        self.logger.info(f"🚀 Requesting Qz API embeddings: model={model_name}")
+        
+        async def api_call():
+            payload = {
+                "model": model_name,
+                "input": text,
+                **kwargs
+            }
+            
+            response = await self.client.post("/v1/embeddings", json=payload)
+            response.raise_for_status()
+            return response.json()
+        
+        try:
+            response = await self.async_retry_on_exception(
+                api_call,
+                max_retries=3,
+                delay=5,
+                backoff=2
+            )
+            
+            # Handle both single and batch embeddings
+            if 'data' in response and len(response['data']) > 0:
+                if isinstance(text, str):
+                    # Single text input
+                    embeddings = response['data'][0]['embedding']
+                else:
+                    # Multiple texts input - return list of embeddings
+                    embeddings = [item['embedding'] for item in response['data']]
+            else:
+                self.logger.error("❌ Invalid embeddings response format from Qz API")
+                return None
+            
+            self.logger.info(f"✅ Qz API embeddings received successfully")
+            return embeddings
+            
+        except Exception as e:
+            self.logger.error(f"❌ Failed to get embeddings after all retries: {e}")
+            return None
+    
+    async def chat(
+        self, 
+        system_prompt: str, 
+        user_prompt: str,
+        model_name: str = 'gpt-3.5-turbo',
+        max_tokens: int = 8000,
+        temperature: Optional[float] = 0.7,
+        **kwargs
+    ) -> Optional[str]:
+        """Convenience method for chat completion with system and user prompts"""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        response = await self.call_llm(
+            model_name=model_name,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            **kwargs
+        )
+
+        return response
+    
+    async def embedding(
+        self, 
+        text: Union[str, List[str]], 
+        model_name: str = 'text-embedding-ada-002',
+        **kwargs
+    ) -> Optional[Union[List[float], List[List[float]]]]:
+        """Convenience method for getting embeddings"""
+        return await self.get_embeddings(
+            model_name=model_name,
+            text=text,
+            **kwargs
+        )
+
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model_name: str = 'gpt-3.5-turbo',
+        max_tokens: int = 8000,
+        temperature: Optional[float] = 0.7,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream chat completion yielding text chunks"""
+        trace_id = None
+        messages: List[Dict[str, str]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        # Start monitor
+        if hasattr(self, "monitor") and self.monitor is not None:
+            try:
+                trace_id = self.monitor.new_trace_id()
+                params_for_record: Dict[str, Any] = {
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "stream": True,
+                }
+                params_for_record.update(kwargs or {})
+                await self.monitor.start_chat(
+                    trace_id=trace_id,
+                    provider="qz",
+                    model_name=model_name,
+                    messages=messages,
+                    params=params_for_record,
+                )
+            except Exception as e:
+                self.logger.warning(f"LLM monitor start failed: {e}")
+
+        self.logger.info(f"🚀 Streaming from Qz API: model={model_name}, max_tokens={max_tokens}, trace_id={trace_id}")
+
+        # Prepare params
+        params = self._prepare_chat_params(
+            model_name=model_name,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            **kwargs,
+        )
+        params["stream"] = True
+
+        accumulated_parts: List[str] = []
+
+        try:
+            async with self.client.stream("POST", "/v1/chat/completions", json=params) as response:
+                response.raise_for_status()
+                
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        data_str = line[6:]  # Remove "data: " prefix
+                        if data_str.strip() == "[DONE]":
+                            break
+                        
+                        try:
+                            data = json.loads(data_str)
+                            if 'choices' in data and len(data['choices']) > 0:
+                                choice = data['choices'][0]
+                                if 'delta' in choice and 'content' in choice['delta']:
+                                    piece = choice['delta']['content']
+                                    if piece:
+                                        accumulated_parts.append(piece)
+                                        yield piece
+                        except json.JSONDecodeError:
+                            self.logger.warning(f"Failed to parse streaming data: {data_str}")
+                            continue
+
+            # complete monitor after stream ends
+            final_text = "".join(accumulated_parts)
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.complete_chat(
+                        trace_id=trace_id,
+                        response_text=final_text,
+                        usage=None,
+                        raw=None,
+                    )
+                except Exception as me:
+                    self.logger.warning(f"LLM monitor complete failed: {me}")
+            self.logger.info(f"✅ Qz API streaming finished, trace_id={trace_id}")
+
+        except Exception as e:
+            self.logger.error(f"❌ Qz API streaming failed: {e}, trace_id={trace_id}")
+            if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                try:
+                    await self.monitor.fail_chat(
+                        trace_id=trace_id,
+                        error_message=str(e),
+                        raw=None,
+                    )
+                except Exception as e2:
+                    self.logger.warning(f"LLM monitor fail record failed: {e2}")
+            return
