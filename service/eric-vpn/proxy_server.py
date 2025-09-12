@@ -256,6 +256,10 @@ async def route_proxy(route_name: str, full_path: str, request: Request):
     target_url = urljoin(base_url.rstrip('/') + '/', full_path)
     if request.url.query:
         target_url = f"{target_url}?{request.url.query}"
+    
+    # Log the proxy forwarding details
+    request_id = request.headers.get("X-Request-ID") or request.headers.get("x-request-id")
+    logger.info(f"🔄 Proxying {request.method} {request.url.path} -> {target_url} (route: {route_name}) request_id={request_id}")
 
     # headers
     per_route_allowlist = route_cfg.get("request_headers_allowlist")
@@ -292,6 +296,9 @@ async def route_proxy(route_name: str, full_path: str, request: Request):
         if content_length > max_resp:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream response too large")
         
+        # Log successful response
+        logger.info(f"✅ Proxy success: {request.method} {request.url.path} -> {target_url} returned {response.status_code} ({content_length} bytes) request_id={request_id}")
+        
         return Response(
             content=response.content,
             status_code=response.status_code,
@@ -301,14 +308,16 @@ async def route_proxy(route_name: str, full_path: str, request: Request):
     except HTTPException:
         raise
     except httpx.ConnectTimeout:
+        logger.error(f"❌ Proxy timeout: {request.method} {request.url.path} -> {target_url} (connect timeout) request_id={request_id}")
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Upstream connect timeout")
     except httpx.ReadTimeout:
+        logger.error(f"❌ Proxy timeout: {request.method} {request.url.path} -> {target_url} (read timeout) request_id={request_id}")
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Upstream read timeout")
     except httpx.HTTPError as e:
-        logger.error(f"httpx error: {str(e)}")
+        logger.error(f"❌ Proxy HTTP error: {request.method} {request.url.path} -> {target_url} error={str(e)} request_id={request_id}")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream error")
     except Exception as e:
-        logger.exception(f"unexpected proxy error: {str(e)}")
+        logger.exception(f"❌ Proxy unexpected error: {request.method} {request.url.path} -> {target_url} error={str(e)} request_id={request_id}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal proxy error")
 
 
