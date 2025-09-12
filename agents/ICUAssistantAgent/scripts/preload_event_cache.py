@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.memory.e_memory import PodEMemory, Record
 from agent_engine.utils import get_current_file_dir
-from agent_engine.llm_client import AzureClient
+from agent_engine.llm_client import QzClient
 
 CONCURRENCY = 32
 sem = asyncio.Semaphore(CONCURRENCY)
@@ -26,13 +26,13 @@ event_cache = PodEMemory(
     dimension=3072
 )
 
-api_key = os.getenv("AZURE_API_KEY", "")
+api_key = os.getenv("INF_API_KEY", "")
 if not api_key:
-    logger.error("AZURE_API_KEY not found in environment variables")
-    raise ValueError("AZURE_API_KEY is required")
+    logger.error("INF_API_KEY not found in environment variables")
+    raise ValueError("INF_API_KEY is required")
 
-llm_client = AzureClient(api_key=api_key)
-embed_model = "text-embedding-3-large"
+llm_client = QzClient(api_key=api_key, base_url="http://eric-vpn.cpolar.top/r/eric_qwen3_embedding_8b")
+embed_model = "eric-qwen3-embedding-8b"
 
 class EventInfo:
     """Event information for preloading"""
