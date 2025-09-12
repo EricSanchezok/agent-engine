@@ -33,7 +33,7 @@ async def test_qz_client_embedding():
     
     # Initialize QzClient
     try:
-        client = QzClient(api_key=api_key)
+        client = QzClient(api_key=api_key, base_url="https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn")
         logger.info("✅ QzClient initialized successfully")
     except Exception as e:
         logger.error(f"❌ Failed to initialize QzClient: {e}")
