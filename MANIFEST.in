@@ -1,0 +1,51 @@
+# Include agent_engine package and its data files
+include agent_engine/**/*.py
+include agent_engine/**/*.yaml
+include agent_engine/**/*.yml
+include agent_engine/**/*.txt
+include agent_engine/**/*.json
+include agent_engine/**/*.example.*
+
+# Include project metadata
+include README.md
+include LICENSE
+include pyproject.toml
+
+# Exclude development and project-specific directories
+exclude agents/*
+exclude core/*
+exclude test/*
+exclude service/*
+exclude scripts/*
+exclude web/*
+exclude docs/*
+exclude database/*
+exclude logs/*
+exclude example_prompts/*
+exclude guides/*
+
+# Exclude development files
+exclude *.bat
+exclude *.sh
+exclude *.zip
+exclude *.sqlite
+exclude *.json
+exclude uv.lock
+
+# Exclude build artifacts
+exclude build/*
+exclude dist/*
+exclude *.egg-info/*
+exclude __pycache__/*
+exclude **/__pycache__/*
+
+# Exclude IDE and editor files
+exclude .vscode/*
+exclude .idea/*
+exclude *.swp
+exclude *.swo
+exclude *~
+
+# Exclude version control
+exclude .git/*
+exclude .gitignore

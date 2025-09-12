@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A Python library for building intelligent agents"
 authors = [{name = "EricSanchez", email = "niexiaohangeric@163.com"}]
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.13.5"
 
 dependencies = [
@@ -65,13 +65,43 @@ exclude = [
     "agents*",        # 排除agents目录
     "core*",          # 排除core目录
     "test*",          # 排除test目录
+    "service*",       # 排除service目录
+    "scripts*",       # 排除scripts目录
+    "web*",           # 排除web目录
+    "docs*",          # 排除docs目录
+    "database*",      # 排除database目录
+    "logs*",          # 排除logs目录
+    "example_prompts*", # 排除example_prompts目录
+    "guides*",        # 排除guides目录
     "*.bat",          # 排除批处理文件
+    "*.sh",           # 排除shell脚本
+    "*.zip",          # 排除压缩文件
+    "*.sqlite",       # 排除数据库文件
+    "*.json",         # 排除项目配置文件
 ]
 
-# 确保不包含项目特定的配置文件
+# 确保包含agent_engine包内的配置文件
 [tool.setuptools.package-data]
-agent_engine = ["*.txt", "*.yml", "*.yaml", "*.json"]
+agent_engine = [
+    "**/*.yaml", 
+    "**/*.yml", 
+    "**/*.txt", 
+    "**/*.json",
+    "**/*.example.*"
+]
 
-# 排除项目特定的配置文件
+# 排除项目特定的配置文件和目录
 [tool.setuptools.exclude-package-data]
-"*" = ["agents/*", "core/*", "test/*"]
+"*" = [
+    "agents/*", 
+    "core/*", 
+    "test/*", 
+    "service/*",
+    "scripts/*",
+    "web/*",
+    "docs/*",
+    "database/*",
+    "logs/*",
+    "example_prompts/*",
+    "guides/*"
+]
