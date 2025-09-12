@@ -277,26 +277,26 @@ async def route_proxy(route_name: str, full_path: str, request: Request):
             yield chunk
 
     try:
-        async with client.stream(request.method, target_url, headers=fwd_headers, content=body_iter()) as upstream:
-            # response headers - remove Content-Length to avoid mismatch
-            resp_headers = {k: v for k, v in upstream.headers.items() if k.lower() not in HOP_BY_HOP_HEADERS}
-            # Remove Content-Length header to avoid length mismatch issues
-            resp_headers.pop("content-length", None)
-            resp_headers.pop("Content-Length", None)
-
-            # response body size limiter
-            max_resp = PROXY_SETTINGS.get("security", {}).get("max_response_body_bytes", 50 * 1024 * 1024)
-            total = 0
-
-            async def resp_aiter():
-                nonlocal total
-                async for part in upstream.aiter_raw():
-                    total += len(part)
-                    if total > max_resp:
-                        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream response too large")
-                    yield part
-
-            return StreamingResponse(resp_aiter(), status_code=upstream.status_code, headers=resp_headers)
+        # Use regular request instead of stream to avoid stream closure issues
+        response = await client.request(request.method, target_url, headers=fwd_headers, content=body_iter())
+        
+        # response headers - remove Content-Length to avoid mismatch
+        resp_headers = {k: v for k, v in response.headers.items() if k.lower() not in HOP_BY_HOP_HEADERS}
+        # Remove Content-Length header to avoid length mismatch issues
+        resp_headers.pop("content-length", None)
+        resp_headers.pop("Content-Length", None)
+        
+        # Check response size
+        max_resp = PROXY_SETTINGS.get("security", {}).get("max_response_body_bytes", 50 * 1024 * 1024)
+        content_length = len(response.content)
+        if content_length > max_resp:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Upstream response too large")
+        
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=resp_headers
+        )
 
     except HTTPException:
         raise
