@@ -8,7 +8,7 @@ from .llm_client import LLMClient
 class QzClient(LLMClient):
     """Qz API client implementation using HTTP requests"""
     
-    def __init__(self, api_key: str, base_url: str = 'https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn'):
+    def __init__(self, api_key: str, base_url: str):
         super().__init__()
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
@@ -186,7 +186,7 @@ class QzClient(LLMClient):
         self, 
         system_prompt: str, 
         user_prompt: str,
-        model_name: str = 'gpt-3.5-turbo',
+        model_name: str,
         max_tokens: int = 8000,
         temperature: Optional[float] = 0.7,
         **kwargs
@@ -210,7 +210,7 @@ class QzClient(LLMClient):
     async def embedding(
         self, 
         text: Union[str, List[str]], 
-        model_name: str = 'text-embedding-ada-002',
+        model_name: str,
         **kwargs
     ) -> Optional[Union[List[float], List[List[float]]]]:
         """Convenience method for getting embeddings"""
@@ -224,7 +224,7 @@ class QzClient(LLMClient):
         self,
         system_prompt: str,
         user_prompt: str,
-        model_name: str = 'gpt-3.5-turbo',
+        model_name: str,
         max_tokens: int = 8000,
         temperature: Optional[float] = 0.7,
         **kwargs
