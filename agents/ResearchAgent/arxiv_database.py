@@ -19,7 +19,7 @@ from agent_engine.utils import get_current_file_dir
 
 from core.arxiv_fetcher import ArxivPaper
 
-MAX_ELEMENTS_PER_SHARD = 3
+MAX_ELEMENTS_PER_SHARD = 200000
 
 class ArxivDatabase:
     """

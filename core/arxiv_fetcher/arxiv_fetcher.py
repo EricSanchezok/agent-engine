@@ -25,6 +25,105 @@ from agent_engine.agent_logger import AgentLogger
 from .arxiv_paper import ArxivPaper
 
 
+def validate_pdf_integrity(pdf_data: bytes) -> bool:
+    """
+    Validate PDF integrity.
+    
+    Args:
+        pdf_data: PDF data as bytes
+        
+    Returns:
+        True if PDF is valid, False otherwise
+    """
+    try:
+        # Check minimum size
+        if len(pdf_data) < 8:
+            return False
+        
+        # Try to read with PyPDF2 if available
+        try:
+            from PyPDF2 import PdfReader
+            reader = PdfReader(io.BytesIO(pdf_data), strict=False)
+            num_pages = len(reader.pages)
+            if num_pages == 0:
+                return False
+            
+            return True
+            
+        except ImportError:
+            # PyPDF2 not available, use basic validation
+            return True
+            
+        except Exception:
+            return False
+            
+    except Exception:
+        return False
+
+
+def get_pdf_storage_path(paper: ArxivPaper, pdf_storage_dir: str) -> Path:
+    """
+    Generate the storage path for a PDF file based on paper and storage directory.
+    
+    Directory structure: YYYY/MM/DD/full_id.pdf
+    
+    Args:
+        paper: ArxivPaper object
+        pdf_storage_dir: Base directory for PDF storage
+        
+    Returns:
+        Path to where the PDF should be stored
+    """
+    pdf_storage_path = Path(pdf_storage_dir)
+    
+    # Determine date for directory structure
+    paper_date = paper.published_date or paper.submitted_date
+    if paper_date is None:
+        # Fallback to current date if no date available
+        paper_date = datetime.now()
+    
+    # Create date-based directory structure: YYYY/MM/DD
+    year_dir = str(paper_date.year)
+    month_dir = f"{paper_date.month:02d}"
+    day_dir = f"{paper_date.day:02d}"
+    
+    # Create the full directory path
+    date_dir = pdf_storage_path / year_dir / month_dir / day_dir
+    
+    # Create filename using full_id only
+    filename = f"{paper.full_id}.pdf"
+    
+    return date_dir / filename
+
+
+def check_pdf_exists_and_valid(paper: ArxivPaper, pdf_storage_dir: str) -> bool:
+    """
+    Check if PDF file exists and is valid.
+    
+    Args:
+        paper: ArxivPaper object
+        pdf_storage_dir: Base directory for PDF storage
+        
+    Returns:
+        True if PDF exists and is valid, False otherwise
+    """
+    try:
+        pdf_path = get_pdf_storage_path(paper, pdf_storage_dir)
+        
+        # Check if file exists
+        if not pdf_path.exists():
+            return False
+        
+        # Check if file is valid PDF
+        with open(pdf_path, 'rb') as f:
+            pdf_data = f.read()
+        
+        return validate_pdf_integrity(pdf_data)
+        
+    except Exception:
+        return False
+
+
 def normalize_arxiv_id(paper_id: str) -> str:
     """
     Normalize arXiv ID for arXiv API compatibility.
@@ -258,12 +357,12 @@ class ArxivFetcher:
                 return False, paper
             
             # Validate PDF integrity
-            if not self._validate_pdf_integrity(pdf_data):
+            if not validate_pdf_integrity(pdf_data):
                 self.logger.error(f"Downloaded PDF failed integrity validation for paper {paper.full_id}")
                 return False, paper
             
             # Save to file with date-based directory structure
-            pdf_path = await self._save_pdf_to_file(paper, pdf_data)
+            pdf_path = self._save_pdf_to_file(paper, pdf_data)
             paper.pdf_file_path = str(pdf_path)
             
             self.logger.info(f"Successfully downloaded PDF for paper {paper.full_id}")
@@ -324,52 +423,10 @@ class ArxivFetcher:
         
         return None
     
-    def _validate_pdf_integrity(self, pdf_data: bytes) -> bool:
-        """
-        Validate PDF integrity.
-        
-        Args:
-            pdf_data: PDF data as bytes
-            
-        Returns:
-            True if PDF is valid, False otherwise
-        """
-        try:
-            # Check minimum size
-            if len(pdf_data) < 8:
-                self.logger.warning(f"PDF too small ({len(pdf_data)} bytes)")
-                return False
-            
-            # Try to read with PyPDF2 if available
-            try:
-                from PyPDF2 import PdfReader
-                reader = PdfReader(io.BytesIO(pdf_data), strict=False)
-                num_pages = len(reader.pages)
-                if num_pages == 0:
-                    self.logger.warning("PDF has 0 pages")
-                    return False
-                
-                self.logger.debug(f"PDF validation successful: {num_pages} pages, {len(pdf_data)} bytes")
-                return True
-                
-            except ImportError:
-                # PyPDF2 not available, use basic validation
-                self.logger.debug("PyPDF2 not available, using basic PDF validation")
-                return True
-                
-            except Exception as e:
-                self.logger.warning(f"PDF validation failed: {e}")
-                return False
-                
-        except Exception as e:
-            self.logger.error(f"PDF validation error: {e}")
-            return False
     
-    async def _save_pdf_to_file(self, paper: ArxivPaper, pdf_data: bytes) -> Path:
+    def _save_pdf_to_file(self, paper: ArxivPaper, pdf_data: bytes) -> Path:
         """
         Save PDF data to file system with date-based directory structure.
-        
-        Directory structure: YYYY/MM/DD/full_id.pdf
         
         Args:
             paper: ArxivPaper object
@@ -378,25 +435,11 @@ class ArxivFetcher:
         Returns:
             Path to saved PDF file
         """
-        # Determine date for directory structure
-        paper_date = paper.published_date or paper.submitted_date
-        if paper_date is None:
-            # Fallback to current date if no date available
-            paper_date = datetime.now()
+        # Get the storage path using the external function
+        pdf_path = get_pdf_storage_path(paper, str(self.pdf_storage_dir))
         
-        # Create date-based directory structure: YYYY/MM/DD
-        year_dir = str(paper_date.year)
-        month_dir = f"{paper_date.month:02d}"
-        day_dir = f"{paper_date.day:02d}"
-        
-        # Create the full directory path
-        date_dir = self.pdf_storage_dir / year_dir / month_dir / day_dir
-        date_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Create filename using full_id only
-        filename = f"{paper.full_id}.pdf"
-        
-        pdf_path = date_dir / filename
+        # Create parent directories
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Write PDF data
         with open(pdf_path, 'wb') as f:
