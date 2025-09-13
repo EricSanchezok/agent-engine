@@ -140,11 +140,25 @@ class PodEMemory:
         return shard_id
     
     def _get_shard_for_record(self, record_id: str) -> int:
-        """Get the shard ID for a given record ID using consistent hashing."""
-        # Use hash of record ID to determine shard
-        hash_value = int(hashlib.md5(record_id.encode()).hexdigest(), 16)
-        # Use a large number for consistent hashing, then map to available shards
-        return hash_value % max(1, self._shard_count)
+        """Get the shard ID for a given record ID using existence-based sharding."""
+        shard_id = self._find_shard_with_record(record_id)
+        if shard_id is not None:
+            return shard_id
+        
+        if self._shards[self._current_shard].count() < self.max_elements_per_shard:
+            logger.debug(f"Record {record_id} will be added to shard {self._current_shard} (not full)")
+            return self._current_shard
+        
+        logger.debug(f"All shards are full, creating new shard for record {record_id}")
+        return self._create_new_shard()
+    
+    def _find_shard_with_record(self, record_id: str) -> Optional[int]:
+        """Find which shard contains the given record ID."""
+        for shard_id in sorted(self._shards.keys()):
+            shard = self._shards[shard_id]
+            if shard.exists(record_id):
+                return shard_id
+        return None
     
     def add(self, record: Record) -> bool:
         """
@@ -162,12 +176,8 @@ class PodEMemory:
                 import uuid
                 record.id = str(uuid.uuid4())
             
-            # Use consistent hashing to determine shard
+            # Get the appropriate shard (may create new shard if needed)
             shard_id = self._get_shard_for_record(record.id)
-            
-            # Ensure the target shard exists, create if necessary
-            while shard_id >= self._shard_count:
-                self._create_new_shard()
             
             # Add to appropriate shard
             shard = self._shards[shard_id]
@@ -196,41 +206,44 @@ class PodEMemory:
         """
         if not records:
             return True
-        
         try:
             # Generate IDs for records that don't have them
             for record in records:
                 if not record.id:
                     import uuid
                     record.id = str(uuid.uuid4())
-            
-            # Group records by shard using consistent hashing
+            # 统计每个shard当前数量
+            shard_counts = {sid: shard.count() for sid, shard in self._shards.items()}
+            current_shard = self._current_shard
             shard_groups: Dict[int, List[Record]] = {}
-            
             for record in records:
-                # Use consistent hashing to determine shard
-                shard_id = self._get_shard_for_record(record.id)
-                
-                # Ensure the target shard exists, create if necessary
-                while shard_id >= self._shard_count:
-                    self._create_new_shard()
-                
+                # 已存在的直接分配
+                shard_id = self._find_shard_with_record(record.id)
+                if shard_id is not None:
+                    pass
+                else:
+                    # 新数据，找未满的shard
+                    while shard_counts.get(current_shard, 0) >= self.max_elements_per_shard:
+                        current_shard += 1
+                        if current_shard not in self._shards:
+                            self._create_new_shard()
+                            shard_counts[current_shard] = 0
+                    shard_id = current_shard
+                    shard_counts[shard_id] += 1
+                # 分组
                 if shard_id not in shard_groups:
                     shard_groups[shard_id] = []
                 shard_groups[shard_id].append(record)
-            
-            # Add records to each shard in batch
-            for shard_id, shard_records in shard_groups.items():
+            # 批量写入
+            for shard_id, recs in shard_groups.items():
                 shard = self._shards[shard_id]
-                success = shard.add_batch(shard_records)
+                success = shard.add_batch(recs)
                 if not success:
                     logger.error(f"Failed to add batch to shard {shard_id}")
                     return False
-                logger.debug(f"Added {len(shard_records)} records to shard {shard_id}")
-            
+                logger.debug(f"Added {len(recs)} records to shard {shard_id}")
             logger.info(f"Added {len(records)} records to PodEMemory in batch across {len(shard_groups)} shards")
             return True
-            
         except Exception as e:
             logger.error(f"Failed to add batch records to pod: {e}")
             return False
@@ -245,10 +258,10 @@ class PodEMemory:
         Returns:
             Record if found, None otherwise
         """
-        # Determine which shard contains this record
-        shard_id = self._get_shard_for_record(record_id)
+        # Find which shard contains this record
+        shard_id = self._find_shard_with_record(record_id)
         
-        if shard_id not in self._shards:
+        if shard_id is None:
             return None
         
         shard = self._shards[shard_id]
@@ -264,10 +277,10 @@ class PodEMemory:
         Returns:
             True if deleted, False if not found
         """
-        # Determine which shard contains this record
-        shard_id = self._get_shard_for_record(record_id)
+        # Find which shard contains this record
+        shard_id = self._find_shard_with_record(record_id)
         
-        if shard_id not in self._shards:
+        if shard_id is None:
             return False
         
         shard = self._shards[shard_id]
@@ -412,14 +425,9 @@ class PodEMemory:
         Returns:
             True if record exists, False otherwise
         """
-        # Determine which shard contains this record
-        shard_id = self._get_shard_for_record(record_id)
-        
-        if shard_id not in self._shards:
-            return False
-        
-        shard = self._shards[shard_id]
-        return shard.exists(record_id)
+        # Find which shard contains this record
+        shard_id = self._find_shard_with_record(record_id)
+        return shard_id is not None
     
     def has_vector(self, record_id: str) -> bool:
         """
@@ -431,10 +439,10 @@ class PodEMemory:
         Returns:
             True if record has vector, False otherwise
         """
-        # Determine which shard contains this record
-        shard_id = self._get_shard_for_record(record_id)
+        # Find which shard contains this record
+        shard_id = self._find_shard_with_record(record_id)
         
-        if shard_id not in self._shards:
+        if shard_id is None:
             return False
         
         shard = self._shards[shard_id]
@@ -453,25 +461,11 @@ class PodEMemory:
         if not record_ids:
             return {}
         
-        # Group IDs by shard
-        shard_groups: Dict[int, List[str]] = {}
-        for record_id in record_ids:
-            shard_id = self._get_shard_for_record(record_id)
-            if shard_id not in shard_groups:
-                shard_groups[shard_id] = []
-            shard_groups[shard_id].append(record_id)
-        
-        # Check existence in each shard
+        # Check existence in each shard for all IDs
         results = {}
-        for shard_id, ids in shard_groups.items():
-            if shard_id in self._shards:
-                shard = self._shards[shard_id]
-                shard_results = shard.exists_batch(ids)
-                results.update(shard_results)
-            else:
-                # Shard doesn't exist, all IDs are False
-                for record_id in ids:
-                    results[record_id] = False
+        for record_id in record_ids:
+            shard_id = self._find_shard_with_record(record_id)
+            results[record_id] = shard_id is not None
         
         return results
     
@@ -488,25 +482,15 @@ class PodEMemory:
         if not record_ids:
             return {}
         
-        # Group IDs by shard
-        shard_groups: Dict[int, List[str]] = {}
-        for record_id in record_ids:
-            shard_id = self._get_shard_for_record(record_id)
-            if shard_id not in shard_groups:
-                shard_groups[shard_id] = []
-            shard_groups[shard_id].append(record_id)
-        
-        # Check vector existence in each shard
+        # Check vector existence for each record
         results = {}
-        for shard_id, ids in shard_groups.items():
-            if shard_id in self._shards:
+        for record_id in record_ids:
+            shard_id = self._find_shard_with_record(record_id)
+            if shard_id is not None:
                 shard = self._shards[shard_id]
-                shard_results = shard.has_vector_batch(ids)
-                results.update(shard_results)
+                results[record_id] = shard.has_vector(record_id)
             else:
-                # Shard doesn't exist, all IDs are False
-                for record_id in ids:
-                    results[record_id] = False
+                results[record_id] = False
         
         return results
 
