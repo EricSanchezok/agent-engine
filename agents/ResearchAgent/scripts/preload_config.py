@@ -21,7 +21,7 @@ class PreloadConfig:
     
     # Embedding Configuration
     EMBEDDING_MODEL: str = "eric-qwen3-embedding-8b"
-    MAX_CONCURRENT_EMBEDDINGS: int = 256
+    MAX_CONCURRENT_EMBEDDINGS: int = 64
     
     # Database Configuration
     DATABASE_NAME: str = "arxiv_papers"
