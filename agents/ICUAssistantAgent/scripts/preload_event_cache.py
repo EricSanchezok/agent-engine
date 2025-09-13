@@ -22,8 +22,7 @@ logger = AgentLogger(__name__)
 
 event_cache = PodEMemory(
     name="event_cache",
-    persist_dir=Path(get_current_file_dir().parent / "database"),
-    dimension=3072
+    persist_dir=Path(get_current_file_dir().parent / "database")
 )
 
 api_key = os.getenv("INF_API_KEY", "")

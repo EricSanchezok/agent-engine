@@ -40,7 +40,6 @@ class EMemory:
         self,
         name: str,
         persist_dir: Optional[str] = None,
-        dimension: int = 1536,  # Default OpenAI embedding dimension
         distance_metric: str = "cosine"
     ):
         """
@@ -49,11 +48,9 @@ class EMemory:
         Args:
             name: Memory name (used for file naming)
             persist_dir: Storage directory (optional, defaults to root/.memory/name)
-            dimension: Vector dimension
             distance_metric: Distance metric ('cosine', 'l2', 'ip')
         """
         self.name = name
-        self.dimension = dimension
         self.distance_metric = distance_metric
         
         # Determine storage directory [[memory:8183017]]
@@ -517,7 +514,6 @@ class EMemory:
             "name": self.name,
             "total_records": total_records,
             "indexed_vectors": collection_count,
-            "dimension": self.dimension,
             "persist_dir": str(self.persist_dir),
             "sqlite_size_bytes": sqlite_size,
             "chroma_size_bytes": chroma_size,

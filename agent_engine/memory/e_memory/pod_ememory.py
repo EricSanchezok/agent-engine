@@ -29,7 +29,6 @@ class PodEMemory:
         self,
         name: str,
         persist_dir: Optional[str] = None,
-        dimension: int = 1536,
         max_elements_per_shard: int = 100000,
         distance_metric: str = "cosine"
     ):
@@ -39,12 +38,10 @@ class PodEMemory:
         Args:
             name: Pod name (used for subdirectory creation)
             persist_dir: Storage directory (optional, defaults to root/.memory/name)
-            dimension: Vector dimension
             max_elements_per_shard: Maximum elements per EMemory shard
             distance_metric: Distance metric ('cosine', 'l2', 'ip')
         """
         self.name = name
-        self.dimension = dimension
         self.max_elements_per_shard = max_elements_per_shard
         self.distance_metric = distance_metric
         
@@ -102,7 +99,6 @@ class PodEMemory:
                 shard = EMemory(
                     name=shard_name,
                     persist_dir=str(shard_dir),
-                    dimension=self.dimension,
                     distance_metric=self.distance_metric
                 )
                 
@@ -133,7 +129,6 @@ class PodEMemory:
         shard = EMemory(
             name=shard_name,
             persist_dir=str(shard_dir),
-            dimension=self.dimension,
             distance_metric=self.distance_metric
         )
         
