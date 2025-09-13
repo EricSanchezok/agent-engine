@@ -300,7 +300,6 @@ class ArxivDatabase:
             "categories": paper.categories,
             "summary": paper.summary,
             "pdf_url": paper.pdf_url,
-            "pdf_file_path": paper.pdf_file_path,
             "doi": paper.doi,
             "journal_ref": paper.journal_ref,
             "comment": paper.comment,
@@ -361,7 +360,6 @@ class ArxivDatabase:
             doi=attrs.get("doi"),
             journal_ref=attrs.get("journal_ref"),
             comment=attrs.get("comment"),
-            pdf_file_path=attrs.get("pdf_file_path"),
             metadata=attrs.get("metadata", {})
         )
         
