@@ -158,7 +158,7 @@ class PodEMemory:
         # Current shard is full, create a new one
         return self._create_new_shard()
     
-    def add(self, record: Record) -> str:
+    def add(self, record: Record) -> bool:
         """
         Add a record to the pod.
         
@@ -166,50 +166,14 @@ class PodEMemory:
             record: Record object to add
             
         Returns:
-            Record ID
+            True if successfully added, False otherwise
         """
-        # Generate ID if not provided
-        if not record.id:
-            import uuid
-            record.id = str(uuid.uuid4())
-        
-        # Use consistent hashing to determine shard
-        shard_id = self._get_shard_for_record(record.id)
-        
-        # Ensure the target shard exists, create if necessary
-        while shard_id >= self._shard_count:
-            self._create_new_shard()
-        
-        # Add to appropriate shard
-        shard = self._shards[shard_id]
-        result_id = shard.add(record)
-        
-        logger.debug(f"Added record {result_id} to shard {shard_id}")
-        return result_id
-
-    def add_batch(self, records: List[Record]) -> List[str]:
-        """
-        Add multiple records to the pod in batch.
-        
-        Args:
-            records: List of Record objects to add
-            
-        Returns:
-            List of record IDs
-        """
-        if not records:
-            return []
-        
-        # Generate IDs for records that don't have them
-        for record in records:
+        try:
+            # Generate ID if not provided
             if not record.id:
                 import uuid
                 record.id = str(uuid.uuid4())
-        
-        # Group records by shard using consistent hashing
-        shard_groups: Dict[int, List[Record]] = {}
-        
-        for record in records:
+            
             # Use consistent hashing to determine shard
             shard_id = self._get_shard_for_record(record.id)
             
@@ -217,20 +181,71 @@ class PodEMemory:
             while shard_id >= self._shard_count:
                 self._create_new_shard()
             
-            if shard_id not in shard_groups:
-                shard_groups[shard_id] = []
-            shard_groups[shard_id].append(record)
-        
-        # Add records to each shard in batch
-        all_record_ids = []
-        for shard_id, shard_records in shard_groups.items():
+            # Add to appropriate shard
             shard = self._shards[shard_id]
-            record_ids = shard.add_batch(shard_records)
-            all_record_ids.extend(record_ids)
-            logger.debug(f"Added {len(shard_records)} records to shard {shard_id}")
+            success = shard.add(record)
+            
+            if success:
+                logger.debug(f"Added record {record.id} to shard {shard_id}")
+            else:
+                logger.error(f"Failed to add record {record.id} to shard {shard_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"Failed to add record to pod: {e}")
+            return False
+
+    def add_batch(self, records: List[Record]) -> bool:
+        """
+        Add multiple records to the pod in batch.
         
-        logger.info(f"Added {len(records)} records to PodEMemory in batch across {len(shard_groups)} shards")
-        return all_record_ids
+        Args:
+            records: List of Record objects to add
+            
+        Returns:
+            True if all records were successfully added, False otherwise
+        """
+        if not records:
+            return True
+        
+        try:
+            # Generate IDs for records that don't have them
+            for record in records:
+                if not record.id:
+                    import uuid
+                    record.id = str(uuid.uuid4())
+            
+            # Group records by shard using consistent hashing
+            shard_groups: Dict[int, List[Record]] = {}
+            
+            for record in records:
+                # Use consistent hashing to determine shard
+                shard_id = self._get_shard_for_record(record.id)
+                
+                # Ensure the target shard exists, create if necessary
+                while shard_id >= self._shard_count:
+                    self._create_new_shard()
+                
+                if shard_id not in shard_groups:
+                    shard_groups[shard_id] = []
+                shard_groups[shard_id].append(record)
+            
+            # Add records to each shard in batch
+            for shard_id, shard_records in shard_groups.items():
+                shard = self._shards[shard_id]
+                success = shard.add_batch(shard_records)
+                if not success:
+                    logger.error(f"Failed to add batch to shard {shard_id}")
+                    return False
+                logger.debug(f"Added {len(shard_records)} records to shard {shard_id}")
+            
+            logger.info(f"Added {len(records)} records to PodEMemory in batch across {len(shard_groups)} shards")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to add batch records to pod: {e}")
+            return False
 
     def get(self, record_id: str) -> Optional[Record]:
         """
@@ -250,28 +265,6 @@ class PodEMemory:
         
         shard = self._shards[shard_id]
         return shard.get(record_id)
-    
-    def update(self, record: Record) -> bool:
-        """
-        Update an existing record.
-        
-        Args:
-            record: Record object with updated data (must have id)
-            
-        Returns:
-            True if updated, False if record not found
-        """
-        if not record.id:
-            raise ValueError("Record must have an ID for update")
-        
-        # Determine which shard contains this record
-        shard_id = self._get_shard_for_record(record.id)
-        
-        if shard_id not in self._shards:
-            return False
-        
-        shard = self._shards[shard_id]
-        return shard.update(record)
     
     def delete(self, record_id: str) -> bool:
         """

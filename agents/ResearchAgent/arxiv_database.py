@@ -19,6 +19,7 @@ from agent_engine.utils import get_current_file_dir
 
 from core.arxiv_fetcher import ArxivPaper
 
+MAX_ELEMENTS_PER_SHARD = 100000
 
 class ArxivDatabase:
     """
@@ -33,7 +34,6 @@ class ArxivDatabase:
         self,
         name: str = "arxiv_papers",
         persist_dir: Optional[str] = None,
-        max_elements_per_shard: int = 100000,
         distance_metric: str = "cosine"
     ):
         """
@@ -42,7 +42,6 @@ class ArxivDatabase:
         Args:
             name: Database name (used for PodEMemory)
             persist_dir: Storage directory (optional, defaults to ResearchAgent/database)
-            max_elements_per_shard: Maximum elements per shard (default: 100,000)
             distance_metric: Distance metric for vector search
         """
         self.logger = AgentLogger(self.__class__.__name__)
@@ -57,12 +56,12 @@ class ArxivDatabase:
         self.pod_memory = PodEMemory(
             name=name,
             persist_dir=str(self.persist_dir.parent),
-            max_elements_per_shard=max_elements_per_shard,
+            max_elements_per_shard=MAX_ELEMENTS_PER_SHARD,
             distance_metric=distance_metric
         )
         
         self.logger.info(f"ArxivDatabase '{name}' initialized at {self.persist_dir}")
-        self.logger.info(f"Max elements per shard: {max_elements_per_shard}")
+        self.logger.info(f"Max elements per shard: {MAX_ELEMENTS_PER_SHARD}")
     
     def add_paper(self, paper: ArxivPaper, embedding: Optional[List[float]] = None) -> str:
         """

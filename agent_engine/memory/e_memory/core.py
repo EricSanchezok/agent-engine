@@ -127,7 +127,7 @@ class EMemory:
         return datetime.utcnow().isoformat() + "Z"
 
 
-    def add(self, record: Record) -> str:
+    def add(self, record: Record) -> bool:
         """
         Add a record to the memory.
         
@@ -135,47 +135,51 @@ class EMemory:
             record: Record object to add
             
         Returns:
-            Record ID
+            True if successfully added, False otherwise
         """
-        # Generate ID and timestamp if not provided
-        record_id = record.id or self._generate_id()
-        record_timestamp = record.timestamp or self._get_current_timestamp()
-        record_attributes = record.attributes or {}
-        has_vector = 1 if record.vector else 0
-        
-        # Insert into SQLite
-        with sqlite3.connect(self.sqlite_path) as conn:
-            conn.execute("""
-                INSERT OR REPLACE INTO records (id, attributes, content, timestamp, has_vector)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                record_id,
-                json.dumps(record_attributes),
-                record.content,
-                record_timestamp,
-                has_vector
-            ))
-            conn.commit()
-        
-        # Add to ChromaDB if vector is provided
-        if record.vector:
-            try:
-                self.collection.add(
-                    embeddings=[record.vector],
-                    ids=[record_id],
-                    metadatas=[{
-                        "content": record.content,
-                        "attributes": json.dumps(record_attributes),
-                        "timestamp": record_timestamp
-                    }]
-                )
-            except Exception as e:
-                logger.error(f"Failed to add vector to ChromaDB: {e}")
-        
-        logger.debug(f"Added record {record_id} to EMemory")
-        return record_id
+        try:
+            # Generate ID and timestamp if not provided
+            record_id = record.id or self._generate_id()
+            record_timestamp = record.timestamp or self._get_current_timestamp()
+            record_attributes = record.attributes or {}
+            has_vector = 1 if record.vector else 0
+            
+            # Try to add to ChromaDB if vector is provided
+            if has_vector:
+                try:
+                    # ChromaDB only stores ID and vector - no metadata to avoid duplication
+                    self.collection.add(
+                        embeddings=[record.vector],
+                        ids=[record_id]
+                    )
+                    logger.debug(f"Successfully added vector for record {record_id} to ChromaDB")
+                except Exception as e:
+                    logger.error(f"Failed to add vector to ChromaDB for record {record_id}: {e}")
+                    # Set has_vector to 0 since ChromaDB storage failed
+                    has_vector = 0
+            
+            # Always insert into SQLite (contains all metadata)
+            with sqlite3.connect(self.sqlite_path) as conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO records (id, attributes, content, timestamp, has_vector)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    record_id,
+                    json.dumps(record_attributes),
+                    record.content,
+                    record_timestamp,
+                    has_vector
+                ))
+                conn.commit()
+            
+            logger.debug(f"Added record {record_id} to EMemory (has_vector={has_vector})")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to add record to EMemory: {e}")
+            return False
 
-    def add_batch(self, records: List[Record]) -> List[str]:
+    def add_batch(self, records: List[Record]) -> bool:
         """
         Add multiple records to the memory in batch.
         
@@ -183,82 +187,101 @@ class EMemory:
             records: List of Record objects to add
             
         Returns:
-            List of record IDs
+            True if all records were successfully added, False otherwise
         """
         if not records:
-            return []
+            return True
         
-        # ChromaDB has a maximum batch size limit
-        MAX_CHROMADB_BATCH_SIZE = 5000
-        
-        all_record_ids = []
-        
-        # Process records in chunks to respect ChromaDB batch size limits
-        for i in range(0, len(records), MAX_CHROMADB_BATCH_SIZE):
-            chunk = records[i:i + MAX_CHROMADB_BATCH_SIZE]
-            chunk_ids = self._add_batch_chunk(chunk)
-            all_record_ids.extend(chunk_ids)
-        
-        logger.debug(f"Added {len(records)} records to EMemory in batch")
-        return all_record_ids
+        try:
+            # ChromaDB has a maximum batch size limit
+            MAX_CHROMADB_BATCH_SIZE = 5000
+            
+            # Process records in chunks to respect ChromaDB batch size limits
+            for i in range(0, len(records), MAX_CHROMADB_BATCH_SIZE):
+                chunk = records[i:i + MAX_CHROMADB_BATCH_SIZE]
+                success = self._add_batch_chunk(chunk)
+                if not success:
+                    logger.error(f"Failed to add batch chunk starting at index {i}")
+                    return False
+            
+            logger.debug(f"Added {len(records)} records to EMemory in batch")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to add batch records to EMemory: {e}")
+            return False
     
-    def _add_batch_chunk(self, records: List[Record]) -> List[str]:
+    def _add_batch_chunk(self, records: List[Record]) -> bool:
         """Add a chunk of records to the memory."""
-        record_ids = []
-        vectors_to_add = []
-        metadatas_to_add = []
-        ids_for_vectors = []
-        
-        # Prepare all records for database insertion
-        db_data = []
-        for record in records:
-            # Generate ID and timestamp if not provided
-            record_id = record.id or self._generate_id()
-            record_timestamp = record.timestamp or self._get_current_timestamp()
-            record_attributes = record.attributes or {}
-            has_vector = 1 if record.vector else 0
+        try:
+            vectors_to_add = []
+            ids_for_vectors = []
+            successful_vector_ids = set()
             
-            record_ids.append(record_id)
+            # Prepare all records for database insertion
+            db_data = []
+            for record in records:
+                # Generate ID and timestamp if not provided
+                record_id = record.id or self._generate_id()
+                record_timestamp = record.timestamp or self._get_current_timestamp()
+                record_attributes = record.attributes or {}
+                has_vector = 1 if record.vector else 0
+                
+                # Prepare vector data for ChromaDB (only ID and vector)
+                if has_vector:
+                    vectors_to_add.append(record.vector)
+                    ids_for_vectors.append(record_id)
+                
+                # Prepare database data (will be updated after ChromaDB attempt)
+                db_data.append((
+                    record_id,
+                    json.dumps(record_attributes),
+                    record.content,
+                    record_timestamp,
+                    has_vector
+                ))
             
-            # Prepare database data
-            db_data.append((
-                record_id,
-                json.dumps(record_attributes),
-                record.content,
-                record_timestamp,
-                has_vector
-            ))
+            # Try to batch add to ChromaDB if vectors are provided
+            if vectors_to_add:
+                try:
+                    # ChromaDB only stores ID and vector - no metadata to avoid duplication
+                    self.collection.add(
+                        embeddings=vectors_to_add,
+                        ids=ids_for_vectors
+                    )
+                    # Mark all vectors as successfully added
+                    successful_vector_ids = set(ids_for_vectors)
+                    logger.debug(f"Successfully added {len(vectors_to_add)} vectors to ChromaDB")
+                except Exception as e:
+                    logger.error(f"Failed to add vectors to ChromaDB: {e}")
+                    # No vectors were successfully added, all has_vector will be 0
             
-            # Prepare vector data for ChromaDB
-            if record.vector:
-                vectors_to_add.append(record.vector)
-                metadatas_to_add.append({
-                    "content": record.content,
-                    "attributes": json.dumps(record_attributes),
-                    "timestamp": record_timestamp
-                })
-                ids_for_vectors.append(record_id)
-        
-        # Batch insert into SQLite
-        with sqlite3.connect(self.sqlite_path) as conn:
-            conn.executemany("""
-                INSERT OR REPLACE INTO records (id, attributes, content, timestamp, has_vector)
-                VALUES (?, ?, ?, ?, ?)
-            """, db_data)
-            conn.commit()
-        
-        # Batch add to ChromaDB if vectors are provided
-        if vectors_to_add:
-            try:
-                self.collection.add(
-                    embeddings=vectors_to_add,
-                    ids=ids_for_vectors,
-                    metadatas=metadatas_to_add
-                )
-            except Exception as e:
-                logger.error(f"Failed to add vectors to ChromaDB: {e}")
-        
-        return record_ids
+            # Update has_vector status based on ChromaDB success
+            final_db_data = []
+            for i, (record_id, attributes_json, content, timestamp, original_has_vector) in enumerate(db_data):
+                # Set has_vector to 1 only if ChromaDB storage was successful
+                final_has_vector = 1 if record_id in successful_vector_ids else 0
+                final_db_data.append((
+                    record_id,
+                    attributes_json,
+                    content,
+                    timestamp,
+                    final_has_vector
+                ))
+            
+            # Batch insert into SQLite (contains all metadata)
+            with sqlite3.connect(self.sqlite_path) as conn:
+                conn.executemany("""
+                    INSERT OR REPLACE INTO records (id, attributes, content, timestamp, has_vector)
+                    VALUES (?, ?, ?, ?, ?)
+                """, final_db_data)
+                conn.commit()
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to add batch chunk: {e}")
+            return False
 
     def get(self, id: str) -> Optional[Record]:
         """
@@ -270,6 +293,10 @@ class EMemory:
         Returns:
             Record if found, None otherwise
         """
+        # Check if record exists first
+        if not self.exists(id):
+            return None
+        
         with sqlite3.connect(self.sqlite_path) as conn:
             cursor = conn.execute("""
                 SELECT id, attributes, content, timestamp, has_vector
@@ -288,28 +315,6 @@ class EMemory:
                 )
             return None
 
-    def update(self, record: Record) -> bool:
-        """
-        Update an existing record.
-        
-        Args:
-            record: Record object with updated data (must have id)
-            
-        Returns:
-            True if updated, False if record not found
-        """
-        if not record.id:
-            raise ValueError("Record must have an ID for update")
-        
-        # Check if record exists
-        existing = self.get(record.id)
-        if not existing:
-            return False
-        
-        # Update the record (reuse add method which handles INSERT OR REPLACE)
-        self.add(record)
-        return True
-
     def delete(self, id: str) -> bool:
         """
         Delete a record by ID.
@@ -320,23 +325,28 @@ class EMemory:
         Returns:
             True if deleted, False if not found
         """
+        # Check if record exists first
+        if not self.exists(id):
+            logger.debug(f"Record {id} not found, nothing to delete")
+            return False
+        
+        # Check if record has vector before deletion
+        has_vector = self.has_vector(id)
+        
         # Delete from SQLite
         with sqlite3.connect(self.sqlite_path) as conn:
             cursor = conn.execute("DELETE FROM records WHERE id = ?", (id,))
-            deleted = cursor.rowcount > 0
             conn.commit()
         
-        # Delete from ChromaDB if it exists
-        if deleted:
+        # Delete from ChromaDB if it has vector
+        if has_vector:
             try:
                 self.collection.delete(ids=[id])
             except Exception as e:
                 logger.warning(f"Failed to delete vector from ChromaDB: {e}")
         
-        if deleted:
-            logger.debug(f"Deleted record {id} from EMemory")
-        
-        return deleted
+        logger.debug(f"Deleted record {id} from EMemory")
+        return True
 
     def list_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Record]:
         """
@@ -392,6 +402,9 @@ class EMemory:
 
     def clear(self) -> None:
         """Clear all records from memory."""
+        # Get count before clearing for logging
+        total_records = self.count()
+        
         # Clear SQLite
         with sqlite3.connect(self.sqlite_path) as conn:
             conn.execute("DELETE FROM records")
@@ -406,7 +419,7 @@ class EMemory:
         except Exception as e:
             logger.error(f"Failed to clear ChromaDB collection: {e}")
         
-        logger.info("Cleared all records from EMemory")
+        logger.info(f"Cleared {total_records} records from EMemory")
 
     def search_similar(
         self,
@@ -458,10 +471,10 @@ class EMemory:
             List of (Record, distance) tuples
         """
         try:
+            # ChromaDB only returns IDs and distances (no metadata since we removed it)
             results = self.collection.query(
                 query_embeddings=[query_vector],
-                n_results=k,
-                include=['metadatas']
+                n_results=k
             )
             
             if not results or not results.get('ids') or not results['ids']:
@@ -469,22 +482,21 @@ class EMemory:
             
             record_ids = results['ids'][0] if results['ids'] else []
             distances = results['distances'][0] if results['distances'] else []
-            metadatas = results['metadatas'][0] if results['metadatas'] else []
             
             if not record_ids:
                 return []
             
+            # Verify that all returned records still exist and have vectors
+            existing_records = self.has_vector_batch(record_ids)
+            
             results_list = []
-            for record_id, distance, metadata in zip(record_ids, distances, metadatas):
-                # Create Record from ChromaDB metadata
-                record = Record(
-                    id=record_id,
-                    attributes=json.loads(metadata.get("attributes", "{}")),
-                    content=metadata.get("content", ""),
-                    vector=None,  # We don't return the vector in this method
-                    timestamp=metadata.get("timestamp", "")
-                )
-                results_list.append((record, float(distance)))
+            for record_id, distance in zip(record_ids, distances):
+                # Only include records that still exist and have vectors
+                if existing_records.get(record_id, False):
+                    # Get complete record data from SQLite
+                    record = self.get(record_id)
+                    if record:
+                        results_list.append((record, float(distance)))
             
             return results_list
         except Exception as e:
