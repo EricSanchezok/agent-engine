@@ -85,8 +85,6 @@ class ArxivPaper:
     journal_ref: Optional[str] = None
     comment: Optional[str] = None
     
-    # File system path (replaces pdf_base64)
-    pdf_file_path: Optional[str] = None
     
     # Extended metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -146,7 +144,6 @@ class ArxivPaper:
             "doi": self.doi,
             "journal_ref": self.journal_ref,
             "comment": self.comment,
-            "pdf_file_path": self.pdf_file_path,
             "metadata": self.metadata,
         }
     
@@ -241,7 +238,6 @@ class ArxivPaper:
             doi=data.get("doi"),
             journal_ref=data.get("journal_ref"),
             comment=data.get("comment"),
-            pdf_file_path=data.get("pdf_file_path"),
             metadata=data.get("metadata", {}),
         )
     

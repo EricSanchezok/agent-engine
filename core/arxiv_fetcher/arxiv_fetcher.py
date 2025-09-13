@@ -315,7 +315,8 @@ class ArxivFetcher:
             
             async def download_with_semaphore(paper: ArxivPaper) -> Tuple[bool, ArxivPaper]:
                 async with semaphore:
-                    return await self._download_single_paper(paper, session)
+                    success = await self._download_single_paper(paper, session)
+                    return success, paper
             
             # Download all papers concurrently
             tasks = [download_with_semaphore(paper) for paper in papers]
@@ -342,11 +343,11 @@ class ArxivFetcher:
         self,
         paper: ArxivPaper,
         session: aiohttp.ClientSession
-    ) -> Tuple[bool, ArxivPaper]:
+    ) -> bool:
         """Download PDF for a single paper."""
         if not paper.pdf_url:
             self.logger.warning(f"No PDF URL available for paper {paper.full_id}")
-            return False, paper
+            return False
         
         try:
             # Download PDF
@@ -354,23 +355,24 @@ class ArxivFetcher:
             
             if pdf_data is None:
                 self.logger.error(f"Failed to download PDF for paper {paper.full_id}")
-                return False, paper
+                return False
             
             # Validate PDF integrity
             if not validate_pdf_integrity(pdf_data):
                 self.logger.error(f"Downloaded PDF failed integrity validation for paper {paper.full_id}")
-                return False, paper
+                return False
             
             # Save to file with date-based directory structure
-            pdf_path = self._save_pdf_to_file(paper, pdf_data)
-            paper.pdf_file_path = str(pdf_path)
+            save_success = self._save_pdf_to_file(paper, pdf_data)
+            if not save_success:
+                return False
             
             self.logger.info(f"Successfully downloaded PDF for paper {paper.full_id}")
-            return True, paper
+            return True
             
         except Exception as e:
             self.logger.error(f"Error downloading paper {paper.full_id}: {e}")
-            return False, paper
+            return False
     
     
     async def _download_pdf_with_retry(
@@ -424,7 +426,7 @@ class ArxivFetcher:
         return None
     
     
-    def _save_pdf_to_file(self, paper: ArxivPaper, pdf_data: bytes) -> Path:
+    def _save_pdf_to_file(self, paper: ArxivPaper, pdf_data: bytes) -> bool:
         """
         Save PDF data to file system with date-based directory structure.
         
@@ -433,19 +435,24 @@ class ArxivFetcher:
             pdf_data: PDF data as bytes
             
         Returns:
-            Path to saved PDF file
+            True if save successful, False otherwise
         """
-        # Get the storage path using the external function
-        pdf_path = get_pdf_storage_path(paper, str(self.pdf_storage_dir))
-        
-        # Create parent directories
-        pdf_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Write PDF data
-        with open(pdf_path, 'wb') as f:
-            f.write(pdf_data)
-        
-        return pdf_path
+        try:
+            # Get the storage path using the external function
+            pdf_path = get_pdf_storage_path(paper, str(self.pdf_storage_dir))
+            
+            # Create parent directories
+            pdf_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write PDF data
+            with open(pdf_path, 'wb') as f:
+                f.write(pdf_data)
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save PDF for paper {paper.full_id}: {e}")
+            return False
     
     async def get_random_papers(
         self,
