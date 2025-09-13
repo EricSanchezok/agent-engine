@@ -15,7 +15,6 @@ from ...agent_logger.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
 
-MAX_ELEMENTS_PER_SHARD = 5
 
 class PodEMemory:
     """
@@ -30,6 +29,7 @@ class PodEMemory:
         self,
         name: str,
         persist_dir: Optional[str] = None,
+        max_elements_per_shard: int = 100000,
         distance_metric: str = "cosine"
     ):
         """
@@ -38,10 +38,11 @@ class PodEMemory:
         Args:
             name: Pod name (used for subdirectory creation)
             persist_dir: Storage directory (optional, defaults to root/.memory/name)
+            max_elements_per_shard: Maximum elements per EMemory shard
             distance_metric: Distance metric ('cosine', 'l2', 'ip')
         """
         self.name = name
-        self.max_elements_per_shard = MAX_ELEMENTS_PER_SHARD
+        self.max_elements_per_shard = max_elements_per_shard
         self.distance_metric = distance_metric
         
         # Determine storage directory
@@ -64,7 +65,7 @@ class PodEMemory:
         self._load_existing_shards()
         
         logger.info(f"PodEMemory '{name}' initialized at {self.persist_dir}")
-        logger.info(f"Max elements per shard: {MAX_ELEMENTS_PER_SHARD}")
+        logger.info(f"Max elements per shard: {max_elements_per_shard}")
     
     def _load_existing_shards(self) -> None:
         """Load existing shards from the persist directory."""
