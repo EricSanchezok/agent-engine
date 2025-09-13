@@ -23,7 +23,7 @@ async def test_qz_client():
         
         # Test embedding generation
         test_text = "This is a test paper summary for embedding generation."
-        embedding = await client.get_embeddings(
+        embedding = await client.embedding(
             model_name=PreloadConfig.EMBEDDING_MODEL,
             text=test_text
         )

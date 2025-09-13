@@ -13,9 +13,11 @@ load_dotenv()
 class PreloadConfig:
     """Configuration for the Arxiv preloader."""
     
+    REMOTE = os.getenv("REMOTE", "false").lower() == "true" 
+
     # Qz API Configuration
     QZ_API_KEY: str = os.getenv("INF_API_KEY", "")
-    QZ_BASE_URL: str = "http://eric-vpn.cpolar.top/r/eric_qwen3_embedding_8b"
+    QZ_BASE_URL: str = "http://eric-vpn.cpolar.top/r/eric_qwen3_embedding_8b" if REMOTE else "https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn"
     
     # Embedding Configuration
     EMBEDDING_MODEL: str = "eric-qwen3-embedding-8b"
