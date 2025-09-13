@@ -2,8 +2,8 @@
 Arxiv Database Preloader
 
 This script preloads arXiv papers into the database by:
-1. Rolling back week by week from today
-2. Fetching all papers for each week using ArxivFetcher
+1. Rolling back day by day from today
+2. Fetching all papers for each day using ArxivFetcher
 3. Generating embeddings for paper summaries using QzClient
 4. Saving successful papers to ArxivDatabase
 5. Logging failed paper IDs to JSON files
@@ -25,7 +25,7 @@ from agents.ResearchAgent.arxiv_database import ArxivDatabase
 
 
 class ArxivPreloader:
-    """Arxiv database preloader with weekly rolling and concurrent processing."""
+    """Arxiv database preloader with daily rolling and concurrent processing."""
     
     def __init__(
         self,
@@ -73,22 +73,23 @@ class ArxivPreloader:
         await self.qz_client.close()
         self.logger.info("ArxivPreloader connections closed")
     
-    def _get_week_range(self, start_date: datetime) -> Tuple[datetime, datetime]:
+    def _get_day_range(self, target_date: datetime) -> Tuple[datetime, datetime]:
         """
-        Get the week range for a given start date.
+        Get the day range for a given target date.
+        For arXiv search, we use [target_date, target_date + 1 day) range.
         
         Args:
-            start_date: Starting date
+            target_date: Target date to search papers for
             
         Returns:
-            Tuple of (week_start, week_end) dates
+            Tuple of (day_start, day_end) dates
         """
-        # Get the start of the week (Monday)
-        days_since_monday = start_date.weekday()
-        week_start = start_date - timedelta(days=days_since_monday)
-        week_end = week_start + timedelta(days=6)  # Sunday
+        # Start of the target day
+        day_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        # End of the target day (start of next day)
+        day_end = day_start + timedelta(days=1)
         
-        return week_start, week_end
+        return day_start, day_end
     
     def _format_date_for_query(self, date: datetime) -> str:
         """Format date for arXiv query (YYYYMMDD)."""
@@ -100,13 +101,13 @@ class ArxivPreloader:
         end_str = end_date.strftime("%Y%m%d")
         return f"{start_str}_{end_str}"
     
-    async def _fetch_papers_for_week(self, start_date: datetime, end_date: datetime) -> List[ArxivPaper]:
+    async def _fetch_papers_for_day(self, start_date: datetime, end_date: datetime) -> List[ArxivPaper]:
         """
-        Fetch all papers for a given week.
+        Fetch all papers for a given day.
         
         Args:
-            start_date: Week start date
-            end_date: Week end date
+            start_date: Day start date
+            end_date: Day end date (next day)
             
         Returns:
             List of ArxivPaper objects
@@ -117,7 +118,7 @@ class ArxivPreloader:
         # Build query for the date range
         query = f"submittedDate:[{start_str} TO {end_str}]"
         
-        self.logger.info(f"Fetching papers for week {start_str} to {end_str}")
+        self.logger.info(f"Fetching papers for day {start_str} to {end_str}")
         
         try:
             papers = await self.arxiv_fetcher.search_papers(
@@ -125,11 +126,11 @@ class ArxivPreloader:
                 max_results=10000  # Large number to get all papers
             )
             
-            self.logger.info(f"Found {len(papers)} papers for week {start_str} to {end_str}")
+            self.logger.info(f"Found {len(papers)} papers for day {start_str} to {end_str}")
             return papers
             
         except Exception as e:
-            self.logger.error(f"Failed to fetch papers for week {start_str} to {end_str}: {e}")
+            self.logger.error(f"Failed to fetch papers for day {start_str} to {end_str}: {e}")
             return []
     
     async def _generate_embedding(self, paper: ArxivPaper) -> Optional[List[float]]:
@@ -275,28 +276,28 @@ class ArxivPreloader:
         except Exception as e:
             self.logger.error(f"Failed to save failed IDs to {filepath}: {e}")
     
-    async def _process_week(self, start_date: datetime, end_date: datetime) -> dict:
+    async def _process_day(self, start_date: datetime, end_date: datetime) -> dict:
         """
-        Process a single week of papers.
+        Process a single day of papers.
         
         Args:
-            start_date: Week start date
-            end_date: Week end date
+            start_date: Day start date
+            end_date: Day end date (next day)
             
         Returns:
             Dictionary with processing results
         """
-        week_name = self._format_date_range_name(start_date, end_date)
+        day_name = self._format_date_range_name(start_date, end_date)
         
-        self.logger.info(f"Processing week: {week_name}")
+        self.logger.info(f"Processing day: {day_name}")
         
-        # Fetch papers for the week
-        papers = await self._fetch_papers_for_week(start_date, end_date)
+        # Fetch papers for the day
+        papers = await self._fetch_papers_for_day(start_date, end_date)
         
         if not papers:
-            self.logger.info(f"No papers found for week {week_name}")
+            self.logger.info(f"No papers found for day {day_name}")
             return {
-                "week": week_name,
+                "day": day_name,
                 "total_papers": 0,
                 "successful_papers": 0,
                 "failed_papers": 0,
@@ -310,45 +311,47 @@ class ArxivPreloader:
         saved_paper_ids = await self._save_papers_to_database(successful_papers)
         
         # Save failed IDs to file
-        self._save_failed_ids(failed_papers, week_name)
+        self._save_failed_ids(failed_papers, day_name)
         
         result = {
-            "week": week_name,
+            "day": day_name,
             "total_papers": len(papers),
             "successful_papers": len(successful_papers),
             "failed_papers": len(failed_papers),
             "saved_papers": len(saved_paper_ids)
         }
         
-        self.logger.info(f"Week {week_name} processed: {result}")
+        self.logger.info(f"Day {day_name} processed: {result}")
         return result
     
-    async def preload_weeks(self, num_weeks: int = 10) -> List[dict]:
+    async def preload_days(self, num_days: int = 10) -> List[dict]:
         """
-        Preload papers for the specified number of weeks, rolling back from today.
+        Preload papers for the specified number of days, rolling back from today.
         
         Args:
-            num_weeks: Number of weeks to process
+            num_days: Number of days to process
             
         Returns:
-            List of processing results for each week
+            List of processing results for each day
         """
-        self.logger.info(f"Starting preload for {num_weeks} weeks")
+        from preload_config import PreloadConfig
+        
+        self.logger.info(f"Starting preload for {num_days} days")
         
         results = []
         current_date = datetime.now()
         
-        for week_offset in range(num_weeks):
-            # Calculate the week range
-            week_start_date = current_date - timedelta(weeks=week_offset)
-            week_start, week_end = self._get_week_range(week_start_date)
+        for day_offset in range(num_days):
+            # Calculate the day range
+            target_date = current_date - timedelta(days=day_offset)
+            day_start, day_end = self._get_day_range(target_date)
             
-            # Process the week
-            result = await self._process_week(week_start, week_end)
+            # Process the day
+            result = await self._process_day(day_start, day_end)
             results.append(result)
             
-            # Small delay between weeks to be respectful to APIs
-            await asyncio.sleep(2)
+            # Small delay between days to be respectful to APIs
+            await asyncio.sleep(PreloadConfig.DELAY_BETWEEN_DAYS)
         
         # Summary
         total_papers = sum(r["total_papers"] for r in results)
@@ -386,13 +389,13 @@ async def main():
     )
     
     try:
-        # Preload papers for specified number of weeks
-        results = await preloader.preload_weeks(num_weeks=PreloadConfig.DEFAULT_NUM_WEEKS)
+        # Preload papers for specified number of days
+        results = await preloader.preload_days(num_days=PreloadConfig.DEFAULT_NUM_DAYS)
         
         # Print summary
         print("\n=== Preload Summary ===")
         for result in results:
-            print(f"Week {result['week']}: {result['total_papers']} papers, "
+            print(f"Day {result['day']}: {result['total_papers']} papers, "
                   f"{result['successful_papers']} successful, "
                   f"{result['failed_papers']} failed, "
                   f"{result['saved_papers']} saved")

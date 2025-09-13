@@ -21,15 +21,15 @@ class PreloadConfig:
     
     # Embedding Configuration
     EMBEDDING_MODEL: str = "eric-qwen3-embedding-8b"
-    MAX_CONCURRENT_EMBEDDINGS: int = 256
+    MAX_CONCURRENT_EMBEDDINGS: int = 64
     
     # Database Configuration
     DATABASE_NAME: str = "arxiv_papers"
     DATABASE_DIR: Optional[str] = None  # Will use default if None
     
     # Processing Configuration
-    DEFAULT_NUM_WEEKS: int = 300
-    DELAY_BETWEEN_WEEKS: float = 5.0  # seconds
+    DEFAULT_NUM_DAYS: int = 3000
+    DELAY_BETWEEN_DAYS: float = 5.0  # seconds
     
     @classmethod
     def validate(cls) -> bool:
@@ -54,7 +54,7 @@ class PreloadConfig:
         print(f"Embedding Model: {cls.EMBEDDING_MODEL}")
         print(f"Max Concurrent Embeddings: {cls.MAX_CONCURRENT_EMBEDDINGS}")
         print(f"Database Name: {cls.DATABASE_NAME}")
-        print(f"Default Num Weeks: {cls.DEFAULT_NUM_WEEKS}")
+        print(f"Default Num Days: {cls.DEFAULT_NUM_DAYS}")
         print("=============================")
 
 
