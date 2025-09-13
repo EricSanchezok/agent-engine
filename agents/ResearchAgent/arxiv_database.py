@@ -228,52 +228,54 @@ class ArxivDatabase:
         """
         return self.pod_memory.get_stats()
     
-    def exists(self, paper_id: str) -> bool:
+    def exists(self, paper: ArxivPaper) -> bool:
         """
         Check if a paper exists by its arXiv ID.
         
         Args:
-            paper_id: arXiv paper ID
+            paper: ArxivPaper object
             
         Returns:
             True if paper exists, False otherwise
         """
-        return self.pod_memory.exists(paper_id)
+        return self.pod_memory.exists(paper.full_id)
     
-    def has_vector(self, paper_id: str) -> bool:
+    def has_vector(self, paper: ArxivPaper) -> bool:
         """
         Check if a paper has a vector embedding.
         
         Args:
-            paper_id: arXiv paper ID
+            paper: ArxivPaper object
             
         Returns:
             True if paper has vector, False otherwise
         """
-        return self.pod_memory.has_vector(paper_id)
+        return self.pod_memory.has_vector(paper.full_id)
     
-    def exists_batch(self, paper_ids: List[str]) -> Dict[str, bool]:
+    def exists_batch(self, papers: List[ArxivPaper]) -> Dict[str, bool]:
         """
-        Check existence of multiple papers by IDs.
+        Check existence of multiple papers.
         
         Args:
-            paper_ids: List of arXiv paper IDs
+            papers: List of ArxivPaper objects
             
         Returns:
-            Dictionary mapping paper ID to existence status
+            Dictionary mapping paper full_id to existence status
         """
+        paper_ids = [paper.full_id for paper in papers]
         return self.pod_memory.exists_batch(paper_ids)
     
-    def has_vector_batch(self, paper_ids: List[str]) -> Dict[str, bool]:
+    def has_vector_batch(self, papers: List[ArxivPaper]) -> Dict[str, bool]:
         """
         Check if multiple papers have vector embeddings.
         
         Args:
-            paper_ids: List of arXiv paper IDs
+            papers: List of ArxivPaper objects
             
         Returns:
-            Dictionary mapping paper ID to vector existence status
+            Dictionary mapping paper full_id to vector existence status
         """
+        paper_ids = [paper.full_id for paper in papers]
         return self.pod_memory.has_vector_batch(paper_ids)
 
     def clear(self) -> None:
