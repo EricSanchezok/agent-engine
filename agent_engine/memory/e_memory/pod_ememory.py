@@ -15,6 +15,7 @@ from ...agent_logger.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
 
+MAX_ELEMENTS_PER_SHARD = 5
 
 class PodEMemory:
     """
@@ -29,7 +30,6 @@ class PodEMemory:
         self,
         name: str,
         persist_dir: Optional[str] = None,
-        max_elements_per_shard: int = 100000,
         distance_metric: str = "cosine"
     ):
         """
@@ -38,11 +38,10 @@ class PodEMemory:
         Args:
             name: Pod name (used for subdirectory creation)
             persist_dir: Storage directory (optional, defaults to root/.memory/name)
-            max_elements_per_shard: Maximum elements per EMemory shard
             distance_metric: Distance metric ('cosine', 'l2', 'ip')
         """
         self.name = name
-        self.max_elements_per_shard = max_elements_per_shard
+        self.max_elements_per_shard = MAX_ELEMENTS_PER_SHARD
         self.distance_metric = distance_metric
         
         # Determine storage directory
@@ -65,7 +64,7 @@ class PodEMemory:
         self._load_existing_shards()
         
         logger.info(f"PodEMemory '{name}' initialized at {self.persist_dir}")
-        logger.info(f"Max elements per shard: {max_elements_per_shard}")
+        logger.info(f"Max elements per shard: {MAX_ELEMENTS_PER_SHARD}")
     
     def _load_existing_shards(self) -> None:
         """Load existing shards from the persist directory."""
@@ -145,18 +144,6 @@ class PodEMemory:
         hash_value = int(hashlib.md5(record_id.encode()).hexdigest(), 16)
         # Use a large number for consistent hashing, then map to available shards
         return hash_value % max(1, self._shard_count)
-    
-    def _get_available_shard(self) -> int:
-        """Get an available shard for new records using consistent hashing."""
-        # For new records without ID, we need to generate one first
-        # But since we don't have the ID yet, we'll use a capacity-based approach
-        # Check if current shard has space
-        current_shard = self._shards[self._current_shard]
-        if current_shard.count() < self.max_elements_per_shard:
-            return self._current_shard
-        
-        # Current shard is full, create a new one
-        return self._create_new_shard()
     
     def add(self, record: Record) -> bool:
         """
