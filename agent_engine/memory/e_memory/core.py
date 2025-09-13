@@ -491,6 +491,84 @@ class EMemory:
             logger.error(f"Failed to search similar records: {e}")
             return []
 
+    def exists(self, id: str) -> bool:
+        """
+        Check if a record exists by ID.
+        
+        Args:
+            id: Record ID
+            
+        Returns:
+            True if record exists, False otherwise
+        """
+        with sqlite3.connect(self.sqlite_path) as conn:
+            cursor = conn.execute("SELECT 1 FROM records WHERE id = ?", (id,))
+            return cursor.fetchone() is not None
+    
+    def has_vector(self, id: str) -> bool:
+        """
+        Check if a record has a vector embedding.
+        
+        Args:
+            id: Record ID
+            
+        Returns:
+            True if record has vector, False otherwise
+        """
+        with sqlite3.connect(self.sqlite_path) as conn:
+            cursor = conn.execute("SELECT has_vector FROM records WHERE id = ?", (id,))
+            row = cursor.fetchone()
+            return row is not None and row[0] == 1
+    
+    def exists_batch(self, ids: List[str]) -> Dict[str, bool]:
+        """
+        Check existence of multiple records by IDs.
+        
+        Args:
+            ids: List of record IDs
+            
+        Returns:
+            Dictionary mapping ID to existence status
+        """
+        if not ids:
+            return {}
+        
+        # Create placeholders for SQL query
+        placeholders = ','.join(['?' for _ in ids])
+        
+        with sqlite3.connect(self.sqlite_path) as conn:
+            cursor = conn.execute(f"""
+                SELECT id FROM records WHERE id IN ({placeholders})
+            """, ids)
+            existing_ids = {row[0] for row in cursor.fetchall()}
+        
+        return {id: id in existing_ids for id in ids}
+    
+    def has_vector_batch(self, ids: List[str]) -> Dict[str, bool]:
+        """
+        Check if multiple records have vector embeddings.
+        
+        Args:
+            ids: List of record IDs
+            
+        Returns:
+            Dictionary mapping ID to vector existence status
+        """
+        if not ids:
+            return {}
+        
+        # Create placeholders for SQL query
+        placeholders = ','.join(['?' for _ in ids])
+        
+        with sqlite3.connect(self.sqlite_path) as conn:
+            cursor = conn.execute(f"""
+                SELECT id, has_vector FROM records WHERE id IN ({placeholders})
+            """, ids)
+            results = {row[0]: row[1] == 1 for row in cursor.fetchall()}
+        
+        # Ensure all requested IDs are in the result
+        return {id: results.get(id, False) for id in ids}
+
     def get_stats(self) -> Dict[str, Any]:
         """
         Get memory statistics.

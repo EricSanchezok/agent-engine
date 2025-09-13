@@ -421,6 +421,114 @@ class PodEMemory:
             "shards": shard_stats
         }
     
+    def exists(self, record_id: str) -> bool:
+        """
+        Check if a record exists by ID.
+        
+        Args:
+            record_id: Record ID
+            
+        Returns:
+            True if record exists, False otherwise
+        """
+        # Determine which shard contains this record
+        shard_id = self._get_shard_for_record(record_id)
+        
+        if shard_id not in self._shards:
+            return False
+        
+        shard = self._shards[shard_id]
+        return shard.exists(record_id)
+    
+    def has_vector(self, record_id: str) -> bool:
+        """
+        Check if a record has a vector embedding.
+        
+        Args:
+            record_id: Record ID
+            
+        Returns:
+            True if record has vector, False otherwise
+        """
+        # Determine which shard contains this record
+        shard_id = self._get_shard_for_record(record_id)
+        
+        if shard_id not in self._shards:
+            return False
+        
+        shard = self._shards[shard_id]
+        return shard.has_vector(record_id)
+    
+    def exists_batch(self, record_ids: List[str]) -> Dict[str, bool]:
+        """
+        Check existence of multiple records by IDs.
+        
+        Args:
+            record_ids: List of record IDs
+            
+        Returns:
+            Dictionary mapping ID to existence status
+        """
+        if not record_ids:
+            return {}
+        
+        # Group IDs by shard
+        shard_groups: Dict[int, List[str]] = {}
+        for record_id in record_ids:
+            shard_id = self._get_shard_for_record(record_id)
+            if shard_id not in shard_groups:
+                shard_groups[shard_id] = []
+            shard_groups[shard_id].append(record_id)
+        
+        # Check existence in each shard
+        results = {}
+        for shard_id, ids in shard_groups.items():
+            if shard_id in self._shards:
+                shard = self._shards[shard_id]
+                shard_results = shard.exists_batch(ids)
+                results.update(shard_results)
+            else:
+                # Shard doesn't exist, all IDs are False
+                for record_id in ids:
+                    results[record_id] = False
+        
+        return results
+    
+    def has_vector_batch(self, record_ids: List[str]) -> Dict[str, bool]:
+        """
+        Check if multiple records have vector embeddings.
+        
+        Args:
+            record_ids: List of record IDs
+            
+        Returns:
+            Dictionary mapping ID to vector existence status
+        """
+        if not record_ids:
+            return {}
+        
+        # Group IDs by shard
+        shard_groups: Dict[int, List[str]] = {}
+        for record_id in record_ids:
+            shard_id = self._get_shard_for_record(record_id)
+            if shard_id not in shard_groups:
+                shard_groups[shard_id] = []
+            shard_groups[shard_id].append(record_id)
+        
+        # Check vector existence in each shard
+        results = {}
+        for shard_id, ids in shard_groups.items():
+            if shard_id in self._shards:
+                shard = self._shards[shard_id]
+                shard_results = shard.has_vector_batch(ids)
+                results.update(shard_results)
+            else:
+                # Shard doesn't exist, all IDs are False
+                for record_id in ids:
+                    results[record_id] = False
+        
+        return results
+
     def get_shard_info(self) -> List[Dict[str, Any]]:
         """
         Get information about all shards.

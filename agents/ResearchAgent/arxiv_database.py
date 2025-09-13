@@ -228,6 +228,54 @@ class ArxivDatabase:
         """
         return self.pod_memory.get_stats()
     
+    def exists(self, paper_id: str) -> bool:
+        """
+        Check if a paper exists by its arXiv ID.
+        
+        Args:
+            paper_id: arXiv paper ID
+            
+        Returns:
+            True if paper exists, False otherwise
+        """
+        return self.pod_memory.exists(paper_id)
+    
+    def has_vector(self, paper_id: str) -> bool:
+        """
+        Check if a paper has a vector embedding.
+        
+        Args:
+            paper_id: arXiv paper ID
+            
+        Returns:
+            True if paper has vector, False otherwise
+        """
+        return self.pod_memory.has_vector(paper_id)
+    
+    def exists_batch(self, paper_ids: List[str]) -> Dict[str, bool]:
+        """
+        Check existence of multiple papers by IDs.
+        
+        Args:
+            paper_ids: List of arXiv paper IDs
+            
+        Returns:
+            Dictionary mapping paper ID to existence status
+        """
+        return self.pod_memory.exists_batch(paper_ids)
+    
+    def has_vector_batch(self, paper_ids: List[str]) -> Dict[str, bool]:
+        """
+        Check if multiple papers have vector embeddings.
+        
+        Args:
+            paper_ids: List of arXiv paper IDs
+            
+        Returns:
+            Dictionary mapping paper ID to vector existence status
+        """
+        return self.pod_memory.has_vector_batch(paper_ids)
+
     def clear(self) -> None:
         """Clear all papers from the database."""
         self.pod_memory.clear()
