@@ -48,7 +48,7 @@ import numpy as np
 import pyinstrument
 
 from agent_engine.agent_logger import AgentLogger
-from agents.ResearchAgent.arxiv_memory import ArxivMemory
+from agents.ResearchAgent.arxiv_memory import ArxivMemory # type: ignore
 from agents.ResearchAgent.reward import ArxivRewardBase, ConstantReward
 
 

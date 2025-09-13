@@ -81,10 +81,14 @@ class ArxivDatabase:
         record = self._paper_to_record(paper, embedding)
         
         # Add to PodEMemory
-        record_id = self.pod_memory.add(record)
+        success = self.pod_memory.add(record)
         
-        self.logger.info(f"Added paper {paper.full_id} to database")
-        return record_id
+        if success:
+            self.logger.info(f"Added paper {paper.full_id} to database")
+            return record.id
+        else:
+            self.logger.error(f"Failed to add paper {paper.full_id} to database")
+            return ""
     
     def add_papers(
         self, 
@@ -115,10 +119,16 @@ class ArxivDatabase:
             records.append(record)
         
         # Add to PodEMemory in batch
-        record_ids = self.pod_memory.add_batch(records)
+        success = self.pod_memory.add_batch(records)
         
-        self.logger.info(f"Added {len(papers)} papers to database in batch")
-        return record_ids
+        if success:
+            # Extract record IDs from the records
+            record_ids = [record.id for record in records]
+            self.logger.info(f"Added {len(papers)} papers to database in batch")
+            return record_ids
+        else:
+            self.logger.error("Failed to add papers to database in batch")
+            return []
     
     def get_paper_by_id(self, paper_id: str) -> Optional[ArxivPaper]:
         """
