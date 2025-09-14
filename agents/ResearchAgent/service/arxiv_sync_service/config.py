@@ -30,7 +30,7 @@ class ArxivSyncConfig:
     DATABASE_DIR: Optional[str] = None  # Will use default if None
     
     # Sync Configuration
-    SYNC_INTERVAL_MINUTES: int = 15  # Check every 15 minutes
+    SYNC_INTERVAL_MINUTES: int = 30
     MAX_RETRY_ATTEMPTS: int = 3
     RETRY_DELAY_SECONDS: float = 5.0
     DELAY_BETWEEN_DAYS: float = 0.1  # seconds

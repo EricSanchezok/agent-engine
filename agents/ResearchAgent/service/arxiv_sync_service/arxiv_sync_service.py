@@ -22,9 +22,9 @@ from agent_engine.llm_client.qz_client import QzClient
 
 from core.arxiv_fetcher.arxiv_fetcher import ArxivFetcher
 from core.arxiv_fetcher.arxiv_paper import ArxivPaper
-from agents.ResearchAgent.arxiv_database import ArxivDatabase
 
-from .config import ArxivSyncConfig
+from agents.ResearchAgent.arxiv_database import ArxivDatabase
+from agents.ResearchAgent.service.arxiv_sync_service.config import ArxivSyncConfig
 
 
 class ArxivSyncService:

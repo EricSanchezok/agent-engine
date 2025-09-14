@@ -299,13 +299,48 @@ class ArxivPreloader:
             return {
                 "day": day_name,
                 "total_papers": 0,
+                "filtered_papers": 0,
                 "successful_papers": 0,
                 "failed_papers": 0,
                 "saved_papers": 0
             }
         
-        # Generate embeddings concurrently
-        successful_papers, failed_papers = await self._generate_embeddings_concurrent(papers)
+        # Check which papers already exist and have vectors
+        self.logger.info(f"Checking existence of {len(papers)} papers in database")
+        existence_map = self.arxiv_database.exists_batch(papers)
+        vector_map = self.arxiv_database.has_vector_batch(papers)
+        
+        # Filter out papers that already exist and have vectors
+        papers_to_process = []
+        filtered_count = 0
+        
+        for paper in papers:
+            paper_id = paper.full_id
+            exists = existence_map.get(paper_id, False)
+            has_vector = vector_map.get(paper_id, False)
+            
+            if exists and has_vector:
+                filtered_count += 1
+                self.logger.debug(f"Paper {paper_id} already exists with vector, skipping")
+            else:
+                papers_to_process.append(paper)
+        
+        self.logger.info(f"Filtered out {filtered_count} papers that already exist with vectors")
+        self.logger.info(f"Processing {len(papers_to_process)} new papers")
+        
+        if not papers_to_process:
+            self.logger.info(f"All papers for day {day_name} already exist with vectors")
+            return {
+                "day": day_name,
+                "total_papers": len(papers),
+                "filtered_papers": filtered_count,
+                "successful_papers": 0,
+                "failed_papers": 0,
+                "saved_papers": 0
+            }
+        
+        # Generate embeddings concurrently for new papers only
+        successful_papers, failed_papers = await self._generate_embeddings_concurrent(papers_to_process)
         
         # Save successful papers to database
         saved_paper_ids = await self._save_papers_to_database(successful_papers)
@@ -316,6 +351,7 @@ class ArxivPreloader:
         result = {
             "day": day_name,
             "total_papers": len(papers),
+            "filtered_papers": filtered_count,
             "successful_papers": len(successful_papers),
             "failed_papers": len(failed_papers),
             "saved_papers": len(saved_paper_ids)
@@ -355,12 +391,15 @@ class ArxivPreloader:
         
         # Summary
         total_papers = sum(r["total_papers"] for r in results)
+        total_filtered = sum(r["filtered_papers"] for r in results)
         total_successful = sum(r["successful_papers"] for r in results)
         total_failed = sum(r["failed_papers"] for r in results)
         total_saved = sum(r["saved_papers"] for r in results)
         
         self.logger.info(f"Preload completed:")
-        self.logger.info(f"  Total papers processed: {total_papers}")
+        self.logger.info(f"  Total papers fetched: {total_papers}")
+        self.logger.info(f"  Papers already exist with vectors: {total_filtered}")
+        self.logger.info(f"  New papers processed: {total_papers - total_filtered}")
         self.logger.info(f"  Successful embeddings: {total_successful}")
         self.logger.info(f"  Failed embeddings: {total_failed}")
         self.logger.info(f"  Saved to database: {total_saved}")
@@ -395,7 +434,8 @@ async def main():
         # Print summary
         print("\n=== Preload Summary ===")
         for result in results:
-            print(f"Day {result['day']}: {result['total_papers']} papers, "
+            print(f"Day {result['day']}: {result['total_papers']} papers fetched, "
+                  f"{result['filtered_papers']} already exist, "
                   f"{result['successful_papers']} successful, "
                   f"{result['failed_papers']} failed, "
                   f"{result['saved_papers']} saved")
