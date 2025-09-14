@@ -253,9 +253,12 @@ class QzClient(LLMClient):
             if top_n is not None:
                 payload["top_n"] = top_n
             
+            self.logger.debug(f"Rerank payload: {payload}")
             response = await self.client.post("/v1/rerank", json=payload)
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            self.logger.debug(f"Rerank raw response: {result}")
+            return result
         
         try:
             response = await self.async_retry_on_exception(
@@ -280,6 +283,13 @@ class QzClient(LLMClient):
                                 "document": documents[item["index"]] if item["index"] < len(documents) else "",
                                 "score": item["score"]
                             })
+                        elif 'index' in item and 'relevance_score' in item:
+                            # Qz API format: {"index": 0, "document": {...}, "relevance_score": 0.95}
+                            reranked_results.append({
+                                "index": item["index"],
+                                "document": documents[item["index"]] if item["index"] < len(documents) else "",
+                                "score": item["relevance_score"]
+                            })
                         elif 'document' in item and 'score' in item:
                             # Alternative format with document content
                             reranked_results.append({
@@ -287,8 +297,44 @@ class QzClient(LLMClient):
                                 "document": item["document"],
                                 "score": item["score"]
                             })
+                        elif 'document' in item and 'relevance_score' in item:
+                            # Alternative format with document content and relevance_score
+                            doc_text = item["document"].get("text", "") if isinstance(item["document"], dict) else str(item["document"])
+                            try:
+                                doc_index = documents.index(doc_text)
+                            except ValueError:
+                                doc_index = -1
+                            reranked_results.append({
+                                "index": doc_index,
+                                "document": doc_text,
+                                "score": item["relevance_score"]
+                            })
                         else:
                             self.logger.warning(f"Unexpected rerank result format: {item}")
+                            # Try to extract basic info if possible
+                            if 'index' in item:
+                                try:
+                                    doc_index = int(item['index'])
+                                    if 0 <= doc_index < len(documents):
+                                        # Try to find any score-like field
+                                        score = None
+                                        for key in ['score', 'relevance_score', 'relevance', 'rank_score']:
+                                            if key in item:
+                                                score = float(item[key])
+                                                break
+                                        
+                                        if score is not None:
+                                            reranked_results.append({
+                                                "index": doc_index,
+                                                "document": documents[doc_index],
+                                                "score": score
+                                            })
+                                        else:
+                                            self.logger.warning(f"No score field found in item: {item}")
+                                    else:
+                                        self.logger.warning(f"Invalid index {doc_index} for documents list of length {len(documents)}")
+                                except (ValueError, TypeError) as e:
+                                    self.logger.warning(f"Error parsing index from item: {e}, item: {item}")
                     elif isinstance(item, (int, float)):
                         # Simple score array format
                         idx = len(reranked_results)
@@ -298,6 +344,13 @@ class QzClient(LLMClient):
                                 "document": documents[idx],
                                 "score": float(item)
                             })
+                
+                # Sort results by score in descending order if not already sorted
+                reranked_results.sort(key=lambda x: x["score"], reverse=True)
+                
+                # Apply top_n filter if specified
+                if top_n is not None and top_n > 0:
+                    reranked_results = reranked_results[:top_n]
                 
                 self.logger.info(f"✅ Qz API rerank completed successfully, returned {len(reranked_results)} results, trace_id={trace_id}")
                 return reranked_results

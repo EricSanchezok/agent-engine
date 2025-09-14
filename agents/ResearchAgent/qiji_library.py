@@ -75,7 +75,7 @@ class QijiLibrary:
         self.qiji_memory = EMemory(name='qiji_memory', persist_dir=get_current_file_dir() / 'database' / 'qiji_memory')
         self.arxiv_fetcher = ArxivFetcher()
         
-    async def update_memory(self, qiji_articles_dir: str = None, max_concurrent: int = 4) -> Dict[str, int]:
+    async def update_memory(self, qiji_articles_dir: str = None, max_concurrent: int = 1) -> Dict[str, int]:
         """
         Update qiji memory by processing all docx files in qiji_articles directory.
         
@@ -174,35 +174,22 @@ class QijiLibrary:
                         return False
                     
                     logger.debug(f"Creating embedding for paper {paper.id}")
-                    embedding_result = await self.embedding_client.embedding(
+                    embedding = await self.embedding_client.embedding(
                         text=summary,
                         model_name=self.embedding_model
                     )
                     
-                    if not embedding_result or 'data' not in embedding_result:
+                    if not embedding:
                         logger.error(f"Failed to create embedding for paper {paper.id}")
                         return False
                     
-                    vector = embedding_result['data'][0]['embedding']
+                    vector = embedding
                     
                     # Create record
                     record = Record(
                         id=paper.id,
-                        attributes={
-                            "title": paper.title,
-                            "authors": paper.authors,
-                            "categories": paper.categories,
-                            "published_date": paper.published_date.isoformat() if paper.published_date else None,
-                            "submitted_date": paper.submitted_date.isoformat() if paper.submitted_date else None,
-                            "pdf_url": paper.pdf_url,
-                            "doi": paper.doi,
-                            "journal_ref": paper.journal_ref,
-                            "comment": paper.comment,
-                            "primary_category": paper.primary_category,
-                            "year": paper.year
-                        },
-                        content=summary,
-                        vector=vector
+                        vector=vector,
+                        content=summary
                     )
                     
                     # Store in memory
@@ -244,3 +231,26 @@ class QijiLibrary:
             "skipped_papers": len(existing_papers),
             "failed_papers": failed_count
         }
+
+
+async def update_qiji_memory():
+    qiji_library = QijiLibrary()
+    await qiji_library.update_memory()
+
+async def test_reranker():
+    qiji_library = QijiLibrary()
+    documents = [
+        "Document about machine learning",
+        "Document about cooking recipes", 
+        "Document about artificial intelligence"
+    ]
+    results = await qiji_library.reranker_client.rerank(
+        model_name=qiji_library.reranker_model,
+        query="machine learning algorithms",
+        documents=documents,
+        top_n=2
+    )
+    pprint(results)
+
+if __name__ == "__main__":
+    asyncio.run(test_reranker())
