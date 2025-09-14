@@ -1,11 +1,11 @@
 # Arxiv Sync Service
 
-A robust service for synchronizing arXiv papers to the database. This service runs continuously and automatically syncs the current week's papers with embedding generation.
+A robust service for synchronizing arXiv papers to the database. This service runs continuously and automatically syncs papers from a rolling 7-day window with embedding generation.
 
 ## Features
 
 - **Continuous Operation**: Runs continuously and checks for new papers every 15 minutes
-- **Weekly Sync**: Syncs all papers from the current week (Monday to Sunday)
+- **Rolling 7-Day Sync**: Syncs papers from today going back 7 days (rolling window)
 - **Smart Filtering**: Only processes papers that don't exist or don't have embeddings
 - **Concurrent Processing**: Generates embeddings concurrently for better performance
 - **Robust Error Handling**: Includes retry logic and graceful error recovery
@@ -43,7 +43,7 @@ To start the service for continuous operation:
 The service will:
 - Run continuously in the background
 - Check for new papers every 15 minutes
-- Sync the current week's papers (Monday to Sunday)
+- Sync papers from today going back 7 days (rolling window)
 - Generate embeddings for new papers
 - Handle errors gracefully with retries
 
@@ -74,8 +74,8 @@ To validate your configuration:
 
 ### Sync Process
 
-1. **Get Current Week**: Determines the current week (Monday to Sunday)
-2. **Fetch Papers**: Retrieves all papers for each day of the week
+1. **Get Rolling 7-Day Window**: Determines dates from today going back 7 days
+2. **Fetch Papers**: Retrieves all papers for each day in the rolling window
 3. **Filter New Papers**: Removes papers that already exist with embeddings
 4. **Generate Embeddings**: Creates embeddings for new papers concurrently
 5. **Save to Database**: Stores papers and embeddings in the database

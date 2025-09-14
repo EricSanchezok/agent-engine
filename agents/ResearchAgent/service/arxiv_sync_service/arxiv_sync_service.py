@@ -31,7 +31,7 @@ class ArxivSyncService:
     """
     Arxiv synchronization service that:
     1. Runs continuously and checks for new papers every 15 minutes
-    2. Syncs the current week's papers (Monday to Sunday)
+    2. Syncs papers from today going back 7 days (rolling 7-day window)
     3. Generates embeddings for new papers
     4. Handles errors gracefully with retries
     """
@@ -72,25 +72,22 @@ class ArxivSyncService:
         await self.qz_client.close()
         self.logger.info(f"{self.config.SERVICE_NAME} connections closed")
     
-    def _get_current_week_dates(self) -> List[datetime]:
+    def _get_rolling_week_dates(self) -> List[datetime]:
         """
-        Get all dates for the current week (Monday to Sunday).
+        Get dates for the rolling 7-day window (today going back 7 days).
         
         Returns:
-            List of datetime objects for the current week
+            List of datetime objects from today going back 7 days
         """
         today = datetime.now()
         
-        # Find Monday of current week
-        days_since_monday = today.weekday()  # Monday = 0, Sunday = 6
-        monday = today - timedelta(days=days_since_monday)
-        
-        # Generate all 7 days of the week
-        week_dates = []
+        # Generate dates going back 7 days from today
+        rolling_dates = []
         for i in range(7):
-            week_dates.append(monday + timedelta(days=i))
+            date = today - timedelta(days=i)
+            rolling_dates.append(date)
         
-        return week_dates
+        return rolling_dates
     
     def _format_date_for_query(self, date: datetime) -> str:
         """Format date for arXiv query (YYYYMMDD)."""
@@ -340,19 +337,19 @@ class ArxivSyncService:
         self.logger.info(f"Day {day_str} processed: {result}")
         return result
     
-    async def _sync_current_week(self) -> Dict[str, Any]:
+    async def _sync_rolling_week(self) -> Dict[str, Any]:
         """
-        Sync papers for the current week (Monday to Sunday).
+        Sync papers for the rolling 7-day window (today going back 7 days).
         
         Returns:
             Dictionary with sync results
         """
-        self.logger.info("Starting current week sync")
+        self.logger.info("Starting rolling 7-day sync")
         
-        week_dates = self._get_current_week_dates()
+        rolling_dates = self._get_rolling_week_dates()
         results = []
         
-        for date in week_dates:
+        for date in rolling_dates:
             try:
                 result = await self._process_day(date)
                 results.append(result)
@@ -380,7 +377,7 @@ class ArxivSyncService:
         total_saved = sum(r.get("saved_papers", 0) for r in results)
         
         summary = {
-            "sync_type": "current_week",
+            "sync_type": "rolling_7_days",
             "dates_processed": len(results),
             "total_papers": total_papers,
             "new_papers": total_new_papers,
@@ -390,7 +387,7 @@ class ArxivSyncService:
             "day_results": results
         }
         
-        self.logger.info(f"Week sync completed: {summary}")
+        self.logger.info(f"Rolling 7-day sync completed: {summary}")
         return summary
     
     async def _sync_with_retry(self) -> bool:
@@ -404,7 +401,7 @@ class ArxivSyncService:
             try:
                 self.logger.info(f"Sync attempt {attempt}/{self.config.MAX_RETRY_ATTEMPTS}")
                 
-                result = await self._sync_current_week()
+                result = await self._sync_rolling_week()
                 
                 # Update stats
                 self.sync_stats["total_syncs"] += 1
