@@ -302,7 +302,7 @@ class QzClient(LLMClient):
                 self.logger.info(f"✅ Qz API rerank completed successfully, returned {len(reranked_results)} results, trace_id={trace_id}")
                 return reranked_results
             else:
-                self.logger.error("❌ Invalid rerank response format from Qz API - missing 'results' field")
+                self.logger.error(f"❌ Invalid rerank response format from Qz API - missing 'results' field: {response}")
                 return None
             
         except Exception as e:
