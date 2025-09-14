@@ -116,8 +116,33 @@ PROXY_SETTINGS: Dict[str, Any] = {
             "limits": None,                        # Use global limits
             "add_x_forwarded_headers": True,
         },
-        "eric_qwen3_embedding_8b": {
+        "eric_qwen3_embedding_8b_h100": {
             "base_url": "https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn",
+            "allowed_methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+            "allow_private": True,                 # Allow private IPs for this external API
+            "allowed_cidrs": [],                   # No CIDR restrictions for external API
+            "preserve_host": True,                 # Preserve original Host header for external API
+            "request_headers_allowlist": [         # Allow necessary headers for API calls
+                "accept",
+                "accept-encoding", 
+                "accept-language",
+                "content-type",
+                "authorization",                   # Important for Bearer token
+                "user-agent",
+                "x-request-id",
+                "content-length",
+            ],
+            "timeouts": {                          # Longer timeouts for embedding API
+                "connect": 10.0,
+                "read": 120.0,
+                "write": 120.0,
+                "pool": 120.0,
+            },
+            "limits": None,                        # Use global limits
+            "add_x_forwarded_headers": True,
+        },
+        "eric_qwen3_reranker_8b_h100": {
+            "base_url": "https://k8jac9p5dj8ocqc9joj9obphhchceqgc.openapi-qb.sii.edu.cn",
             "allowed_methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
             "allow_private": True,                 # Allow private IPs for this external API
             "allowed_cidrs": [],                   # No CIDR restrictions for external API

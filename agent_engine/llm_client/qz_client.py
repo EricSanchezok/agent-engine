@@ -220,6 +220,95 @@ class QzClient(LLMClient):
             **kwargs
         )
 
+    async def rerank(
+        self,
+        model_name: str,
+        query: str,
+        documents: List[str],
+        top_n: Optional[int] = None,
+        **kwargs
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Rerank documents based on query relevance using Qz API"""
+        trace_id = None
+        if hasattr(self, "monitor") and self.monitor is not None:
+            try:
+                trace_id = self.monitor.new_trace_id()
+                # Note: monitor doesn't have rerank tracking yet, but we can use chat tracking
+                # as a fallback for monitoring purposes
+                self.logger.info(f"Rerank request started, trace_id={trace_id}")
+            except Exception as e:
+                self.logger.warning(f"LLM monitor start failed: {e}")
+
+        self.logger.info(f"🚀 Requesting Qz API rerank: model={model_name}, docs_count={len(documents)}, top_n={top_n}, trace_id={trace_id}")
+        
+        async def api_call():
+            payload = {
+                "model": model_name,
+                "query": query,
+                "documents": documents,
+                **kwargs
+            }
+            
+            # Add top_n if specified
+            if top_n is not None:
+                payload["top_n"] = top_n
+            
+            response = await self.client.post("/v1/rerank", json=payload)
+            response.raise_for_status()
+            return response.json()
+        
+        try:
+            response = await self.async_retry_on_exception(
+                api_call,
+                max_retries=3,
+                delay=5,
+                backoff=2
+            )
+            
+            # Parse rerank response
+            if 'results' in response:
+                results = response['results']
+                # Convert to standard format with index and score
+                reranked_results = []
+                for item in results:
+                    if isinstance(item, dict):
+                        # Handle different response formats
+                        if 'index' in item and 'score' in item:
+                            # Standard format: {"index": 0, "score": 0.95}
+                            reranked_results.append({
+                                "index": item["index"],
+                                "document": documents[item["index"]] if item["index"] < len(documents) else "",
+                                "score": item["score"]
+                            })
+                        elif 'document' in item and 'score' in item:
+                            # Alternative format with document content
+                            reranked_results.append({
+                                "index": documents.index(item["document"]) if item["document"] in documents else -1,
+                                "document": item["document"],
+                                "score": item["score"]
+                            })
+                        else:
+                            self.logger.warning(f"Unexpected rerank result format: {item}")
+                    elif isinstance(item, (int, float)):
+                        # Simple score array format
+                        idx = len(reranked_results)
+                        if idx < len(documents):
+                            reranked_results.append({
+                                "index": idx,
+                                "document": documents[idx],
+                                "score": float(item)
+                            })
+                
+                self.logger.info(f"✅ Qz API rerank completed successfully, returned {len(reranked_results)} results, trace_id={trace_id}")
+                return reranked_results
+            else:
+                self.logger.error("❌ Invalid rerank response format from Qz API - missing 'results' field")
+                return None
+            
+        except Exception as e:
+            self.logger.error(f"❌ Failed to rerank documents after all retries: {e}, trace_id={trace_id}")
+            return None
+
     async def chat_stream(
         self,
         system_prompt: str,

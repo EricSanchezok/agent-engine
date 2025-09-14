@@ -113,6 +113,18 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
+    async def rerank(
+        self,
+        model_name: str,
+        query: str,
+        documents: List[str],
+        top_n: Optional[int] = None,
+        **kwargs
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Rerank documents based on query relevance"""
+        pass
+
+    @abstractmethod
     async def chat_stream(
         self,
         system_prompt: str,
