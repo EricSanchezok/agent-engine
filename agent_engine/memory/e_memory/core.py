@@ -751,3 +751,38 @@ class EMemory:
             "sqlite_path": str(self.sqlite_path),
             "chroma_path": str(self.chroma_path)
         }
+    
+    def close(self):
+        """
+        Properly close database connections and release file handles.
+        
+        This method should be called when the EMemory instance is no longer needed
+        to ensure proper cleanup of database connections and file handles.
+        """
+        logger.info(f"Closing EMemory '{self.name}'")
+        
+        try:
+            # Close ChromaDB client
+            if hasattr(self, 'chroma_client') and self.chroma_client:
+                try:
+                    self.chroma_client = None
+                    logger.debug(f"Closed ChromaDB client for EMemory '{self.name}'")
+                except Exception as e:
+                    logger.warning(f"Error closing ChromaDB client: {e}")
+            
+            # Force garbage collection to release file handles
+            import gc
+            gc.collect()
+            
+            logger.info(f"EMemory '{self.name}' closed successfully")
+            
+        except Exception as e:
+            logger.error(f"Error closing EMemory '{self.name}': {e}")
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit with proper cleanup."""
+        self.close()

@@ -276,6 +276,37 @@ class ArxivPreloader:
         except Exception as e:
             self.logger.error(f"Failed to save failed IDs to {filepath}: {e}")
     
+    def _filter_new_papers(self, papers: List[ArxivPaper]) -> List[ArxivPaper]:
+        """
+        Filter out papers that already exist in the database with vectors.
+        
+        Args:
+            papers: List of ArxivPaper objects
+            
+        Returns:
+            List of papers that need to be processed (don't exist or don't have vectors)
+        """
+        if not papers:
+            return []
+        
+        # Use batch methods for efficient checking
+        self.logger.info(f"Checking existence and vectors for {len(papers)} papers in batch")
+        existence_map = self.arxiv_database.exists_batch(papers)
+        vector_map = self.arxiv_database.has_vector_batch(papers)
+        
+        # Filter out papers that already exist and have vectors
+        new_papers = []
+        for paper in papers:
+            paper_id = paper.full_id
+            exists = existence_map.get(paper_id, False)
+            has_vector = vector_map.get(paper_id, False)
+            
+            if not exists or not has_vector:
+                new_papers.append(paper)
+        
+        self.logger.info(f"Filtered {len(papers)} papers to {len(new_papers)} new papers")
+        return new_papers
+
     async def _process_day(self, start_date: datetime, end_date: datetime) -> dict:
         """
         Process a single day of papers.
@@ -305,28 +336,9 @@ class ArxivPreloader:
                 "saved_papers": 0
             }
         
-        # Check which papers already exist and have vectors
-        self.logger.info(f"Checking existence of {len(papers)} papers in database")
-        existence_map = self.arxiv_database.exists_batch(papers)
-        vector_map = self.arxiv_database.has_vector_batch(papers)
-        
-        # Filter out papers that already exist and have vectors
-        papers_to_process = []
-        filtered_count = 0
-        
-        for paper in papers:
-            paper_id = paper.full_id
-            exists = existence_map.get(paper_id, False)
-            has_vector = vector_map.get(paper_id, False)
-            
-            if exists and has_vector:
-                filtered_count += 1
-                self.logger.debug(f"Paper {paper_id} already exists with vector, skipping")
-            else:
-                papers_to_process.append(paper)
-        
-        self.logger.info(f"Filtered out {filtered_count} papers that already exist with vectors")
-        self.logger.info(f"Processing {len(papers_to_process)} new papers")
+        # Filter out papers that already exist with vectors
+        papers_to_process = self._filter_new_papers(papers)
+        filtered_count = len(papers) - len(papers_to_process)
         
         if not papers_to_process:
             self.logger.info(f"All papers for day {day_name} already exist with vectors")

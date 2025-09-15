@@ -657,16 +657,21 @@ class PodEMemory:
             if not remaining_ids:
                 break  # All IDs found, early exit
             
-            # Get batch vector existence check for remaining IDs
-            found_in_shard = shard.has_vector_batch(list(remaining_ids))
+            # Get batch existence check for remaining IDs to know which records exist in this shard
+            exists_in_shard = shard.exists_batch(list(remaining_ids))
             
-            # Update results for found records
-            for record_id, has_vector in found_in_shard.items():
-                if has_vector:
-                    results[record_id] = True
-                    remaining_ids.remove(record_id)
-                elif record_id in found_in_shard:
-                    # Record exists but has no vector
+            # Get batch vector existence check for records that actually exist in this shard
+            existing_ids = [rid for rid in remaining_ids if exists_in_shard.get(rid, False)]
+            if existing_ids:
+                has_vector_in_shard = shard.has_vector_batch(existing_ids)
+            else:
+                has_vector_in_shard = {}
+            
+            # Update results for records that exist in this shard
+            for record_id in list(remaining_ids):
+                if exists_in_shard.get(record_id, False):
+                    # Record exists in this shard
+                    results[record_id] = has_vector_in_shard.get(record_id, False)
                     remaining_ids.remove(record_id)
         
         return results
@@ -689,3 +694,51 @@ class PodEMemory:
             shard_info.append(info)
         
         return shard_info
+    
+    def close(self):
+        """
+        Properly close all shard connections and release file handles.
+        
+        This method should be called when the PodEMemory instance is no longer needed
+        to ensure proper cleanup of database connections and file handles.
+        """
+        logger.info(f"Closing PodEMemory '{self.name}' and all shards")
+        
+        for shard_id, shard in self._shards.items():
+            try:
+                # Close ChromaDB connection
+                if hasattr(shard, 'chroma_client') and shard.chroma_client:
+                    try:
+                        shard.chroma_client = None
+                        logger.debug(f"Closed ChromaDB connection for shard {shard_id}")
+                    except Exception as e:
+                        logger.warning(f"Error closing ChromaDB connection for shard {shard_id}: {e}")
+                
+                # Close SQLite connection (if any explicit connection exists)
+                if hasattr(shard, '_connection') and shard._connection:
+                    try:
+                        shard._connection.close()
+                        shard._connection = None
+                        logger.debug(f"Closed SQLite connection for shard {shard_id}")
+                    except Exception as e:
+                        logger.warning(f"Error closing SQLite connection for shard {shard_id}: {e}")
+                        
+            except Exception as e:
+                logger.error(f"Error closing shard {shard_id}: {e}")
+        
+        # Clear shards dictionary
+        self._shards.clear()
+        
+        # Force garbage collection to release file handles
+        import gc
+        gc.collect()
+        
+        logger.info(f"PodEMemory '{self.name}' closed successfully")
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit with proper cleanup."""
+        self.close()
