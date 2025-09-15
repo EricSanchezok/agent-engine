@@ -247,7 +247,7 @@ class DailyArxivFilterAndDownload:
         
         return download_results
     
-    async def run_step1(
+    async def run(
         self, 
         target_date: Optional[date] = None,
         top_k: Optional[int] = None,

@@ -71,7 +71,7 @@ class DailyArxivService:
         try:
             # Step 1: Filter and Download
             self.logger.info("Executing Step 1: Filter and Download")
-            step1_result = await self.filter_and_download.run_step1(
+            step1_result = await self.filter_and_download.run(
                 target_date=target_date,
                 top_k=top_k,
                 max_concurrent_downloads=max_concurrent_downloads

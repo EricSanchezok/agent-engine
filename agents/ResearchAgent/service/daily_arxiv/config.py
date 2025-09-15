@@ -13,7 +13,7 @@ class DailyArxivConfig:
     
     # VPN Configuration
     USE_ERIC_VPN = os.getenv("USE_ERIC_VPN", "false").lower() == "true"
-    ERIC_VPN_URL = os.getenv("ERIC_VPN_URL", "http://eric-vpn.cpolar.top/r/")
+    ERIC_VPN_URL = os.getenv("ERIC_VPN_URL", "http://eric-vpn.vip.cpolar.cn/r/")
     EMBEDDING_PROXY_ROUTE = os.getenv("QWEN3_EMBEDDING_8B_H100_PROXY_ROUTE", "eric_qwen3_embedding_8b_h100")
     RERANKER_PROXY_ROUTE = os.getenv("QWEN3_RERANKER_8B_H100_PROXY_ROUTE", "eric_qwen3_reranker_8b_h100")
     EMBEDDING_MODEL_URL = os.getenv("QWEN3_EMBEDDING_8B_H100_URL", "https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn")
