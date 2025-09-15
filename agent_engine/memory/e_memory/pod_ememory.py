@@ -786,26 +786,50 @@ class PodEMemory:
         """
         if not record_ids:
             return {}
-        
-        # Initialize all results as False
-        results = {record_id: False for record_id in record_ids}
-        remaining_ids = set(record_ids)
-        
-        # Query each shard once for all remaining IDs
-        for shard in self._shards.values():
-            if not remaining_ids:
-                break  # All IDs found, early exit
+
+        if self.use_hash_sharding:
+            # 🚀 Efficient hash sharding path
+            results = {record_id: False for record_id in record_ids}
             
-            # Get batch existence check for remaining IDs
-            found_in_shard = shard.exists_batch(list(remaining_ids))
-            
-            # Update results for found records
-            for record_id, exists in found_in_shard.items():
-                if exists:
-                    results[record_id] = True
-                    remaining_ids.remove(record_id)
+            # 1. Group record_ids by shard
+            shard_groups: Dict[int, List[str]] = {}
+            for record_id in record_ids:
+                shard_id = self._get_hash_shard_for_record(record_id)
+                if shard_id not in shard_groups:
+                    shard_groups[shard_id] = []
+                shard_groups[shard_id].append(record_id)
+
+            # 2. Execute batch query on each relevant shard
+            for shard_id, rids_in_shard in shard_groups.items():
+                shard = self._shards[shard_id]
+                found_in_shard = shard.exists_batch(rids_in_shard)
+                # Update results
+                for record_id, exists in found_in_shard.items():
+                    if exists:
+                        results[record_id] = True
+            return results
         
-        return results
+        else:
+            # Compatible sequential sharding path (unchanged)
+            # Initialize all results as False
+            results = {record_id: False for record_id in record_ids}
+            remaining_ids = set(record_ids)
+            
+            # Query each shard once for all remaining IDs
+            for shard in self._shards.values():
+                if not remaining_ids:
+                    break  # All IDs found, early exit
+                
+                # Get batch existence check for remaining IDs
+                found_in_shard = shard.exists_batch(list(remaining_ids))
+                
+                # Update results for found records
+                for record_id, exists in found_in_shard.items():
+                    if exists:
+                        results[record_id] = True
+                        remaining_ids.remove(record_id)
+            
+            return results
     
     def has_vector_batch(self, record_ids: List[str]) -> Dict[str, bool]:
         """
@@ -822,34 +846,56 @@ class PodEMemory:
         """
         if not record_ids:
             return {}
-        
-        # Initialize all results as False
-        results = {record_id: False for record_id in record_ids}
-        remaining_ids = set(record_ids)
-        
-        # Query each shard once for all remaining IDs
-        for shard in self._shards.values():
-            if not remaining_ids:
-                break  # All IDs found, early exit
+
+        if self.use_hash_sharding:
+            # 🚀 Efficient hash sharding path
+            results = {record_id: False for record_id in record_ids}
             
-            # Get batch existence check for remaining IDs to know which records exist in this shard
-            exists_in_shard = shard.exists_batch(list(remaining_ids))
-            
-            # Get batch vector existence check for records that actually exist in this shard
-            existing_ids = [rid for rid in remaining_ids if exists_in_shard.get(rid, False)]
-            if existing_ids:
-                has_vector_in_shard = shard.has_vector_batch(existing_ids)
-            else:
-                has_vector_in_shard = {}
-            
-            # Update results for records that exist in this shard
-            for record_id in list(remaining_ids):
-                if exists_in_shard.get(record_id, False):
-                    # Record exists in this shard
-                    results[record_id] = has_vector_in_shard.get(record_id, False)
-                    remaining_ids.remove(record_id)
+            # 1. Group record_ids by shard
+            shard_groups: Dict[int, List[str]] = {}
+            for record_id in record_ids:
+                shard_id = self._get_hash_shard_for_record(record_id)
+                if shard_id not in shard_groups:
+                    shard_groups[shard_id] = []
+                shard_groups[shard_id].append(record_id)
+
+            # 2. Execute batch query on each relevant shard
+            for shard_id, rids_in_shard in shard_groups.items():
+                shard = self._shards[shard_id]
+                has_vector_in_shard = shard.has_vector_batch(rids_in_shard)
+                # Update results
+                results.update(has_vector_in_shard)
+            return results
         
-        return results
+        else:
+            # Compatible sequential sharding path (unchanged)
+            # Initialize all results as False
+            results = {record_id: False for record_id in record_ids}
+            remaining_ids = set(record_ids)
+            
+            # Query each shard once for all remaining IDs
+            for shard in self._shards.values():
+                if not remaining_ids:
+                    break  # All IDs found, early exit
+                
+                # Get batch existence check for remaining IDs to know which records exist in this shard
+                exists_in_shard = shard.exists_batch(list(remaining_ids))
+                
+                # Get batch vector existence check for records that actually exist in this shard
+                existing_ids = [rid for rid in remaining_ids if exists_in_shard.get(rid, False)]
+                if existing_ids:
+                    has_vector_in_shard = shard.has_vector_batch(existing_ids)
+                else:
+                    has_vector_in_shard = {}
+                
+                # Update results for records that exist in this shard
+                for record_id in list(remaining_ids):
+                    if exists_in_shard.get(record_id, False):
+                        # Record exists in this shard
+                        results[record_id] = has_vector_in_shard.get(record_id, False)
+                        remaining_ids.remove(record_id)
+            
+            return results
 
     def get_shard_info(self) -> List[Dict[str, Any]]:
         """
