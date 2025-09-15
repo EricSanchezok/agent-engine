@@ -35,9 +35,7 @@ class ArxivDatabase:
         self,
         name: str = "arxiv_papers",
         persist_dir: Optional[str] = None,
-        distance_metric: str = "cosine",
-        num_shards: int = 16,
-        use_hash_sharding: bool = True
+        distance_metric: str = "cosine"
     ):
         """
         Initialize ArxivDatabase.
@@ -46,9 +44,6 @@ class ArxivDatabase:
             name: Database name (used for PodEMemory)
             persist_dir: Storage directory (optional, defaults to ResearchAgent/database)
             distance_metric: Distance metric for vector search
-            num_shards: The number of shards to use for hash-based sharding.
-                        This should be a fixed number. (e.g., 16, 32, 64)
-            use_hash_sharding: Whether to use hash-based sharding (True) or legacy sequential sharding (False)
         """
         self.logger = AgentLogger(self.__class__.__name__)
         
@@ -59,27 +54,15 @@ class ArxivDatabase:
             self.persist_dir = Path(persist_dir) / name
         
         # Initialize PodEMemory with hash-based sharding
-        if use_hash_sharding:
-            self.pod_ememory = PodEMemory(
-                name=name,
-                persist_dir=str(self.persist_dir.parent),
-                distance_metric=distance_metric,
-                use_hash_sharding=True,
-                num_shards=num_shards
-            )
-            self.logger.info(f"ArxivDatabase '{name}' initialized at {self.persist_dir}")
-            self.logger.info(f"Using hash-based sharding with {num_shards} shards")
-        else:
-            # Legacy sequential sharding mode for backward compatibility
-            self.pod_ememory = PodEMemory(
-                name=name,
-                persist_dir=str(self.persist_dir.parent),
-                max_elements_per_shard=MAX_ELEMENTS_PER_SHARD,
-                distance_metric=distance_metric,
-                use_hash_sharding=False
-            )
-            self.logger.info(f"ArxivDatabase '{name}' initialized at {self.persist_dir}")
-            self.logger.info(f"Using legacy sequential sharding with max {MAX_ELEMENTS_PER_SHARD} elements per shard")
+        self.pod_ememory = PodEMemory(
+            name=name,
+            persist_dir=str(self.persist_dir.parent),
+            distance_metric=distance_metric,
+            use_hash_sharding=True,
+            num_shards=16
+        )
+        self.logger.info(f"ArxivDatabase '{name}' initialized at {self.persist_dir}")
+        self.logger.info(f"Using hash-based sharding with {16} shards")
     
     def add_paper(self, paper: ArxivPaper, embedding: Optional[List[float]] = None) -> str:
         """
