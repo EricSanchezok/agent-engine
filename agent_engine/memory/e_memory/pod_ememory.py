@@ -30,7 +30,9 @@ class PodEMemory:
         name: str,
         persist_dir: Optional[str] = None,
         max_elements_per_shard: int = 100000,
-        distance_metric: str = "cosine"
+        distance_metric: str = "cosine",
+        num_shards: Optional[int] = None,
+        use_hash_sharding: bool = True
     ):
         """
         Initialize PodEMemory with multiple EMemory shards.
@@ -38,12 +40,15 @@ class PodEMemory:
         Args:
             name: Pod name (used for subdirectory creation)
             persist_dir: Storage directory (optional, defaults to root/.memory/name)
-            max_elements_per_shard: Maximum elements per EMemory shard
+            max_elements_per_shard: Maximum elements per EMemory shard (used for legacy mode)
             distance_metric: Distance metric ('cosine', 'l2', 'ip')
+            num_shards: Fixed number of shards for hash-based sharding (recommended: 10-100)
+            use_hash_sharding: Whether to use hash-based sharding (True) or legacy sequential sharding (False)
         """
         self.name = name
         self.max_elements_per_shard = max_elements_per_shard
         self.distance_metric = distance_metric
+        self.use_hash_sharding = use_hash_sharding
         
         # Determine storage directory
         if persist_dir is None:
@@ -58,14 +63,50 @@ class PodEMemory:
         
         # Shard management
         self._shards: Dict[int, EMemory] = {}
-        self._shard_count = 0
-        self._current_shard = 0
         
-        # Load existing shards or create first shard
-        self._load_existing_shards()
+        if use_hash_sharding:
+            # Hash-based sharding: fixed number of shards
+            if num_shards is None:
+                num_shards = 10  # Default number of shards
+            self.num_shards = num_shards
+            self._shard_count = num_shards
+            self._current_shard = None  # Not used in hash sharding
+            
+            # Create all shards upfront for hash-based sharding
+            self._create_all_shards()
+        else:
+            # Legacy sequential sharding: dynamic shard creation
+            self.num_shards = None
+            self._shard_count = 0
+            self._current_shard = 0
+            
+            # Load existing shards or create first shard
+            self._load_existing_shards()
         
         logger.info(f"PodEMemory '{name}' initialized at {self.persist_dir}")
-        logger.info(f"Max elements per shard: {max_elements_per_shard}")
+        logger.info(f"Sharding strategy: {'Hash-based' if use_hash_sharding else 'Sequential'}")
+        if use_hash_sharding:
+            logger.info(f"Number of shards: {self.num_shards}")
+        else:
+            logger.info(f"Max elements per shard: {max_elements_per_shard}")
+    
+    def _create_all_shards(self) -> None:
+        """Create all shards upfront for hash-based sharding."""
+        for shard_id in range(self.num_shards):
+            shard_name = f"{self.name}_shard_{shard_id}"
+            shard_dir = self.persist_dir / shard_name
+            
+            # Create EMemory instance for this shard
+            shard = EMemory(
+                name=shard_name,
+                persist_dir=str(shard_dir),
+                distance_metric=self.distance_metric
+            )
+            
+            self._shards[shard_id] = shard
+            logger.debug(f"Created shard {shard_id} with name '{shard_name}'")
+        
+        logger.info(f"Created {self.num_shards} shards for hash-based sharding")
     
     def _load_existing_shards(self) -> None:
         """Load existing shards from the persist directory."""
@@ -140,7 +181,21 @@ class PodEMemory:
         return shard_id
     
     def _get_shard_for_record(self, record_id: str) -> int:
-        """Get the shard ID for a given record ID using existence-based sharding."""
+        """Get the shard ID for a given record ID."""
+        if self.use_hash_sharding:
+            return self._get_hash_shard_for_record(record_id)
+        else:
+            return self._get_sequential_shard_for_record(record_id)
+    
+    def _get_hash_shard_for_record(self, record_id: str) -> int:
+        """Get the shard ID for a given record ID using hash-based sharding."""
+        # Use consistent hashing to determine shard
+        hasher = hashlib.sha256(record_id.encode('utf-8'))
+        shard_id = int(hasher.hexdigest(), 16) % self.num_shards
+        return shard_id
+    
+    def _get_sequential_shard_for_record(self, record_id: str) -> int:
+        """Get the shard ID for a given record ID using sequential sharding."""
         shard_id = self._find_shard_with_record(record_id)
         if shard_id is not None:
             return shard_id
@@ -275,23 +330,31 @@ class PodEMemory:
             
             # Step 3: Allocate new records to appropriate shards
             if new_records:
-                # Get current shard counts
-                shard_counts = {sid: shard.count() for sid, shard in self._shards.items()}
-                current_shard = self._current_shard
-                
-                for record in new_records:
-                    # Find next available shard
-                    while shard_counts.get(current_shard, 0) >= self.max_elements_per_shard:
-                        current_shard += 1
-                        if current_shard not in self._shards:
-                            self._create_new_shard()
-                            shard_counts[current_shard] = 0
+                if self.use_hash_sharding:
+                    # Hash sharding: use hash function to determine shard for each record
+                    for record in new_records:
+                        shard_id = self._get_hash_shard_for_record(record.id)
+                        if shard_id not in shard_groups:
+                            shard_groups[shard_id] = []
+                        shard_groups[shard_id].append(record)
+                else:
+                    # Sequential sharding: use existing logic
+                    shard_counts = {sid: shard.count() for sid, shard in self._shards.items()}
+                    current_shard = self._current_shard
                     
-                    shard_id = current_shard
-                    if shard_id not in shard_groups:
-                        shard_groups[shard_id] = []
-                    shard_groups[shard_id].append(record)
-                    shard_counts[shard_id] += 1
+                    for record in new_records:
+                        # Find next available shard
+                        while shard_counts.get(current_shard, 0) >= self.max_elements_per_shard:
+                            current_shard += 1
+                            if current_shard not in self._shards:
+                                self._create_new_shard()
+                                shard_counts[current_shard] = 0
+                        
+                        shard_id = current_shard
+                        if shard_id not in shard_groups:
+                            shard_groups[shard_id] = []
+                        shard_groups[shard_id].append(record)
+                        shard_counts[shard_id] += 1
             
             # Step 4: Batch write to each shard
             for shard_id, recs in shard_groups.items():
@@ -319,14 +382,18 @@ class PodEMemory:
         Returns:
             Record if found, None otherwise
         """
-        # Find which shard contains this record
-        shard_id = self._find_shard_with_record(record_id)
-        
-        if shard_id is None:
-            return None
-        
-        shard = self._shards[shard_id]
-        return shard.get(record_id)
+        if self.use_hash_sharding:
+            # O(1) lookup using hash-based sharding
+            shard_id = self._get_hash_shard_for_record(record_id)
+            shard = self._shards[shard_id]
+            return shard.get(record_id)
+        else:
+            # O(M) lookup using sequential sharding
+            shard_id = self._find_shard_with_record(record_id)
+            if shard_id is None:
+                return None
+            shard = self._shards[shard_id]
+            return shard.get(record_id)
     
     def get_vector(self, record_id: str) -> Optional[List[float]]:
         """
@@ -338,14 +405,18 @@ class PodEMemory:
         Returns:
             Vector embedding as List[float] if found and has vector, None otherwise
         """
-        # Find which shard contains this record
-        shard_id = self._find_shard_with_record(record_id)
-        
-        if shard_id is None:
-            return None
-        
-        shard = self._shards[shard_id]
-        return shard.get_vector(record_id)
+        if self.use_hash_sharding:
+            # O(1) lookup using hash-based sharding
+            shard_id = self._get_hash_shard_for_record(record_id)
+            shard = self._shards[shard_id]
+            return shard.get_vector(record_id)
+        else:
+            # O(M) lookup using sequential sharding
+            shard_id = self._find_shard_with_record(record_id)
+            if shard_id is None:
+                return None
+            shard = self._shards[shard_id]
+            return shard.get_vector(record_id)
     
     def delete(self, record_id: str) -> bool:
         """
@@ -357,14 +428,46 @@ class PodEMemory:
         Returns:
             True if deleted, False if not found
         """
-        # Find which shard contains this record
-        shard_id = self._find_shard_with_record(record_id)
+        if self.use_hash_sharding:
+            # O(1) lookup using hash-based sharding
+            shard_id = self._get_hash_shard_for_record(record_id)
+            shard = self._shards[shard_id]
+            return shard.delete(record_id)
+        else:
+            # O(M) lookup using sequential sharding
+            shard_id = self._find_shard_with_record(record_id)
+            if shard_id is None:
+                return False
+            shard = self._shards[shard_id]
+            return shard.delete(record_id)
+    
+    def update(self, record: Record) -> bool:
+        """
+        Update an existing record in the pod.
         
-        if shard_id is None:
+        Args:
+            record: Record object to update (must have an ID)
+            
+        Returns:
+            True if successfully updated, False otherwise
+        """
+        if not record.id:
+            logger.warning("Cannot update record without ID")
             return False
         
-        shard = self._shards[shard_id]
-        return shard.delete(record_id)
+        if self.use_hash_sharding:
+            # O(1) lookup using hash-based sharding
+            shard_id = self._get_hash_shard_for_record(record.id)
+            shard = self._shards[shard_id]
+            return shard.update(record)
+        else:
+            # O(M) lookup using sequential sharding
+            shard_id = self._find_shard_with_record(record.id)
+            if shard_id is None:
+                logger.warning(f"Record {record.id} not found, cannot update")
+                return False
+            shard = self._shards[shard_id]
+            return shard.update(record)
     
     def list_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Record]:
         """
@@ -460,6 +563,9 @@ class PodEMemory:
         """
         Search for similar records across all shards.
         
+        Optimized implementation that eliminates N+1 query problem by using
+        batch operations to retrieve records efficiently.
+        
         Args:
             query_vector: Query vector
             k: Number of nearest neighbors to return
@@ -468,11 +574,51 @@ class PodEMemory:
         Returns:
             List of (Record, distance) tuples
         """
-        similar_ids = self.search_similar(query_vector, k, ef)
-        results = []
+        # Step 1: Get similar record IDs and distances from all shards
+        similar_ids_with_dist = self.search_similar(query_vector, k, ef)
+        if not similar_ids_with_dist:
+            return []
+
+        record_ids = [item[0] for item in similar_ids_with_dist]
+        dist_map = {item[0]: item[1] for item in similar_ids_with_dist}
+
+        if self.use_hash_sharding:
+            # Hash sharding: group by shard and batch retrieve
+            shard_groups: Dict[int, List[str]] = {}
+            for record_id in record_ids:
+                shard_id = self._get_hash_shard_for_record(record_id)
+                if shard_id not in shard_groups:
+                    shard_groups[shard_id] = []
+                shard_groups[shard_id].append(record_id)
+            
+            # Batch retrieve from each shard
+            all_records_map: Dict[str, Record] = {}
+            for shard_id, rids_in_shard in shard_groups.items():
+                shard = self._shards[shard_id]
+                records_from_shard = shard.get_batch(rids_in_shard)
+                all_records_map.update(records_from_shard)
+        else:
+            # Sequential sharding: use existing batch method
+            shard_map = self._find_shards_for_records_batch(record_ids)
+            
+            # Group by shard
+            shard_groups: Dict[int, List[str]] = {}
+            for rid, sid in shard_map.items():
+                if sid not in shard_groups:
+                    shard_groups[sid] = []
+                shard_groups[sid].append(rid)
+            
+            # Batch retrieve from each shard
+            all_records_map: Dict[str, Record] = {}
+            for shard_id, rids_in_shard in shard_groups.items():
+                shard = self._shards[shard_id]
+                records_from_shard = shard.get_batch(rids_in_shard)
+                all_records_map.update(records_from_shard)
         
-        for record_id, distance in similar_ids:
-            record = self.get(record_id)
+        # Step 4: Reassemble results maintaining original order
+        results = []
+        for record_id, distance in similar_ids_with_dist:
+            record = all_records_map.get(record_id)
             if record:
                 results.append((record, distance))
         
@@ -592,9 +738,15 @@ class PodEMemory:
         Returns:
             True if record exists, False otherwise
         """
-        # Find which shard contains this record
-        shard_id = self._find_shard_with_record(record_id)
-        return shard_id is not None
+        if self.use_hash_sharding:
+            # O(1) lookup using hash-based sharding
+            shard_id = self._get_hash_shard_for_record(record_id)
+            shard = self._shards[shard_id]
+            return shard.exists(record_id)
+        else:
+            # O(M) lookup using sequential sharding
+            shard_id = self._find_shard_with_record(record_id)
+            return shard_id is not None
     
     def has_vector(self, record_id: str) -> bool:
         """
@@ -606,14 +758,18 @@ class PodEMemory:
         Returns:
             True if record has vector, False otherwise
         """
-        # Find which shard contains this record
-        shard_id = self._find_shard_with_record(record_id)
-        
-        if shard_id is None:
-            return False
-        
-        shard = self._shards[shard_id]
-        return shard.has_vector(record_id)
+        if self.use_hash_sharding:
+            # O(1) lookup using hash-based sharding
+            shard_id = self._get_hash_shard_for_record(record_id)
+            shard = self._shards[shard_id]
+            return shard.has_vector(record_id)
+        else:
+            # O(M) lookup using sequential sharding
+            shard_id = self._find_shard_with_record(record_id)
+            if shard_id is None:
+                return False
+            shard = self._shards[shard_id]
+            return shard.has_vector(record_id)
     
     def exists_batch(self, record_ids: List[str]) -> Dict[str, bool]:
         """
