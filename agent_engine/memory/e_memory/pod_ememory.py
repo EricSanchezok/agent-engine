@@ -351,6 +351,10 @@ class PodEMemory:
         """
         List all records across all shards.
         
+        ⚠️  WARNING: This method loads ALL records into memory at once!
+        For large databases (millions of records), this can cause memory explosion.
+        Consider using more specific query methods or pagination with small limits.
+        
         Args:
             limit: Maximum number of records to return
             offset: Number of records to skip
@@ -358,6 +362,15 @@ class PodEMemory:
         Returns:
             List of records
         """
+        import warnings
+        warnings.warn(
+            "list_all() loads ALL records into memory. For large databases, "
+            "this can cause memory explosion. Consider using specific query methods "
+            "or pagination with small limits.",
+            UserWarning,
+            stacklevel=2
+        )
+        
         all_records = []
         current_offset = offset
         
@@ -445,6 +458,45 @@ class PodEMemory:
                 results.append((record, distance))
         
         return results
+    
+    def query_by_date_range(
+        self, 
+        start_date: str, 
+        end_date: str, 
+        limit: Optional[int] = None,
+        offset: int = 0
+    ) -> List[Record]:
+        """
+        Query records by date range across all shards.
+        
+        Args:
+            start_date: Start date in ISO format (YYYY-MM-DD)
+            end_date: End date in ISO format (YYYY-MM-DD)
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+            
+        Returns:
+            List of records within the date range
+        """
+        all_records = []
+        
+        # Query each shard
+        for shard_id in sorted(self._shards.keys()):
+            shard = self._shards[shard_id]
+            shard_records = shard.query_by_date_range(start_date, end_date, limit=None, offset=0)
+            all_records.extend(shard_records)
+        
+        # Sort by timestamp (most recent first)
+        all_records.sort(key=lambda r: r.timestamp or "", reverse=True)
+        
+        # Apply offset and limit
+        if offset > 0:
+            all_records = all_records[offset:]
+        
+        if limit is not None:
+            all_records = all_records[:limit]
+        
+        return all_records
     
     def clear(self) -> None:
         """Clear all records from all shards."""

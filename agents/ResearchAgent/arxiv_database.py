@@ -53,7 +53,7 @@ class ArxivDatabase:
             self.persist_dir = Path(persist_dir) / name
         
         # Initialize PodEMemory
-        self.pod_memory = PodEMemory(
+        self.pod_ememory = PodEMemory(
             name=name,
             persist_dir=str(self.persist_dir.parent),
             max_elements_per_shard=MAX_ELEMENTS_PER_SHARD,
@@ -81,7 +81,7 @@ class ArxivDatabase:
         record = self._paper_to_record(paper, embedding)
         
         # Add to PodEMemory
-        success = self.pod_memory.add(record)
+        success = self.pod_ememory.add(record)
         
         if success:
             self.logger.info(f"Added paper {paper.full_id} to database")
@@ -119,7 +119,7 @@ class ArxivDatabase:
             records.append(record)
         
         # Add to PodEMemory in batch
-        success = self.pod_memory.add_batch(records)
+        success = self.pod_ememory.add_batch(records)
         
         if success:
             # Extract record IDs from the records
@@ -140,7 +140,7 @@ class ArxivDatabase:
         Returns:
             ArxivPaper object if found, None otherwise
         """
-        record = self.pod_memory.get(paper_id)
+        record = self.pod_ememory.get(paper_id)
         if record is None:
             return None
         
@@ -164,7 +164,7 @@ class ArxivDatabase:
         record = self._paper_to_record(paper, embedding)
         
         # Update in PodEMemory
-        success = self.pod_memory.update(record)
+        success = self.pod_ememory.update(record)
         
         if success:
             self.logger.info(f"Updated paper {paper.full_id} in database")
@@ -183,7 +183,7 @@ class ArxivDatabase:
         Returns:
             True if deleted successfully, False otherwise
         """
-        success = self.pod_memory.delete(paper_id)
+        success = self.pod_ememory.delete(paper_id)
         
         if success:
             self.logger.info(f"Deleted paper {paper_id} from database")
@@ -208,7 +208,7 @@ class ArxivDatabase:
             List of ArxivPaper objects
         """
         # Search for similar records
-        similar_records = self.pod_memory.search_similar_records(query_vector, k)
+        similar_records = self.pod_ememory.search_similar_records(query_vector, k)
         
         # Convert records to papers
         papers = []
@@ -226,7 +226,7 @@ class ArxivDatabase:
         Returns:
             Total number of papers
         """
-        return self.pod_memory.count()
+        return self.pod_ememory.count()
     
     def get_stats(self) -> Dict[str, Any]:
         """
@@ -235,7 +235,7 @@ class ArxivDatabase:
         Returns:
             Statistics dictionary
         """
-        return self.pod_memory.get_stats()
+        return self.pod_ememory.get_stats()
     
     def exists(self, paper: ArxivPaper) -> bool:
         """
@@ -247,7 +247,7 @@ class ArxivDatabase:
         Returns:
             True if paper exists, False otherwise
         """
-        return self.pod_memory.exists(paper.full_id)
+        return self.pod_ememory.exists(paper.full_id)
     
     def has_vector(self, paper: ArxivPaper) -> bool:
         """
@@ -259,7 +259,7 @@ class ArxivDatabase:
         Returns:
             True if paper has vector, False otherwise
         """
-        return self.pod_memory.has_vector(paper.full_id)
+        return self.pod_ememory.has_vector(paper.full_id)
     
     def exists_batch(self, papers: List[ArxivPaper]) -> Dict[str, bool]:
         """
@@ -272,7 +272,7 @@ class ArxivDatabase:
             Dictionary mapping paper full_id to existence status
         """
         paper_ids = [paper.full_id for paper in papers]
-        return self.pod_memory.exists_batch(paper_ids)
+        return self.pod_ememory.exists_batch(paper_ids)
     
     def has_vector_batch(self, papers: List[ArxivPaper]) -> Dict[str, bool]:
         """
@@ -285,11 +285,65 @@ class ArxivDatabase:
             Dictionary mapping paper full_id to vector existence status
         """
         paper_ids = [paper.full_id for paper in papers]
-        return self.pod_memory.has_vector_batch(paper_ids)
+        return self.pod_ememory.has_vector_batch(paper_ids)
+
+    def get_papers_by_date(
+        self, 
+        target_date: datetime, 
+        categories: Optional[List[str]] = None,
+        limit: Optional[int] = None
+    ) -> List[ArxivPaper]:
+        """
+        Get all papers published on a specific date, optionally filtered by categories.
+        
+        This method uses efficient SQL-based date filtering instead of loading all records
+        into memory, making it suitable for large databases with millions of records.
+        
+        Args:
+            target_date: Target date to filter papers (datetime object)
+            categories: Optional list of arXiv categories to filter by. 
+                       If None, returns papers from all categories.
+            limit: Optional limit on number of papers to return
+                       
+        Returns:
+            List of ArxivPaper objects matching the criteria
+        """
+        # Use efficient date range query instead of list_all()
+        target_date_str = target_date.date().isoformat()
+        
+        # Query records for the specific date using efficient SQL filtering
+        # Note: timestamp stores full ISO datetime, so we need to query the full day range
+        start_datetime = f"{target_date_str}T00:00:00"
+        end_datetime = f"{target_date_str}T23:59:59"
+        
+        records = self.pod_ememory.query_by_date_range(
+            start_date=start_datetime,
+            end_date=end_datetime,
+            limit=limit
+        )
+        
+        # Filter by categories if provided
+        filtered_papers = []
+        for record in records:
+            paper = self._record_to_paper(record)
+            
+            # Check category filter if provided
+            if categories is not None:
+                # Check if any of the paper's categories match the filter categories
+                if not any(cat in paper.categories for cat in categories):
+                    continue
+            
+            filtered_papers.append(paper)
+        
+        self.logger.info(f"Found {len(filtered_papers)} papers for date {target_date_str}")
+        if categories:
+            self.logger.info(f"Filtered by categories: {categories}")
+        
+        return filtered_papers
 
     def clear(self) -> None:
         """Clear all papers from the database."""
-        self.pod_memory.clear()
+        self.pod_ememory.clear()
         self.logger.info("Cleared all papers from ArxivDatabase")
     
     def _paper_to_record(self, paper: ArxivPaper, embedding: Optional[List[float]] = None) -> Record:

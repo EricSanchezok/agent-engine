@@ -352,6 +352,10 @@ class EMemory:
         """
         List all records.
         
+        ⚠️  WARNING: This method loads ALL records into memory at once!
+        For large databases (millions of records), this can cause memory explosion.
+        Consider using more specific query methods or pagination with small limits.
+        
         Args:
             limit: Maximum number of records to return
             offset: Number of records to skip
@@ -359,6 +363,15 @@ class EMemory:
         Returns:
             List of records
         """
+        import warnings
+        warnings.warn(
+            "list_all() loads ALL records into memory. For large databases, "
+            "this can cause memory explosion. Consider using specific query methods "
+            "or pagination with small limits.",
+            UserWarning,
+            stacklevel=2
+        )
+        
         with sqlite3.connect(self.sqlite_path) as conn:
             query = """
                 SELECT id, attributes, content, timestamp, has_vector
@@ -580,6 +593,72 @@ class EMemory:
         
         # Ensure all requested IDs are in the result
         return {id: results.get(id, False) for id in ids}
+
+    def query_by_date_range(
+        self, 
+        start_date: str, 
+        end_date: str, 
+        limit: Optional[int] = None,
+        offset: int = 0
+    ) -> List[Record]:
+        """
+        Query records by date range using SQLite for efficient filtering.
+        
+        Args:
+            start_date: Start date in ISO format (YYYY-MM-DD)
+            end_date: End date in ISO format (YYYY-MM-DD) 
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+            
+        Returns:
+            List of records within the date range
+        """
+        with sqlite3.connect(self.sqlite_path) as conn:
+            query = """
+                SELECT id, attributes, content, timestamp, has_vector
+                FROM records 
+                WHERE timestamp >= ? AND timestamp <= ?
+                ORDER BY timestamp DESC
+            """
+            params = [start_date, end_date]
+            
+            if limit is not None:
+                query += " LIMIT ?"
+                params.append(limit)
+            
+            if offset > 0:
+                query += " OFFSET ?"
+                params.append(offset)
+            
+            cursor = conn.execute(query, params)
+            records = []
+            
+            for row in cursor.fetchall():
+                id, attributes_json, content, timestamp, has_vector = row
+                
+                # Parse attributes
+                attributes = json.loads(attributes_json) if attributes_json else {}
+                
+                # Get vector if exists
+                vector = None
+                if has_vector:
+                    try:
+                        vector_data = self.collection.get(ids=[id], include=["embeddings"])
+                        if vector_data["embeddings"]:
+                            vector = vector_data["embeddings"][0]
+                    except Exception as e:
+                        logger.warning(f"Failed to get vector for {id}: {e}")
+                
+                record = Record(
+                    id=id,
+                    content=content,
+                    vector=vector,
+                    attributes=attributes,
+                    timestamp=timestamp
+                )
+                records.append(record)
+        
+        return records
 
     def get_stats(self) -> Dict[str, Any]:
         """
