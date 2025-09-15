@@ -1,4 +1,19 @@
 """
+from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+
+# Add project root to Python path
+current_file = Path(__file__).resolve()
+project_root = current_file
+while project_root.parent != project_root:
+    if (project_root / "pyproject.toml").exists():
+        break
+    project_root = project_root.parent
+sys.path.insert(0, str(project_root))
+
+
 High-performance, scalable vector memory for agents.
 
 This module provides a scalable memory implementation with:
@@ -13,7 +28,6 @@ Design goals:
 - RAG-friendly ANN search with metadata filtering and similarity threshold
 """
 
-from __future__ import annotations
 
 import os
 import json

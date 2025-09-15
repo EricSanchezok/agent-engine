@@ -1,5 +1,20 @@
 """SignalFrontier 日常流程调度脚本
 
+from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+
+# Add project root to Python path
+current_file = Path(__file__).resolve()
+project_root = current_file
+while project_root.parent != project_root:
+    if (project_root / "pyproject.toml").exists():
+        break
+    project_root = project_root.parent
+sys.path.insert(0, str(project_root))
+
+
 本文件提供两大功能：
 1. `run_for_date(date_str: str)`
    立即对指定日期（YYYYMMDD）执行完整流程：
@@ -13,7 +28,6 @@
    使用 APScheduler 在北京时间每天 09:00 自动执行前一天的流程。
 """
 
-from __future__ import annotations
 
 # ---------------------------------------------------------------------------
 # Standard library imports

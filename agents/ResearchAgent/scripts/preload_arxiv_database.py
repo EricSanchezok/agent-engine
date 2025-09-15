@@ -9,9 +9,21 @@ This script preloads arXiv papers into the database by:
 5. Logging failed paper IDs to JSON files
 """
 
+import sys
+import os
+from pathlib import Path
+
+# Add project root to Python path
+current_file = Path(__file__).resolve()
+project_root = current_file
+while project_root.parent != project_root:
+    if (project_root / "pyproject.toml").exists():
+        break
+    project_root = project_root.parent
+sys.path.insert(0, str(project_root))
+
 import asyncio
 import json
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional, Tuple
