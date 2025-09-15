@@ -58,7 +58,7 @@ class GitHubRepository:
     disabled: bool
     
     @classmethod
-    def from_api_response(cls, data: Dict[str, Any]) -> GitHubRepository:
+    def from_api_response(cls, data: Dict[str, Any]) -> 'GitHubRepository':
         """Create GitHubRepository from GitHub API response."""
         return cls(
             id=data['id'],
