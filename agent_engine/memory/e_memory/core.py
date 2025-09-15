@@ -306,11 +306,12 @@ class EMemory:
             
             if row:
                 record_id, attributes_json, content, timestamp, has_vector = row
+                vector = self.get_vector(id) if has_vector else None
                 return Record(
                     id=record_id,
                     attributes=json.loads(attributes_json) if attributes_json else {},
                     content=content,
-                    vector=None,  # We don't return the vector in this method
+                    vector=vector,
                     timestamp=timestamp
                 )
             return None
