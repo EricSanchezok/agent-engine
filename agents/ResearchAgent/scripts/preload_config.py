@@ -32,7 +32,7 @@ class PreloadConfig:
     
     # Processing Configuration
     DEFAULT_NUM_DAYS: int = 3000
-    DELAY_BETWEEN_DAYS: float = 0.1  # seconds
+    DELAY_BETWEEN_DAYS: float = 10.0  # seconds
     
     @classmethod
     def validate(cls) -> bool:
