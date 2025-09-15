@@ -257,23 +257,26 @@ class ArxivSyncService:
     def _filter_new_papers(self, papers: List[ArxivPaper]) -> List[ArxivPaper]:
         """
         Filter out papers that already exist in the database with vectors.
-        
-        Args:
-            papers: List of ArxivPaper objects
-            
-        Returns:
-            List of papers that need to be processed (don't exist or don't have vectors)
         """
         if not papers:
             return []
         
-        # Check which papers already exist with vectors
+        self.logger.info(f"Checking existence for {len(papers)} papers in batch...")
+        
+        # 🚀 步骤1: 使用两次批量查询，代替数千次单独查询
+        existence_map = self.arxiv_database.exists_batch(papers)
+        vector_map = self.arxiv_database.has_vector_batch(papers)
+        
+        # 步骤2: 在内存中进行高效过滤
         new_papers = []
         for paper in papers:
-            if not self.arxiv_database.exists(paper) or not self.arxiv_database.has_vector(paper):
+            paper_id = paper.full_id
+            
+            # 直接从字典中获取结果，无数据库交互
+            if not existence_map.get(paper_id, False) or not vector_map.get(paper_id, False):
                 new_papers.append(paper)
-        
-        self.logger.info(f"Filtered {len(papers)} papers to {len(new_papers)} new papers")
+                
+        self.logger.info(f"Filtered {len(papers)} papers down to {len(new_papers)} new papers to process.")
         return new_papers
     
     async def _process_day(self, date: datetime) -> Dict[str, Any]:
