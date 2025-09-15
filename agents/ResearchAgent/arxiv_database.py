@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.memory.e_memory.pod_ememory import PodEMemory
@@ -237,54 +237,72 @@ class ArxivDatabase:
         """
         return self.pod_ememory.get_stats()
     
-    def exists(self, paper: ArxivPaper) -> bool:
+    def exists(self, paper_or_id: Union[ArxivPaper, str]) -> bool:
         """
         Check if a paper exists by its arXiv ID.
         
         Args:
-            paper: ArxivPaper object
+            paper_or_id: ArxivPaper object or paper_full_id string
             
         Returns:
             True if paper exists, False otherwise
         """
-        return self.pod_ememory.exists(paper.full_id)
+        if isinstance(paper_or_id, ArxivPaper):
+            paper_id = paper_or_id.full_id
+        else:
+            paper_id = paper_or_id
+        return self.pod_ememory.exists(paper_id)
     
-    def has_vector(self, paper: ArxivPaper) -> bool:
+    def has_vector(self, paper_or_id: Union[ArxivPaper, str]) -> bool:
         """
         Check if a paper has a vector embedding.
         
         Args:
-            paper: ArxivPaper object
+            paper_or_id: ArxivPaper object or paper_full_id string
             
         Returns:
             True if paper has vector, False otherwise
         """
-        return self.pod_ememory.has_vector(paper.full_id)
+        if isinstance(paper_or_id, ArxivPaper):
+            paper_id = paper_or_id.full_id
+        else:
+            paper_id = paper_or_id
+        return self.pod_ememory.has_vector(paper_id)
     
-    def exists_batch(self, papers: List[ArxivPaper]) -> Dict[str, bool]:
+    def exists_batch(self, papers_or_ids: List[Union[ArxivPaper, str]]) -> Dict[str, bool]:
         """
         Check existence of multiple papers.
         
         Args:
-            papers: List of ArxivPaper objects
+            papers_or_ids: List of ArxivPaper objects or paper_full_id strings
             
         Returns:
             Dictionary mapping paper full_id to existence status
         """
-        paper_ids = [paper.full_id for paper in papers]
+        paper_ids = []
+        for item in papers_or_ids:
+            if isinstance(item, ArxivPaper):
+                paper_ids.append(item.full_id)
+            else:
+                paper_ids.append(item)
         return self.pod_ememory.exists_batch(paper_ids)
     
-    def has_vector_batch(self, papers: List[ArxivPaper]) -> Dict[str, bool]:
+    def has_vector_batch(self, papers_or_ids: List[Union[ArxivPaper, str]]) -> Dict[str, bool]:
         """
         Check if multiple papers have vector embeddings.
         
         Args:
-            papers: List of ArxivPaper objects
+            papers_or_ids: List of ArxivPaper objects or paper_full_id strings
             
         Returns:
             Dictionary mapping paper full_id to vector existence status
         """
-        paper_ids = [paper.full_id for paper in papers]
+        paper_ids = []
+        for item in papers_or_ids:
+            if isinstance(item, ArxivPaper):
+                paper_ids.append(item.full_id)
+            else:
+                paper_ids.append(item)
         return self.pod_ememory.has_vector_batch(paper_ids)
 
     def get_papers_by_date(
