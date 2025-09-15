@@ -319,16 +319,13 @@ class ArxivDatabase:
         if not isinstance(paper, ArxivPaper):
             raise TypeError("paper must be an ArxivPaper instance")
         
-        record = self.pod_ememory.get(paper.full_id)
-        if record is None:
-            self.logger.warning(f"Paper {paper.full_id} not found in database")
-            return None
-        
-        if record.vector is None:
+        # Use the new get_vector method from PodEMemory
+        vector = self.pod_ememory.get_vector(paper.full_id)
+        if vector is None:
             self.logger.warning(f"Paper {paper.full_id} has no vector embedding")
             return None
         
-        return record.vector
+        return vector
     
     def get_vectors(self, papers: List[ArxivPaper]) -> List[Optional[List[float]]]:
         """

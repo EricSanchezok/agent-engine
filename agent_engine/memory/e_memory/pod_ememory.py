@@ -328,6 +328,25 @@ class PodEMemory:
         shard = self._shards[shard_id]
         return shard.get(record_id)
     
+    def get_vector(self, record_id: str) -> Optional[List[float]]:
+        """
+        Get the vector embedding for a record by ID.
+        
+        Args:
+            record_id: Record ID
+            
+        Returns:
+            Vector embedding as List[float] if found and has vector, None otherwise
+        """
+        # Find which shard contains this record
+        shard_id = self._find_shard_with_record(record_id)
+        
+        if shard_id is None:
+            return None
+        
+        shard = self._shards[shard_id]
+        return shard.get_vector(record_id)
+    
     def delete(self, record_id: str) -> bool:
         """
         Delete a record by ID.

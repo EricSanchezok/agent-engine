@@ -315,6 +315,39 @@ class EMemory:
                 )
             return None
 
+    def get_vector(self, id: str) -> Optional[List[float]]:
+        """
+        Get the vector embedding for a record by ID.
+        
+        Args:
+            id: Record ID
+            
+        Returns:
+            Vector embedding as List[float] if found and has vector, None otherwise
+        """
+        # Check if record exists and has vector
+        if not self.exists(id) or not self.has_vector(id):
+            return None
+        
+        try:
+            # Get vector from ChromaDB
+            vector_data = self.collection.get(ids=[id], include=["embeddings"])
+            if vector_data and vector_data.get("embeddings") is not None:
+                embeddings = vector_data["embeddings"]
+                if embeddings is not None and len(embeddings) > 0:
+                    # Handle numpy array or list
+                    vector = embeddings[0]
+                    if hasattr(vector, 'tolist'):
+                        return vector.tolist()
+                    elif hasattr(vector, '__iter__'):
+                        return list(vector)
+                    else:
+                        return [vector]
+        except Exception as e:
+            logger.warning(f"Failed to get vector for record {id}: {e}")
+        
+        return None
+
     def delete(self, id: str) -> bool:
         """
         Delete a record by ID.

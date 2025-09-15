@@ -16,7 +16,7 @@ from agent_engine.utils import get_current_file_dir
 from agents.ResearchAgent.arxiv_database import ArxivDatabase
 from agents.ResearchAgent.qiji_library import QijiLibrary
 from core.arxiv_fetcher import ArxivFetcher
-from .config import DailyArxivConfig
+from agents.ResearchAgent.service.daily_arxiv.config import DailyArxivConfig
 
 
 class DailyArxivPaperFilter:

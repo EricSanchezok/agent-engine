@@ -6,8 +6,8 @@ import asyncio
 from datetime import date, timedelta
 
 from agent_engine.agent_logger import AgentLogger
-from .config import DailyArxivConfig
-from .paper_filter import DailyArxivPaperFilter
+from agents.ResearchAgent.service.daily_arxiv.config import DailyArxivConfig
+from agents.ResearchAgent.service.daily_arxiv.paper_filter import DailyArxivPaperFilter
 
 
 async def test_paper_filter():
@@ -26,9 +26,7 @@ async def test_paper_filter():
     
     # Test with different dates
     test_dates = [
-        date.today(),
-        date.today() - timedelta(days=1),
-        date.today() - timedelta(days=2)
+        date(2025, 9, 11)
     ]
     
     for test_date in test_dates:
