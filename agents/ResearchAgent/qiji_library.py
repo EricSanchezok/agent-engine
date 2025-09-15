@@ -298,6 +298,54 @@ class QijiLibrary:
         Returns:
             List of minimum distances, None for failed computations
         """
+        async def _process_single_input(input_data: Union[ArxivPaper, List[float]], index: int) -> Optional[float]:
+            """Process a single input and return its minimum distance."""
+            try:
+                # Get input vector
+                if isinstance(input_data, ArxivPaper):
+                    # Create embedding for paper summary
+                    if not input_data.summary:
+                        logger.warning(f"No summary available for paper {input_data.id} (index {index})")
+                        return None
+                    
+                    logger.debug(f"Creating embedding for paper {input_data.id} (index {index})")
+                    embedding = await self.embedding_client.embedding(
+                        text=input_data.summary,
+                        model_name=self.embedding_model
+                    )
+                    
+                    if not embedding:
+                        logger.error(f"Failed to create embedding for paper {input_data.id} (index {index})")
+                        return None
+                    
+                    input_vector = embedding
+                else:
+                    # Assume input_data is a vector
+                    if input_data is None:
+                        logger.warning(f"Input vector is None for index {index}")
+                        return None
+                    input_vector = input_data
+                
+                # Use EMemory's search_similar_records to find the most similar record
+                similar_records = self.qiji_memory.search_similar_records(
+                    query_vector=input_vector,
+                    k=1
+                )
+                
+                if not similar_records:
+                    logger.warning(f"No similar records found for input {index}")
+                    return None
+                
+                # The first (and only) result has the minimum distance
+                _, min_distance = similar_records[0]
+                
+                logger.debug(f"Input {index}: minimum distance = {min_distance:.4f}")
+                return float(min_distance)
+                
+            except Exception as e:
+                logger.error(f"Error processing input {index}: {e}")
+                return None
+                
         try:
             if not input_data_list:
                 logger.warning("Empty input list provided")
@@ -308,7 +356,7 @@ class QijiLibrary:
             # Process inputs concurrently
             tasks = []
             for i, input_data in enumerate(input_data_list):
-                task = self._process_single_input(input_data, i)
+                task = _process_single_input(input_data, i)
                 tasks.append(task)
             
             # Execute all tasks concurrently
@@ -332,50 +380,7 @@ class QijiLibrary:
             logger.error(f"Error in find_minimum_distances_batch: {e}")
             return [None] * len(input_data_list)
     
-    async def _process_single_input(self, input_data: Union[ArxivPaper, List[float]], index: int) -> Optional[float]:
-        """Process a single input and return its minimum distance."""
-        try:
-            # Get input vector
-            if isinstance(input_data, ArxivPaper):
-                # Create embedding for paper summary
-                if not input_data.summary:
-                    logger.warning(f"No summary available for paper {input_data.id} (index {index})")
-                    return None
-                
-                logger.debug(f"Creating embedding for paper {input_data.id} (index {index})")
-                embedding = await self.embedding_client.embedding(
-                    text=input_data.summary,
-                    model_name=self.embedding_model
-                )
-                
-                if not embedding:
-                    logger.error(f"Failed to create embedding for paper {input_data.id} (index {index})")
-                    return None
-                
-                input_vector = embedding
-            else:
-                # Assume input_data is a vector
-                input_vector = input_data
-            
-            # Use EMemory's search_similar_records to find the most similar record
-            similar_records = self.qiji_memory.search_similar_records(
-                query_vector=input_vector,
-                k=1
-            )
-            
-            if not similar_records:
-                logger.warning(f"No similar records found for input {index}")
-                return None
-            
-            # The first (and only) result has the minimum distance
-            _, min_distance = similar_records[0]
-            
-            logger.debug(f"Input {index}: minimum distance = {min_distance:.4f}")
-            return float(min_distance)
-            
-        except Exception as e:
-            logger.error(f"Error processing input {index}: {e}")
-            return None
+
 
 
 async def update_qiji_memory():
@@ -386,8 +391,8 @@ async def test():
     from agents.ResearchAgent.arxiv_database import ArxivDatabase
     arxiv_database = ArxivDatabase()
     qiji_library = QijiLibrary()
-    papers = arxiv_database.get_papers_by_date(datetime(2025, 9, 11))
-    distance = await qiji_library.find_minimum_distances_batch(papers[:10])
+    vectors = arxiv_database.get_vectors_by_date(datetime(2025, 9, 11))
+    distance = await qiji_library.find_minimum_distances_batch(vectors[:10])
     print(len(distance))
     print(distance)
 

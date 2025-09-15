@@ -663,24 +663,53 @@ class EMemory:
                 params.append(offset)
             
             cursor = conn.execute(query, params)
-            records = []
+            rows = cursor.fetchall()
             
-            for row in cursor.fetchall():
+            if not rows:
+                return []
+            
+            # Separate records with and without vectors for batch processing
+            records_with_vectors = []
+            records_without_vectors = []
+            id_to_row_mapping = {}
+            
+            for row in rows:
+                id, attributes_json, content, timestamp, has_vector = row
+                id_to_row_mapping[id] = row
+                
+                if has_vector:
+                    records_with_vectors.append(id)
+                else:
+                    records_without_vectors.append(id)
+            
+            # Batch get vectors for records that have them
+            vectors_data = {}
+            if records_with_vectors:
+                try:
+                    vector_data = self.collection.get(ids=records_with_vectors, include=["embeddings"])
+                    if vector_data and vector_data.get("embeddings") is not None:
+                        embeddings = vector_data["embeddings"]
+                        ids = vector_data.get("ids", [])
+                        
+                        # Handle both list and numpy array cases
+                        if hasattr(embeddings, '__len__') and len(embeddings) > 0:
+                            # Create mapping from id to vector
+                            for i, record_id in enumerate(ids):
+                                if i < len(embeddings):
+                                    vectors_data[record_id] = embeddings[i]
+                except Exception as e:
+                    logger.warning(f"Failed to get vectors in batch: {e}")
+            
+            # Build final records list
+            records = []
+            for row in rows:
                 id, attributes_json, content, timestamp, has_vector = row
                 
                 # Parse attributes
                 attributes = json.loads(attributes_json) if attributes_json else {}
                 
                 # Get vector if exists
-                vector = None
-                if has_vector:
-                    try:
-                        vector_data = self.collection.get(ids=[id], include=["embeddings"])
-                        print(vector_data.keys())
-                        if vector_data["embeddings"]:
-                            vector = vector_data["embeddings"][0]
-                    except Exception as e:
-                        logger.warning(f"Failed to get vector for {id}: {e}")
+                vector = vectors_data.get(id) if has_vector else None
                 
                 record = Record(
                     id=id,
