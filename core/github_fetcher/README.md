@@ -1,29 +1,29 @@
 # GitHub Fetcher
 
-A focused GitHub repository data fetching utility that provides clean interfaces for searching and retrieving GitHub repositories using the GitHub API without coupling to storage or database concerns.
+一个专注于GitHub仓库数据获取的工具，提供简洁的接口来搜索和检索GitHub仓库，使用GitHub API而不与存储或数据库关注点耦合。
 
-## Features
+## 功能特性
 
-- 🔍 **Repository Search**: Search repositories with flexible query parameters
-- 📊 **Repository Details**: Get detailed information about specific repositories
-- 👤 **User Repositories**: Fetch repositories for specific users
-- 🏢 **Organization Repositories**: Fetch repositories for organizations
-- 🔄 **Rate Limiting**: Built-in rate limiting and retry logic
-- 🛡️ **Error Handling**: Robust error handling with retry mechanisms
-- 🚀 **Async Support**: Full async/await support for high performance
-- 🔑 **Authentication**: Support for GitHub personal access tokens
+- 🔍 **仓库搜索**: 使用灵活的查询参数搜索仓库
+- 📊 **仓库详情**: 获取特定仓库的详细信息
+- 👤 **用户仓库**: 获取特定用户的仓库
+- 🏢 **组织仓库**: 获取组织的仓库
+- 🔄 **速率限制**: 内置速率限制和重试逻辑
+- 🛡️ **错误处理**: 强大的错误处理和重试机制
+- 🚀 **异步支持**: 完整的async/await支持，高性能
+- 🔑 **身份验证**: 支持GitHub个人访问令牌
 
-## Installation
+## 安装
 
-The GitHub Fetcher is part of the agent-engine package. Make sure you have the required dependencies:
+GitHub Fetcher是agent-engine包的一部分。确保您有所需的依赖项：
 
 ```bash
 pip install aiohttp requests python-dotenv
 ```
 
-## Quick Start
+## 快速开始
 
-### Basic Usage
+### 基本用法
 
 ```python
 import asyncio
@@ -47,7 +47,7 @@ async def main():
 asyncio.run(main())
 ```
 
-### With Authentication
+### 使用身份验证
 
 ```python
 import asyncio
@@ -65,52 +65,52 @@ async def main():
 asyncio.run(main())
 ```
 
-### Using Environment Variables
+### 使用环境变量
 
-Create a `.env` file in your project root:
+在您的项目根目录创建一个`.env`文件：
 
 ```bash
 # .env
 GITHUB_API_KEY=your_github_token_here
 ```
 
-Then use it in your code:
+然后在您的代码中使用：
 
 ```python
 import os
 from dotenv import load_dotenv
 from core.github_fetcher.github_fetcher import GitHubFetcher
 
-# Load environment variables
+# 加载环境变量
 load_dotenv()
 
 async def main():
     token = os.getenv('GITHUB_API_KEY')
     fetcher = GitHubFetcher(token=token)
     
-    # Your code here...
+    # 您的代码在这里...
 
 asyncio.run(main())
 ```
 
-## API Reference
+## API 参考
 
-### GitHubFetcher Class
+### GitHubFetcher 类
 
-#### Constructor
+#### 构造函数
 
 ```python
 GitHubFetcher(token: Optional[str] = None, base_url: str = "https://api.github.com")
 ```
 
-- `token`: GitHub personal access token (optional, but recommended for higher rate limits)
-- `base_url`: GitHub API base URL (defaults to public API)
+- `token`: GitHub个人访问令牌（可选，但建议用于更高的速率限制）
+- `base_url`: GitHub API基础URL（默认为公共API）
 
-#### Methods
+#### 方法
 
 ##### search_repositories()
 
-Search for repositories on GitHub.
+在GitHub上搜索仓库。
 
 ```python
 async def search_repositories(
@@ -123,38 +123,38 @@ async def search_repositories(
 ) -> List[GitHubRepository]
 ```
 
-**Parameters:**
-- `query`: Search query string (e.g., "language:python machine learning")
-- `sort`: Sort field (stars, forks, help-wanted-issues, updated)
-- `order`: Sort order (asc, desc)
-- `per_page`: Number of results per page (max 100)
-- `max_results`: Maximum total results to return
+**参数:**
+- `query`: 搜索查询字符串（例如："language:python machine learning"）
+- `sort`: 排序字段（stars, forks, help-wanted-issues, updated）
+- `order`: 排序顺序（asc, desc）
+- `per_page`: 每页结果数量（最大100）
+- `max_results`: 返回的最大总结果数
 
-**Example:**
+**示例:**
 ```python
-# Search for Python repositories with more than 1000 stars
+# 搜索超过1000星的Python仓库
 repos = await fetcher.search_repositories("language:python stars:>1000")
 
-# Search for machine learning repositories
+# 搜索机器学习仓库
 repos = await fetcher.search_repositories("machine learning OR deep learning")
 
-# Search with custom sorting
+# 使用自定义排序搜索
 repos = await fetcher.search_repositories("language:javascript", sort="updated", order="desc")
 ```
 
 ##### get_repository()
 
-Get a specific repository by owner and name.
+通过所有者和名称获取特定仓库。
 
 ```python
 async def get_repository(self, owner: str, repo: str) -> Optional[GitHubRepository]
 ```
 
-**Parameters:**
-- `owner`: Repository owner username
-- `repo`: Repository name
+**参数:**
+- `owner`: 仓库所有者用户名
+- `repo`: 仓库名称
 
-**Example:**
+**示例:**
 ```python
 repo = await fetcher.get_repository("microsoft", "vscode")
 if repo:
@@ -165,7 +165,7 @@ if repo:
 
 ##### get_user_repositories()
 
-Get repositories for a specific user.
+获取特定用户的仓库。
 
 ```python
 async def get_user_repositories(
@@ -179,26 +179,26 @@ async def get_user_repositories(
 ) -> List[GitHubRepository]
 ```
 
-**Parameters:**
-- `username`: GitHub username
-- `type`: Repository type (all, owner, public, private, member)
-- `sort`: Sort field (created, updated, pushed, full_name)
-- `direction`: Sort direction (asc, desc)
-- `per_page`: Number of results per page (max 100)
-- `max_results`: Maximum total results to return
+**参数:**
+- `username`: GitHub用户名
+- `type`: 仓库类型（all, owner, public, private, member）
+- `sort`: 排序字段（created, updated, pushed, full_name）
+- `direction`: 排序方向（asc, desc）
+- `per_page`: 每页结果数量（最大100）
+- `max_results`: 返回的最大总结果数
 
-**Example:**
+**示例:**
 ```python
-# Get all public repositories for a user
+# 获取用户的所有公共仓库
 repos = await fetcher.get_user_repositories("octocat", type="public")
 
-# Get repositories sorted by creation date
+# 按创建日期排序获取仓库
 repos = await fetcher.get_user_repositories("octocat", sort="created", direction="desc")
 ```
 
 ##### get_organization_repositories()
 
-Get repositories for a specific organization.
+获取特定组织的仓库。
 
 ```python
 async def get_organization_repositories(
@@ -212,41 +212,41 @@ async def get_organization_repositories(
 ) -> List[GitHubRepository]
 ```
 
-**Parameters:**
-- `org`: GitHub organization name
-- `type`: Repository type (all, public, private, forks, sources, member)
-- `sort`: Sort field (created, updated, pushed, full_name)
-- `direction`: Sort direction (asc, desc)
-- `per_page`: Number of results per page (max 100)
-- `max_results`: Maximum total results to return
+**参数:**
+- `org`: GitHub组织名称
+- `type`: 仓库类型（all, public, private, forks, sources, member）
+- `sort`: 排序字段（created, updated, pushed, full_name）
+- `direction`: 排序方向（asc, desc）
+- `per_page`: 每页结果数量（最大100）
+- `max_results`: 返回的最大总结果数
 
-**Example:**
+**示例:**
 ```python
-# Get all repositories for Microsoft organization
+# 获取Microsoft组织的所有仓库
 repos = await fetcher.get_organization_repositories("microsoft")
 
-# Get only public repositories
+# 只获取公共仓库
 repos = await fetcher.get_organization_repositories("microsoft", type="public")
 ```
 
 ##### get_rate_limit_info()
 
-Get current rate limit information.
+获取当前速率限制信息。
 
 ```python
 def get_rate_limit_info(self) -> Dict[str, Any]
 ```
 
-**Example:**
+**示例:**
 ```python
 rate_info = fetcher.get_rate_limit_info()
 print(f"Remaining requests: {rate_info['rate']['remaining']}")
 print(f"Rate limit resets at: {rate_info['rate']['reset']}")
 ```
 
-### GitHubRepository Class
+### GitHubRepository 类
 
-The `GitHubRepository` dataclass contains all repository information:
+`GitHubRepository`数据类包含所有仓库信息：
 
 ```python
 @dataclass
@@ -274,11 +274,11 @@ class GitHubRepository:
     disabled: bool
 ```
 
-## Convenience Functions
+## 便利函数
 
 ### search_python_repositories()
 
-Search for Python repositories with common filters.
+使用常用过滤器搜索Python仓库。
 
 ```python
 async def search_python_repositories(
@@ -288,90 +288,90 @@ async def search_python_repositories(
 ) -> List[GitHubRepository]
 ```
 
-**Example:**
+**示例:**
 ```python
 from core.github_fetcher.github_fetcher import search_python_repositories
 
-# Search for Python repositories with machine learning
+# 搜索机器学习的Python仓库
 repos = await search_python_repositories("machine learning", min_stars=500)
 
-# Search for Python repositories with at least 1000 stars
+# 搜索至少1000星的Python仓库
 repos = await search_python_repositories(min_stars=1000)
 ```
 
 ### search_machine_learning_repositories()
 
-Search for machine learning repositories.
+搜索机器学习仓库。
 
 ```python
 async def search_machine_learning_repositories(max_results: int = 100) -> List[GitHubRepository]
 ```
 
-**Example:**
+**示例:**
 ```python
 from core.github_fetcher.github_fetcher import search_machine_learning_repositories
 
 repos = await search_machine_learning_repositories(max_results=50)
 ```
 
-## Search Query Examples
+## 搜索查询示例
 
-GitHub's search API supports various qualifiers. Here are some useful examples:
+GitHub的搜索API支持各种限定符。以下是一些有用的示例：
 
-### Language-based searches
+### 基于语言的搜索
 ```python
-# Python repositories
+# Python仓库
 repos = await fetcher.search_repositories("language:python")
 
-# JavaScript repositories
+# JavaScript仓库
 repos = await fetcher.search_repositories("language:javascript")
 
-# Multiple languages
+# 多种语言
 repos = await fetcher.search_repositories("language:python OR language:javascript")
 ```
 
-### Star-based searches
+### 基于星数的搜索
 ```python
-# Repositories with more than 1000 stars
+# 超过1000星的仓库
 repos = await fetcher.search_repositories("stars:>1000")
 
-# Repositories with stars between 100 and 1000
+# 星数在100到1000之间的仓库
 repos = await fetcher.search_repositories("stars:100..1000")
 
-# Repositories with exactly 500 stars
+# 恰好500星的仓库
 repos = await fetcher.search_repositories("stars:500")
 ```
 
-### Date-based searches
+### 基于日期的搜索
 ```python
-# Repositories created after 2023-01-01
+# 2023年1月1日之后创建的仓库
 repos = await fetcher.search_repositories("created:>2023-01-01")
 
-# Repositories updated in the last month
+# 上个月更新的仓库
 repos = await fetcher.search_repositories("pushed:>2023-12-01")
 ```
 
-### Topic-based searches
+### 基于主题的搜索
 ```python
-# Repositories with specific topics
+# 具有特定主题的仓库
 repos = await fetcher.search_repositories("topic:machine-learning")
 
-# Repositories with multiple topics
+# 具有多个主题的仓库
 repos = await fetcher.search_repositories("topic:machine-learning topic:python")
 ```
 
-### Combined searches
+### 组合搜索
 ```python
-# Python repositories with more than 1000 stars, created after 2023
+# 超过1000星且在2023年后创建的Python仓库
 repos = await fetcher.search_repositories("language:python stars:>1000 created:>2023-01-01")
 
-# Machine learning repositories in Python or JavaScript
+# Python或JavaScript的机器学习仓库
 repos = await fetcher.search_repositories("machine learning (language:python OR language:javascript)")
 ```
 
-## Error Handling
+## 错误处理
 
-The GitHub Fetcher includes robust error handling:
+GitHub Fetcher包含强大的错误处理：
 
 ```python
 async def safe_search():
@@ -383,36 +383,36 @@ async def safe_search():
         print(f"Error occurred: {e}")
         return []
 
-# The fetcher also handles rate limiting automatically
-# and includes retry logic for network issues
+# 获取器还会自动处理速率限制
+# 并包含网络问题的重试逻辑
 ```
 
-## Rate Limiting
+## 速率限制
 
-GitHub API has rate limits:
-- **Unauthenticated**: 60 requests per hour
-- **Authenticated**: 5,000 requests per hour
+GitHub API有速率限制：
+- **未认证**: 每小时60个请求
+- **已认证**: 每小时5,000个请求
 
-The fetcher automatically handles rate limiting and includes retry logic.
+获取器自动处理速率限制并包含重试逻辑。
 
-## Testing
+## 测试
 
-Run the tests to verify everything works:
+运行测试以验证一切正常工作：
 
 ```bash
-# Run all tests
+# 运行所有测试
 python test/github_fetcher/run_tests.py
 
-# Run only unit tests (no API calls needed)
+# 只运行单元测试（不需要API调用）
 pytest test/github_fetcher/test_github_fetcher.py -v -k "not Integration"
 
-# Run only integration tests (requires API token)
+# 只运行集成测试（需要API令牌）
 pytest test/github_fetcher/test_github_fetcher.py -v -k "Integration"
 ```
 
-## Examples
+## 示例
 
-### Example 1: Find Popular Python Libraries
+### 示例1：查找流行的Python库
 
 ```python
 import asyncio
@@ -421,7 +421,7 @@ from core.github_fetcher.github_fetcher import GitHubFetcher
 async def find_popular_python_libs():
     fetcher = GitHubFetcher()
     
-    # Search for popular Python libraries
+    # 搜索流行的Python库
     repos = await fetcher.search_repositories(
         "language:python stars:>5000",
         sort="stars",
@@ -429,14 +429,14 @@ async def find_popular_python_libs():
         max_results=20
     )
     
-    print("Top Python Libraries:")
+    print("顶级Python库:")
     for i, repo in enumerate(repos, 1):
         print(f"{i:2d}. {repo.full_name:<30} {repo.stars:>6,} stars")
 
 asyncio.run(find_popular_python_libs())
 ```
 
-### Example 2: Analyze User's Repository Portfolio
+### 示例2：分析用户的仓库组合
 
 ```python
 import asyncio
@@ -445,10 +445,10 @@ from core.github_fetcher.github_fetcher import GitHubFetcher
 async def analyze_user_portfolio(username):
     fetcher = GitHubFetcher()
     
-    # Get user's repositories
+    # 获取用户的仓库
     repos = await fetcher.get_user_repositories(username, max_results=100)
     
-    # Analyze languages
+    # 分析语言
     languages = {}
     total_stars = 0
     
@@ -457,17 +457,17 @@ async def analyze_user_portfolio(username):
             languages[repo.language] = languages.get(repo.language, 0) + 1
         total_stars += repo.stars
     
-    print(f"Analysis for {username}:")
-    print(f"Total repositories: {len(repos)}")
-    print(f"Total stars: {total_stars:,}")
-    print("\nLanguages:")
+    print(f"{username}的分析:")
+    print(f"总仓库数: {len(repos)}")
+    print(f"总星数: {total_stars:,}")
+    print("\n语言:")
     for lang, count in sorted(languages.items(), key=lambda x: x[1], reverse=True):
-        print(f"  {lang}: {count} repositories")
+        print(f"  {lang}: {count} 个仓库")
 
 asyncio.run(analyze_user_portfolio("octocat"))
 ```
 
-### Example 3: Monitor Organization Activity
+### 示例3：监控组织活动
 
 ```python
 import asyncio
@@ -477,34 +477,34 @@ from core.github_fetcher.github_fetcher import GitHubFetcher
 async def monitor_org_activity(org_name):
     fetcher = GitHubFetcher()
     
-    # Get organization repositories
+    # 获取组织仓库
     repos = await fetcher.get_organization_repositories(org_name, max_results=50)
     
-    # Filter recently updated repositories
+    # 过滤最近更新的仓库
     recent_cutoff = datetime.now() - timedelta(days=30)
     recent_repos = [repo for repo in repos if repo.updated_at > recent_cutoff]
     
-    print(f"Recent activity for {org_name}:")
-    print(f"Total repositories: {len(repos)}")
-    print(f"Recently updated (last 30 days): {len(recent_repos)}")
+    print(f"{org_name}的最近活动:")
+    print(f"总仓库数: {len(repos)}")
+    print(f"最近更新（过去30天）: {len(recent_repos)}")
     
-    print("\nRecently updated repositories:")
+    print("\n最近更新的仓库:")
     for repo in sorted(recent_repos, key=lambda x: x.updated_at, reverse=True):
-        print(f"  {repo.full_name} - Updated: {repo.updated_at.strftime('%Y-%m-%d')}")
+        print(f"  {repo.full_name} - 更新于: {repo.updated_at.strftime('%Y-%m-%d')}")
 
 asyncio.run(monitor_org_activity("microsoft"))
 ```
 
-## Contributing
+## 贡献
 
-When contributing to the GitHub Fetcher:
+为GitHub Fetcher做贡献时：
 
-1. Follow the existing code style
-2. Add tests for new functionality
-3. Update this README if adding new features
-4. Use English for all comments and documentation
-5. Ensure all tests pass before submitting
+1. 遵循现有的代码风格
+2. 为新功能添加测试
+3. 如果添加新功能，请更新此README
+4. 所有注释和文档使用英文
+5. 提交前确保所有测试通过
 
-## License
+## 许可证
 
-This module is part of the agent-engine project and follows the same license terms.
+此模块是agent-engine项目的一部分，遵循相同的许可证条款。
