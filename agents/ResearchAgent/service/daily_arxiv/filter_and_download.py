@@ -265,14 +265,7 @@ class DailyArxivFilterAndDownload:
             Dictionary with results and statistics
         """
         if target_date is None:
-            if DailyArxivConfig.TARGET_DATE:
-                try:
-                    target_date = datetime.strptime(DailyArxivConfig.TARGET_DATE, "%Y-%m-%d").date()
-                except ValueError:
-                    self.logger.warning(f"Invalid TARGET_DATE in config: {DailyArxivConfig.TARGET_DATE}, using today")
-                    target_date = date.today()
-            else:
-                target_date = date.today()
+            target_date = date.today()
         
         if top_k is None:
             top_k = DailyArxivConfig.TOP_K_PAPERS
