@@ -179,6 +179,73 @@ class EMemory:
             logger.error(f"Failed to add record to EMemory: {e}")
             return False
 
+    def update(self, record: Record) -> bool:
+        """
+        Update an existing record in the memory.
+        
+        This method properly handles vector updates, including removing old vectors
+        when updating a record to have no vector, preventing orphaned vectors.
+        
+        Args:
+            record: Record object to update (must have an ID)
+            
+        Returns:
+            True if successfully updated, False otherwise
+        """
+        record_id = record.id
+        if not record_id or not self.exists(record_id):
+            logger.warning(f"Record {record_id} not found, cannot update.")
+            return False
+
+        try:
+            # 1. Check if old record has vector
+            old_has_vector = self.has_vector(record_id)
+            
+            # 2. Prepare new record data
+            new_has_vector = 1 if record.vector else 0
+            
+            # 3. Handle vector storage logic
+            if new_has_vector and record.vector:
+                # Add or update vector in ChromaDB
+                try:
+                    self.collection.add(embeddings=[record.vector], ids=[record_id])
+                    logger.debug(f"Successfully updated vector for record {record_id} in ChromaDB")
+                except Exception as e:
+                    logger.error(f"Failed to update vector in ChromaDB for record {record_id}: {e}")
+                    new_has_vector = 0  # Set to 0 if ChromaDB update failed
+            elif old_has_vector and not new_has_vector:
+                # Key: If old record has vector but new record doesn't, delete from ChromaDB
+                try:
+                    self.collection.delete(ids=[record_id])
+                    logger.debug(f"Successfully deleted old vector for record {record_id} from ChromaDB")
+                except Exception as e:
+                    logger.warning(f"Failed to delete old vector from ChromaDB for record {record_id}: {e}")
+
+            # 4. Update SQLite metadata
+            record_timestamp = record.timestamp or self._get_current_timestamp()
+            record_attributes = record.attributes or {}
+            
+            with sqlite3.connect(self.sqlite_path) as conn:
+                conn.execute("""
+                    UPDATE records 
+                    SET attributes = ?, content = ?, timestamp = ?, has_vector = ?
+                    WHERE id = ?
+                """, (
+                    json.dumps(record_attributes),
+                    record.content,
+                    record_timestamp,
+                    new_has_vector,
+                    record_id
+                ))
+                conn.commit()
+                
+            logger.debug(f"Updated record {record_id} (has_vector={old_has_vector} -> {new_has_vector})")
+            return True
+        
+        except Exception as e:
+            logger.error(f"Failed to update record {record_id}: {e}")
+            return False
+
     def add_batch(self, records: List[Record]) -> bool:
         """
         Add multiple records to the memory in batch.
@@ -315,6 +382,87 @@ class EMemory:
                     timestamp=timestamp
                 )
             return None
+
+    def get_batch(self, ids: List[str]) -> Dict[str, Record]:
+        """
+        Get multiple records by ID in a single query.
+        
+        This method solves the N+1 query problem by fetching all records
+        in a single database operation and then batch-loading vectors.
+        
+        Args:
+            ids: List of record IDs
+            
+        Returns:
+            Dictionary mapping ID to Record object (only includes existing records)
+        """
+        if not ids:
+            return {}
+        
+        # Create placeholders for SQL query
+        placeholders = ','.join(['?' for _ in ids])
+        
+        with sqlite3.connect(self.sqlite_path) as conn:
+            cursor = conn.execute(f"""
+                SELECT id, attributes, content, timestamp, has_vector
+                FROM records WHERE id IN ({placeholders})
+            """, ids)
+            rows = cursor.fetchall()
+
+        if not rows:
+            return {}
+
+        # Separate records with and without vectors for batch processing
+        records_with_vectors = []
+        records_map = {}
+        
+        for row in rows:
+            record_id, attributes_json, content, timestamp, has_vector = row
+            
+            # Parse attributes
+            attributes = json.loads(attributes_json) if attributes_json else {}
+            
+            # Store record without vector first
+            records_map[record_id] = Record(
+                id=record_id,
+                attributes=attributes,
+                content=content,
+                vector=None,  # Will be filled later for records with vectors
+                timestamp=timestamp
+            )
+            
+            if has_vector:
+                records_with_vectors.append(record_id)
+
+        # Batch get vectors for records that have them
+        if records_with_vectors:
+            try:
+                vector_data = self.collection.get(ids=records_with_vectors, include=["embeddings"])
+                if vector_data and vector_data.get("embeddings") is not None:
+                    embeddings = vector_data["embeddings"]
+                    vector_ids = vector_data.get("ids", [])
+                    
+                    # Handle both list and numpy array cases
+                    if hasattr(embeddings, '__len__') and len(embeddings) > 0:
+                        # Create mapping from id to vector
+                        for i, record_id in enumerate(vector_ids):
+                            if i < len(embeddings):
+                                vector = embeddings[i]
+                                # Handle numpy array or list
+                                if hasattr(vector, 'tolist'):
+                                    vector = vector.tolist()
+                                elif hasattr(vector, '__iter__'):
+                                    vector = list(vector)
+                                else:
+                                    vector = [vector]
+                                
+                                # Update the record with its vector
+                                if record_id in records_map:
+                                    records_map[record_id].vector = vector
+            except Exception as e:
+                logger.warning(f"Failed to get vectors in batch: {e}")
+        
+        return records_map
 
     def get_vector(self, id: str) -> Optional[List[float]]:
         """
@@ -565,17 +713,29 @@ class EMemory:
             if not record_ids:
                 return []
             
-            # Verify that all returned records still exist and have vectors
-            existing_records = self.has_vector_batch(record_ids)
+            # Verify that all returned records still exist (data consistency check)
+            existing_records = self.exists_batch(record_ids)
             
-            results_list = []
+            # Filter to only existing records and their corresponding distances
+            valid_record_ids = []
+            valid_distances = []
             for record_id, distance in zip(record_ids, distances):
-                # Only include records that still exist and have vectors
                 if existing_records.get(record_id, False):
-                    # Get complete record data from SQLite
-                    record = self.get(record_id)
-                    if record:
-                        results_list.append((record, float(distance)))
+                    valid_record_ids.append(record_id)
+                    valid_distances.append(distance)
+            
+            if not valid_record_ids:
+                return []
+            
+            # Batch get all records to solve N+1 query problem
+            records_map = self.get_batch(valid_record_ids)
+            
+            # Build results list
+            results_list = []
+            for record_id, distance in zip(valid_record_ids, valid_distances):
+                record = records_map.get(record_id)
+                if record:
+                    results_list.append((record, float(distance)))
             
             return results_list
         except Exception as e:
