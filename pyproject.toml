@@ -26,6 +26,8 @@ dependencies = [
     "pyinstrument>=5.1.1",
     "python-dotenv>=1.1.1",
     "psycopg[binary]>=3.2.10",
+    "fastapi>=0.115.0",
+    "pydantic>=2.11.7",
 ]
 
 [project.optional-dependencies]
@@ -34,8 +36,6 @@ opts = [
     "arxiv>=2.2.0",
     "pypdf2>=3.0.1",
     "tqdm>=4.66.4",
-    "fastapi>=0.115.0",
-    "pydantic>=2.11.7",
     "requests>=2.32.3",
     "flask>=3.1.2",
     "apscheduler>=3.11.0",
