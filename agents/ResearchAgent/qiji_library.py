@@ -8,6 +8,7 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict, Set, Optional, Union
 from datetime import datetime
+import pyinstrument
 
 # Agent Engine imports
 from agent_engine.utils import get_current_file_dir

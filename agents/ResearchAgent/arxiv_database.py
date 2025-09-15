@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+import pyinstrument
 
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.memory.e_memory.pod_ememory import PodEMemory
@@ -404,6 +405,7 @@ class ArxivDatabase:
         
         return filtered_papers
 
+    # @pyinstrument.profile()
     def get_vectors_by_date(
         self, 
         target_date: datetime, 
