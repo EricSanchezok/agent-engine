@@ -33,7 +33,7 @@ class ArxivSyncConfig:
     SYNC_INTERVAL_MINUTES: int = 15
     MAX_RETRY_ATTEMPTS: int = 3
     RETRY_DELAY_SECONDS: float = 5.0
-    DELAY_BETWEEN_DAYS: float = 0.1  # seconds
+    DELAY_BETWEEN_DAYS: float = 5.0  # seconds
     
     # Service Configuration
     SERVICE_NAME: str = "ArxivSyncService"
