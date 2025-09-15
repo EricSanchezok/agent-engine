@@ -280,7 +280,7 @@ class HNSWVectorDensityEstimator:
         return _knn_density_from_dists(d, k=min(k, d.size), method=self.method, eps=self.eps)
 
 
-from agents.ResearchAgent.arxiv_memory import ArxivMemory
+from agents.ResearchAgent.arxiv_memory import ArxivMemory # type: ignore
 import random
 
 if __name__ == "__main__":

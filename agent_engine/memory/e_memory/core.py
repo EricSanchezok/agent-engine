@@ -676,6 +676,7 @@ class EMemory:
                 if has_vector:
                     try:
                         vector_data = self.collection.get(ids=[id], include=["embeddings"])
+                        print(vector_data.keys())
                         if vector_data["embeddings"]:
                             vector = vector_data["embeddings"][0]
                     except Exception as e:

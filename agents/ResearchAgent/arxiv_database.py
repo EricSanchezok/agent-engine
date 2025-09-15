@@ -305,6 +305,51 @@ class ArxivDatabase:
                 paper_ids.append(item)
         return self.pod_ememory.has_vector_batch(paper_ids)
 
+    def get_vector(self, paper: ArxivPaper) -> Optional[List[float]]:
+        """
+        Get the vector embedding for a specific paper.
+        
+        Args:
+            paper: ArxivPaper object
+            
+        Returns:
+            Vector embedding as List[float] if found, None otherwise
+        """
+        if not isinstance(paper, ArxivPaper):
+            raise TypeError("paper must be an ArxivPaper instance")
+        
+        record = self.pod_ememory.get(paper.full_id)
+        if record is None:
+            self.logger.warning(f"Paper {paper.full_id} not found in database")
+            return None
+        
+        if record.vector is None:
+            self.logger.warning(f"Paper {paper.full_id} has no vector embedding")
+            return None
+        
+        return record.vector
+    
+    def get_vectors(self, papers: List[ArxivPaper]) -> List[Optional[List[float]]]:
+        """
+        Get vector embeddings for multiple papers.
+        
+        Args:
+            papers: List of ArxivPaper objects
+            
+        Returns:
+            List of vector embeddings (List[float]) or None for papers without vectors
+        """
+        if not papers:
+            return []
+        
+        vectors = []
+        for paper in papers:
+            vector = self.get_vector(paper)
+            vectors.append(vector)
+        
+        self.logger.info(f"Retrieved vectors for {len(papers)} papers")
+        return vectors
+
     def get_papers_by_date(
         self, 
         target_date: datetime, 
@@ -358,6 +403,61 @@ class ArxivDatabase:
             self.logger.info(f"Filtered by categories: {categories}")
         
         return filtered_papers
+
+    def get_vectors_by_date(
+        self, 
+        target_date: datetime, 
+        categories: Optional[List[str]] = None,
+        limit: Optional[int] = None
+    ) -> List[Optional[List[float]]]:
+        """
+        Get vector embeddings for all papers published on a specific date, optionally filtered by categories.
+        
+        This method uses efficient SQL-based date filtering and returns only vectors,
+        making it suitable for large databases with millions of records.
+        
+        Args:
+            target_date: Target date to filter papers (datetime object)
+            categories: Optional list of arXiv categories to filter by. 
+                       If None, returns vectors from all categories.
+            limit: Optional limit on number of vectors to return
+                       
+        Returns:
+            List of vector embeddings (List[float]) or None for papers without vectors
+        """
+        # Use efficient date range query instead of list_all()
+        target_date_str = target_date.date().isoformat()
+        
+        # Query records for the specific date using efficient SQL filtering
+        # Note: timestamp stores full ISO datetime, so we need to query the full day range
+        start_datetime = f"{target_date_str}T00:00:00"
+        end_datetime = f"{target_date_str}T23:59:59"
+        
+        records = self.pod_ememory.query_by_date_range(
+            start_date=start_datetime,
+            end_date=end_datetime,
+            limit=limit
+        )
+        
+        # Extract vectors and filter by categories if provided
+        vectors = []
+        for record in records:
+            # Check category filter if provided
+            if categories is not None:
+                # Convert record to paper to check categories
+                paper = self._record_to_paper(record)
+                # Check if any of the paper's categories match the filter categories
+                if not any(cat in paper.categories for cat in categories):
+                    continue
+            
+            # Add vector (can be None if no embedding)
+            vectors.append(record.vector)
+        
+        self.logger.info(f"Found {len(vectors)} vectors for date {target_date_str}")
+        if categories:
+            self.logger.info(f"Filtered by categories: {categories}")
+        
+        return vectors
 
     def clear(self, confirm: bool = True) -> None:
         """
