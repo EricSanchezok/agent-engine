@@ -341,9 +341,15 @@ class ArxivDatabase:
         
         return filtered_papers
 
-    def clear(self) -> None:
-        """Clear all papers from the database."""
-        self.pod_ememory.clear()
+    def clear(self, confirm: bool = True) -> None:
+        """
+        Clear all papers from the database.
+        
+        Args:
+            confirm: If True, requires user confirmation before clearing.
+                    If False, clears immediately without confirmation.
+        """
+        self.pod_ememory.clear(confirm=confirm)
         self.logger.info("Cleared all papers from ArxivDatabase")
     
     def _paper_to_record(self, paper: ArxivPaper, embedding: Optional[List[float]] = None) -> Record:

@@ -498,10 +498,45 @@ class PodEMemory:
         
         return all_records
     
-    def clear(self) -> None:
-        """Clear all records from all shards."""
+    def clear(self, confirm: bool = True) -> None:
+        """
+        Clear all records from all shards.
+        
+        Args:
+            confirm: If True, requires user confirmation before clearing.
+                    If False, clears immediately without confirmation.
+        """
+        if confirm:
+            # Get total count for confirmation message
+            total_count = self.count()
+            
+            if total_count == 0:
+                logger.info("No records to clear in PodEMemory")
+                return
+            
+            print(f"\n⚠️  WARNING: You are about to delete ALL {total_count} records from PodEMemory '{self.name}'!")
+            print("This action cannot be undone!")
+            print("\nTo confirm deletion, type 'DELETE' and press Enter.")
+            print("To cancel, press Enter or type anything else.")
+            
+            try:
+                user_input = input("Confirmation: ").strip()
+                if user_input != "DELETE":
+                    print("Deletion cancelled.")
+                    logger.info("PodEMemory clear operation cancelled by user")
+                    return
+            except KeyboardInterrupt:
+                print("\nDeletion cancelled.")
+                logger.info("PodEMemory clear operation cancelled by user (Ctrl+C)")
+                return
+            except EOFError:
+                print("\nDeletion cancelled.")
+                logger.info("PodEMemory clear operation cancelled by user (EOF)")
+                return
+        
+        # Proceed with clearing
         for shard in self._shards.values():
-            shard.clear()
+            shard.clear(confirm=False)  # Don't ask for confirmation again
         logger.info("Cleared all records from PodEMemory")
     
     def get_stats(self) -> Dict[str, Any]:

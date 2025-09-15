@@ -413,11 +413,43 @@ class EMemory:
             cursor = conn.execute("SELECT COUNT(*) FROM records")
             return cursor.fetchone()[0]
 
-    def clear(self) -> None:
-        """Clear all records from memory."""
+    def clear(self, confirm: bool = True) -> None:
+        """
+        Clear all records from memory.
+        
+        Args:
+            confirm: If True, requires user confirmation before clearing.
+                    If False, clears immediately without confirmation.
+        """
         # Get count before clearing for logging
         total_records = self.count()
         
+        if confirm:
+            if total_records == 0:
+                logger.info("No records to clear in EMemory")
+                return
+            
+            print(f"\n⚠️  WARNING: You are about to delete ALL {total_records} records from EMemory '{self.name}'!")
+            print("This action cannot be undone!")
+            print("\nTo confirm deletion, type 'DELETE' and press Enter.")
+            print("To cancel, press Enter or type anything else.")
+            
+            try:
+                user_input = input("Confirmation: ").strip()
+                if user_input != "DELETE":
+                    print("Deletion cancelled.")
+                    logger.info("EMemory clear operation cancelled by user")
+                    return
+            except KeyboardInterrupt:
+                print("\nDeletion cancelled.")
+                logger.info("EMemory clear operation cancelled by user (Ctrl+C)")
+                return
+            except EOFError:
+                print("\nDeletion cancelled.")
+                logger.info("EMemory clear operation cancelled by user (EOF)")
+                return
+        
+        # Proceed with clearing
         # Clear SQLite
         with sqlite3.connect(self.sqlite_path) as conn:
             conn.execute("DELETE FROM records")
