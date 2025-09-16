@@ -39,10 +39,10 @@ event_cache = PodEMemory(
     persist_dir=Path(get_current_file_dir().parent / "database")
 )
 
-api_key = os.getenv("INF_API_KEY", "")
+api_key = os.getenv("QZ_API_KEY", "")
 if not api_key:
-    logger.error("INF_API_KEY not found in environment variables")
-    raise ValueError("INF_API_KEY is required")
+    logger.error("QZ_API_KEY not found in environment variables")
+    raise ValueError("QZ_API_KEY is required")
 
 llm_client = QzClient(api_key=api_key, base_url="http://eric-vpn.cpolar.top/r/eric_qwen3_embedding_8b")
 embed_model = "eric-qwen3-embedding-8b"
@@ -100,7 +100,7 @@ async def preload_single_event(event_info: EventInfo) -> Tuple[str, bool, str]:
                 return event_info.event_id, False, "already_cached"
             
             # Generate embedding
-            vector = await llm_client.embedding(event_info.event_content, model_name=embed_model)
+            vector = await llm_client.get_embeddings(model_name=embed_model, text=event_info.event_content)
             
             # Create and add record to cache
             record = Record(

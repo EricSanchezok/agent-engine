@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 # Agent Engine imports
 from agent_engine.memory.e_memory import EMemory, Record, PodEMemory
 from agent_engine.agent_logger import AgentLogger
-from agent_engine.llm_client import AzureClient
+from agent_engine.llm_client import QzClient
 from agent_engine.utils import get_current_file_dir, generate_unique_id
 
 # Local imports
@@ -41,13 +41,14 @@ class PatientMemory:
         self.patient_id = patient_id
         self.content_id = content_id
 
-        api_key = os.getenv("AZURE_API_KEY", "")
+        api_key = os.getenv("QZ_API_KEY", "")
         if not api_key:
-            self.logger.error("AZURE_API_KEY not found in environment variables")
-            raise ValueError("AZURE_API_KEY is required")
+            self.logger.error("QZ_API_KEY not found in environment variables")
+            raise ValueError("QZ_API_KEY is required")
 
-        self.llm_client = AzureClient(api_key=api_key)
-        self.embed_model = "text-embedding-3-large"
+        base_url = os.getenv("QZ_BASE_URL", "http://eric-vpn.cpolar.top/r/eric_qwen3_embedding_8b")
+        self.llm_client = QzClient(api_key=api_key, base_url=base_url)
+        self.embed_model = "eric-qwen3-embedding-8b"
 
         self.persist_dir: str | Path = get_current_file_dir().parent / "database" / "patient_memory" / content_id
         self.persist_dir.mkdir(parents=True, exist_ok=True)
@@ -55,29 +56,32 @@ class PatientMemory:
         self.memory = EMemory(
             name=patient_id,
             persist_dir=self.persist_dir,
-            dimension=3072
         )
 
         self._event_cache = PodEMemory(
             name="event_cache",
             persist_dir=Path(get_current_file_dir().parent / "database"),
-            dimension=3072
         )
 
     async def add_event(self, event: Event) -> None:
         event_id = event.id
+        # Check if vector is already cached in event_cache
         _vector_cache: Optional[Record] = self._event_cache.get(event_id)
         
-        if not _vector_cache:
-            vector = await self.llm_client.embedding(event.event_content, model_name=self.embed_model)
+        if _vector_cache:
+            # Use cached vector to save tokens
+            vector = _vector_cache.vector
+        else:
+            # Generate new embedding and cache it
+            vector = await self.llm_client.get_embeddings(model_name=self.embed_model, text=event.event_content)
+            # Cache the vector for future use
             _cache_record = Record(
                 id=event_id,
                 vector=vector,
             )
             self._event_cache.add(_cache_record)
-        else:
-            vector = _vector_cache.vector
 
+        # Create the main record for patient memory
         record = Record(
             id=event_id,
             attributes={
@@ -91,7 +95,9 @@ class PatientMemory:
             vector=vector,
             timestamp=event.timestamp
         )
-        self._event_cache.add(record)
+        
+        # Add to patient memory (this is separate from event_cache)
+        self.memory.add(record)
 
 if __name__ == "__main__":
     patient_memory = PatientMemory(patient_id="test")
