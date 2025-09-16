@@ -251,7 +251,7 @@ class ArxivEmbeddingGenerator:
         papers_with_embeddings: List[Tuple[ArxivPaper, List[float]]]
     ) -> List[str]:
         """
-        Update papers with their embeddings in the database.
+        Update papers with their embeddings in the database using batch update.
         
         Args:
             papers_with_embeddings: List of (paper, embedding) tuples
@@ -262,19 +262,23 @@ class ArxivEmbeddingGenerator:
         if not papers_with_embeddings:
             return []
         
-        self.logger.info(f"Updating {len(papers_with_embeddings)} papers with embeddings in database")
+        self.logger.info(f"Updating {len(papers_with_embeddings)} papers with embeddings in database (batch)")
         
         try:
-            # Update embeddings in database using the correct method
-            successful_ids = []
-            for paper, embedding in papers_with_embeddings:
-                # Use update_paper method which takes paper and embedding
-                success = self.arxiv_database.update_paper(paper, embedding)
-                if success:
-                    successful_ids.append(paper.full_id)
+            # Separate papers and embeddings for batch update
+            papers = [paper for paper, _ in papers_with_embeddings]
+            embeddings = [embedding for _, embedding in papers_with_embeddings]
             
-            self.logger.info(f"Successfully updated {len(successful_ids)} papers with embeddings")
-            return successful_ids
+            # Use batch update method for better performance
+            success = self.arxiv_database.update_papers(papers, embeddings)
+            
+            if success:
+                successful_ids = [paper.full_id for paper in papers]
+                self.logger.info(f"Successfully updated {len(successful_ids)} papers with embeddings in batch")
+                return successful_ids
+            else:
+                self.logger.error("Failed to update papers with embeddings in batch")
+                return []
             
         except Exception as e:
             self.logger.error(f"Failed to update papers with embeddings: {e}")

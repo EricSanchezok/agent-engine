@@ -184,6 +184,47 @@ class ArxivDatabase:
             self.logger.warning(f"Failed to update paper {paper.full_id} - not found")
         
         return success
+
+    def update_papers(
+        self, 
+        papers: List[ArxivPaper], 
+        embeddings: Optional[List[Optional[List[float]]]] = None
+    ) -> bool:
+        """
+        Update multiple existing papers in the database in batch.
+        
+        Args:
+            papers: List of ArxivPaper objects with updated data
+            embeddings: Optional list of updated embedding vectors (must match papers length)
+            
+        Returns:
+            True if all papers were updated successfully, False otherwise
+        """
+        if not papers:
+            return True
+        
+        if embeddings is not None and len(embeddings) != len(papers):
+            raise ValueError("embeddings length must match papers length")
+        
+        # Convert papers to records
+        records = []
+        for i, paper in enumerate(papers):
+            if not isinstance(paper, ArxivPaper):
+                raise TypeError(f"paper at index {i} must be an ArxivPaper instance")
+            
+            embedding = embeddings[i] if embeddings else None
+            record = self._paper_to_record(paper, embedding)
+            records.append(record)
+        
+        # Update in PodEMemory in batch
+        success = self.pod_ememory.update_batch(records)
+        
+        if success:
+            self.logger.info(f"Updated {len(papers)} papers in database batch")
+        else:
+            self.logger.error(f"Failed to update {len(papers)} papers in database batch")
+        
+        return success
     
     def delete_paper(self, paper_id: str) -> bool:
         """
