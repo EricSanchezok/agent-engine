@@ -359,3 +359,10 @@ data/
 backup/
 
 .llm_monitoring/
+
+agents/ResearchAgent/web/node_modules/
+agents/ResearchAgent/web/.next/
+agents/ResearchAgent/web/package-lock.json
+agents/ResearchAgent/web/pnpm-lock.yaml
+agents/ResearchAgent/web/pnpm-workspace.yaml
+agents/ResearchAgent/web/pnpm-workspace.yaml
