@@ -27,7 +27,7 @@ from agent_engine.memory.e_memory import PodEMemory, Record
 from agent_engine.utils import get_current_file_dir
 from agent_engine.llm_client import QzClient
 
-CONCURRENCY = 64
+CONCURRENCY = 32
 sem = asyncio.Semaphore(CONCURRENCY)
 data_dir = "agents/ICUAssistantAgent/database/icu_patients"
 
@@ -95,8 +95,8 @@ async def preload_single_event(event_info: EventInfo) -> Tuple[str, bool, str]:
     """Preload a single event with embedding"""
     async with sem:
         try:
-            # Check if already exists
-            if event_cache.get(event_info.event_id) is not None:
+            # Check if already has vector (not just if record exists)
+            if event_cache.has_vector(event_info.event_id):
                 return event_info.event_id, False, "already_cached"
             
             # Generate embedding
@@ -115,8 +115,54 @@ async def preload_single_event(event_info: EventInfo) -> Tuple[str, bool, str]:
             logger.error(f"Error preloading event {event_info.event_id}: {e}")
             return event_info.event_id, False, f"error: {str(e)}"
 
-async def preload_batch(events_batch: List[EventInfo]) -> Tuple[int, int, int, List[str]]:
-    """Preload a batch of events"""
+async def preload_batch_optimized(events_batch: List[EventInfo]) -> Tuple[int, int, int, List[str]]:
+    """Optimized batch preloading using PodEMemory batch methods"""
+    batch_cached = 0
+    batch_preloaded = 0
+    batch_errors = 0
+    batch_failed_ids = []
+    
+    try:
+        # Step 1: Batch check which events already have vectors
+        event_ids = [event.event_id for event in events_batch]
+        has_vector_map = event_cache.has_vector_batch(event_ids)
+        
+        # Step 2: Separate events that need processing from those already cached
+        events_to_process = []
+        for event in events_batch:
+            if has_vector_map.get(event.event_id, False):
+                batch_cached += 1
+            else:
+                events_to_process.append(event)
+        
+        logger.info(f"Batch: {batch_cached} already cached, {len(events_to_process)} need processing")
+        
+        # Step 3: Process events that need embedding generation concurrently
+        if events_to_process:
+            tasks = [preload_single_event(event) for event in events_to_process]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    batch_errors += 1
+                    batch_failed_ids.append(events_to_process[i].event_id)
+                else:
+                    event_id, success, status = result
+                    if status == "success":
+                        batch_preloaded += 1
+                    else:
+                        batch_errors += 1
+                        batch_failed_ids.append(event_id)
+        
+        return batch_cached, batch_preloaded, batch_errors, batch_failed_ids
+        
+    except Exception as e:
+        logger.error(f"Error in optimized batch preloading: {e}")
+        # Fallback to individual processing
+        return await preload_batch_fallback(events_batch)
+
+async def preload_batch_fallback(events_batch: List[EventInfo]) -> Tuple[int, int, int, List[str]]:
+    """Fallback batch preloading using individual processing"""
     batch_cached = 0
     batch_preloaded = 0
     batch_errors = 0
@@ -141,6 +187,10 @@ async def preload_batch(events_batch: List[EventInfo]) -> Tuple[int, int, int, L
                 batch_failed_ids.append(event_id)
     
     return batch_cached, batch_preloaded, batch_errors, batch_failed_ids
+
+async def preload_batch(events_batch: List[EventInfo]) -> Tuple[int, int, int, List[str]]:
+    """Preload a batch of events - wrapper for optimized version"""
+    return await preload_batch_optimized(events_batch)
 
 async def concurrent_preload():
     """Concurrent preloading of all events with batch processing"""
