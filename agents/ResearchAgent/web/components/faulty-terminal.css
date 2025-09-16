@@ -1,0 +1,11 @@
+.faulty-terminal-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Added radial gradient utility for dark vignette effect */
+.bg-gradient-radial {
+  background: radial-gradient(circle at center, var(--tw-gradient-stops));
+}
