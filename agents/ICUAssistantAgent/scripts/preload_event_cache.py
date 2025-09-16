@@ -27,7 +27,7 @@ from agent_engine.memory.e_memory import PodEMemory, Record
 from agent_engine.utils import get_current_file_dir
 from agent_engine.llm_client import QzClient
 
-CONCURRENCY = 16
+CONCURRENCY = 64
 sem = asyncio.Semaphore(CONCURRENCY)
 data_dir = "agents/ICUAssistantAgent/database/icu_patients"
 
