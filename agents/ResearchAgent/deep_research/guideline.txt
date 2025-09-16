@@ -1,0 +1,149 @@
+// =================================================================
+// PART 1: GENERATE THE RESEARCH PLAN
+// Framework: Hypothesize -> Explore -> Plan
+// =================================================================
+
+PROCEDURE: Generate_Research_Plan(User_Query)
+
+  // User_Query: 一个高层次、可能比较模糊的用户输入, e.g., "调研一下AI Agent的工具进化方法"
+
+  // === 阶段一: 假设 (Hypothesize) - 提出初步的研究方向 ===
+  PRINT "Phase 1: 正在分析用户查询并生成初步假设..."
+  
+  // 指示LLM像一个领域专家一样，对用户查询进行头脑风暴，预测可能的研究角度
+  SET Initial_Hypotheses = CALL LLM to analyze the User_Query and suggest 
+                         potential sub-topics, technical approaches, or research angles.
+  // 例如, Initial_Hypotheses 可能是: 
+  // ["方法可能基于元学习", "可能存在任务驱动的方法", "需要关注多智能体场景"]
+
+
+  // === 阶段二: 探索 (Explore) - 快速验证假设并绘制领域草图 ===
+  PRINT "Phase 2: 正在执行探索性检索以绘制研究领域草图..."
+  
+  // a. 基于假设进行一次宽泛、浅层的检索
+  SET Exploratory_Queries = CALL LLM to create broad search terms from Initial_Hypotheses.
+  SET Exploratory_Paper_Set = CALL ArxivDB to find a small set of top-relevance papers 
+                              (e.g., Top 20-30) using Exploratory_Queries.
+                              
+  // b. 从检索到的论文摘要中，提炼出领域的宏观结构
+  SET Paper_Abstracts = Get all abstracts from Exploratory_Paper_Set.
+  SET Research_Landscape_Sketch = CALL LLM to analyze Paper_Abstracts and identify:
+                                    - Validated key themes (e.g., "Meta-Learning", "Task-Driven Generation")
+                                    - Foundational papers or key authors
+                                    - A rough timeline of developments
+  
+
+  // === 阶段三: 规划 (Plan) - 生成结构化的、多步骤的研究计划 ===
+  PRINT "Phase 3: 正在根据领域草图生成详细的研究计划..."
+
+  // 指示LLM扮演“首席研究员”的角色，将领域草图转化为一个详细的行动计划
+  SET Detailed_Plan = CALL LLM, acting as a chief researcher, to generate a 
+                      structured, multi-step research plan
+                      USING the Research_Landscape_Sketch as input.
+                      // 要求LLM确保计划有逻辑递进关系，任务之间可能存在依赖
+                      // 输出的格式应符合后续执行模块的要求
+
+  // 例如, Detailed_Plan 的结构是:
+  // [{id: "T1", description: "...", depends_on: null}, {id: "T2", ...}]
+  
+  PRINT "已成功生成详细的研究计划。"
+  RETURN Detailed_Plan
+
+END PROCEDURE
+
+
+// =================================================================
+// PART 2: EXECUTE THE GENERATED RESEARCH PLAN
+// =================================================================
+
+PROCEDURE: Start_Autonomous_Research(PLAN)
+
+  // 初始化
+  INITIALIZE ResearchNote with empty Summaries and empty VectorStore
+
+  // 开始执行整个研究计划
+  CALL COORDINATOR to execute the PLAN
+
+  // 所有任务完成后，输出最终成果
+  PRINT "研究计划已全部完成。"
+  PRINT "最终的研究笔记摘要部分包含:", ResearchNote.Summaries
+  RETURN ResearchNote
+
+END PROCEDURE
+
+
+PROCEDURE: COORDINATOR(PLAN)
+
+  // 按顺序遍历计划中的每一项任务
+  FOR EACH Task IN PLAN:
+  
+    // 1. 准备上下文
+    // 从研究笔记中，获取所有之前已完成任务的文本摘要
+    SET ContextSummary = Concatenate all strings in ResearchNote.Summaries
+    
+    // 2. 委派任务
+    // 调用执行器，将当前任务和准备好的上下文摘要交给它
+    PRINT "--- 开始执行任务: ", Task.ID, "---"
+    SET Final_QA_Pairs = CALL EXECUTOR with Task and ContextSummary
+    
+    // 3. 知识固化 (将执行结果存入研究笔记)
+    // 3a. 创建并存储高层摘要 (为下一个任务准备)
+    SET New_Summary = CALL LLM to create a concise summary from Final_QA_Pairs
+    ADD New_Summary to ResearchNote.Summaries with key Task.ID
+    
+    // 3b. 存储详细的QA对 (为未来的RAG查询准备)
+    VECTORIZE and ADD Final_QA_Pairs to ResearchNote.VectorStore
+    
+    PRINT "--- 任务 ", Task.ID, " 完成并已存入笔记 ---"
+    
+  END FOR
+
+END PROCEDURE
+
+
+PROCEDURE: EXECUTOR(Task, ContextSummary)
+
+  // === 阶段一: 任务规划 - 将宏观任务分解为微观问题 ===
+  PRINT "  Phase 1: 正在生成子问题..."
+  SET Sub_Questions = CALL LLM to generate a list of specific questions 
+                      FROM Task.Description 
+                      USING ContextSummary for guidance.
+
+  // === 阶段二: 信息检索 - 从外部数据库获取原始材料 ===
+  PRINT "  Phase 2: 正在检索相关论文..."
+  SET Hybrid_Queries = CALL LLM to create search terms (keywords + vector concepts) 
+                       FROM Sub_Questions.
+  SET Paper_List = CALL ArxivDB to find papers using Hybrid_Queries.
+
+  // === 阶段三: 信息处理 - 深入“审问”每篇论文 ===
+  PRINT "  Phase 3: 正在深入分析 ", Paper_List.Count, " 篇论文..."
+  CREATE an empty collection called All_Answers_From_All_Papers.
+
+  FOR EACH Paper IN Paper_List:
+    // a. 准备单篇论文的内容
+    SET Full_Text = Get text from Paper.PDF.
+    SET Text_Chunks = Split Full_Text into meaningful paragraphs.
+    
+    // b. 带着子问题清单去“审问”这篇论文
+    FOR EACH Question IN Sub_Questions:
+      // 使用RAG在论文内部查找答案
+      FIND relevant Chunks from Text_Chunks that best answer the Question.
+      SET Answer_Snippet = CALL LLM to generate a precise answer 
+                           FROM the relevant Chunks 
+                           FOR the Question.
+      // 存储从这篇论文中找到的答案片段
+      STORE Answer_Snippet linked to the Question and the Paper.
+    END FOR
+    
+    ADD all stored Answer_Snippets for this Paper to All_Answers_From_All_Papers.
+  END FOR
+
+  // === 阶段四: 知识综合 - 将所有零散答案融合成最终结论 ===
+  PRINT "  Phase 4: 正在进行跨论文综合..."
+  SET Final_QA_Pairs = CALL LLM to synthesize, merge, and refine all answers 
+                       in All_Answers_From_All_Papers 
+                       into a final, coherent QA list for the original Task.
+
+  RETURN Final_QA_Pairs
+
+END PROCEDURE

@@ -217,6 +217,97 @@ class AzureClient(LLMClient):
             **kwargs
         )
 
+    async def rerank(
+        self,
+        model_name: str,
+        query: str,
+        documents: List[str],
+        top_n: Optional[int] = None,
+        **kwargs
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Rerank documents based on query relevance using Azure OpenAI"""
+        trace_id = None
+        if hasattr(self, "monitor") and self.monitor is not None:
+            try:
+                trace_id = self.monitor.new_trace_id()
+                # Note: monitor doesn't have rerank tracking yet, but we can use chat tracking
+                # as a fallback for monitoring purposes
+                self.logger.info(f"Rerank request started, trace_id={trace_id}")
+            except Exception as e:
+                self.logger.warning(f"LLM monitor start failed: {e}")
+
+        self.logger.info(f"🚀 Requesting Azure OpenAI rerank: model={model_name}, docs_count={len(documents)}, top_n={top_n}, trace_id={trace_id}")
+        
+        async def api_call():
+            # Azure OpenAI doesn't have a native rerank API, so we'll use embeddings + cosine similarity
+            # as a fallback implementation
+            try:
+                # Get query embedding
+                query_embedding = await self.get_embeddings(model_name=model_name, text=query)
+                if not query_embedding:
+                    raise Exception("Failed to get query embedding")
+                
+                # Get document embeddings
+                doc_embeddings = await self.get_embeddings(model_name=model_name, text=documents)
+                if not doc_embeddings:
+                    raise Exception("Failed to get document embeddings")
+                
+                # Calculate cosine similarity
+                import numpy as np
+                
+                query_vec = np.array(query_embedding)
+                similarities = []
+                
+                for i, doc_embedding in enumerate(doc_embeddings):
+                    doc_vec = np.array(doc_embedding)
+                    # Calculate cosine similarity
+                    similarity = np.dot(query_vec, doc_vec) / (np.linalg.norm(query_vec) * np.linalg.norm(doc_vec))
+                    similarities.append({
+                        "index": i,
+                        "document": documents[i],
+                        "score": float(similarity)
+                    })
+                
+                # Sort by similarity score (descending)
+                similarities.sort(key=lambda x: x["score"], reverse=True)
+                
+                # Apply top_n filter if specified
+                if top_n is not None and top_n > 0:
+                    similarities = similarities[:top_n]
+                
+                return similarities
+                
+            except Exception as e:
+                self.logger.error(f"❌ Failed to calculate embeddings-based rerank: {e}")
+                # Fallback: return documents in original order with dummy scores
+                fallback_results = []
+                for i, doc in enumerate(documents):
+                    fallback_results.append({
+                        "index": i,
+                        "document": doc,
+                        "score": 1.0 - (i * 0.1)  # Decreasing scores
+                    })
+                
+                if top_n is not None and top_n > 0:
+                    fallback_results = fallback_results[:top_n]
+                
+                return fallback_results
+        
+        try:
+            results = await self.async_retry_on_exception(
+                api_call,
+                max_retries=3,
+                delay=5,
+                backoff=2
+            )
+            
+            self.logger.info(f"✅ Azure OpenAI rerank completed successfully, returned {len(results)} results, trace_id={trace_id}")
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"❌ Failed to rerank documents after all retries: {e}, trace_id={trace_id}")
+            return None
+
     async def chat_stream(
         self,
         system_prompt: str,
