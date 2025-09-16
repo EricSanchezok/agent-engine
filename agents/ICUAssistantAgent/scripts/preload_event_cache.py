@@ -27,7 +27,7 @@ from agent_engine.memory.e_memory import PodEMemory, Record
 from agent_engine.utils import get_current_file_dir
 from agent_engine.llm_client import QzClient
 
-CONCURRENCY = 32
+CONCURRENCY = 64
 sem = asyncio.Semaphore(CONCURRENCY)
 data_dir = "agents/ICUAssistantAgent/database/icu_patients"
 
@@ -44,7 +44,7 @@ if not api_key:
     logger.error("QZ_API_KEY not found in environment variables")
     raise ValueError("QZ_API_KEY is required")
 
-llm_client = QzClient(api_key=api_key, base_url="http://eric-vpn.cpolar.top/r/eric_qwen3_embedding_8b")
+llm_client = QzClient(api_key=api_key, base_url="https://jpep8ehg8opgckcqkcc5e5eg9b8ecbcm.openapi-qb.sii.edu.cn")
 embed_model = "eric-qwen3-embedding-8b"
 
 class EventInfo:

@@ -60,7 +60,7 @@ build-backend = "setuptools.build_meta"
 # 关键：明确指定包发现规则
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agent_engine*"]  # 只包含agent_engine包
+include = ["agent_engine"]  # 只包含agent_engine包，不使用通配符
 exclude = [
     "agents*",        # 排除agents目录
     "core*",          # 排除core目录
@@ -78,6 +78,7 @@ exclude = [
     "*.zip",          # 排除压缩文件
     "*.sqlite",       # 排除数据库文件
     "*.json",         # 排除项目配置文件
+    "build_and_upload.py",  # 明确排除构建脚本
 ]
 
 # 确保包含agent_engine包内的配置文件
