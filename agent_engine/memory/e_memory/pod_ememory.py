@@ -480,6 +480,62 @@ class PodEMemory:
                 return False
             shard = self._shards[shard_id]
             return shard.update(record)
+
+    def update_batch(self, records: List[Record]) -> bool:
+        """
+        Update multiple existing records in the pod in batch.
+        
+        Optimized implementation that reduces database queries from O(N*M) to O(M)
+        where N is number of records and M is number of shards.
+        
+        Args:
+            records: List of Record objects to update (all must have IDs)
+            
+        Returns:
+            True if all records were successfully updated, False otherwise
+        """
+        if not records:
+            return True
+        
+        try:
+            # Step 1: Validate all records have IDs
+            record_ids = [record.id for record in records if record.id]
+            if len(record_ids) != len(records):
+                logger.error("All records must have IDs for batch update")
+                return False
+            
+            # Step 2: Batch find existing records and their shards (O(M) queries)
+            existing_map = self._find_shards_for_records_batch(record_ids)
+            
+            # Step 3: Check for missing records
+            missing_ids = [rid for rid in record_ids if rid not in existing_map]
+            if missing_ids:
+                logger.error(f"Records not found for batch update: {missing_ids}")
+                return False
+            
+            # Step 4: Group records by target shard
+            shard_groups: Dict[int, List[Record]] = {}
+            for record in records:
+                shard_id = existing_map[record.id]
+                if shard_id not in shard_groups:
+                    shard_groups[shard_id] = []
+                shard_groups[shard_id].append(record)
+            
+            # Step 5: Batch update each shard
+            for shard_id, recs in shard_groups.items():
+                shard = self._shards[shard_id]
+                success = shard.update_batch(recs)
+                if not success:
+                    logger.error(f"Failed to update batch in shard {shard_id}")
+                    return False
+                logger.debug(f"Updated {len(recs)} records in shard {shard_id}")
+            
+            logger.info(f"Updated {len(records)} records in PodEMemory batch across {len(shard_groups)} shards")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update batch records in pod: {e}")
+            return False
     
     def list_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Record]:
         """

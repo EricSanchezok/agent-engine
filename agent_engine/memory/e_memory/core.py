@@ -257,6 +257,146 @@ class EMemory:
             logger.error(f"Failed to update record {record_id}: {e}")
             return False
 
+    def update_batch(self, records: List[Record]) -> bool:
+        """
+        Update multiple existing records in the memory in batch.
+        
+        This method efficiently handles batch updates with proper vector management,
+        including removing old vectors when updating records to have no vector.
+        
+        Args:
+            records: List of Record objects to update (all must have IDs)
+            
+        Returns:
+            True if all records were successfully updated, False otherwise
+        """
+        if not records:
+            return True
+        
+        try:
+            # ChromaDB has a maximum batch size limit
+            MAX_CHROMADB_BATCH_SIZE = 5000
+            
+            # Process records in chunks to respect ChromaDB batch size limits
+            for i in range(0, len(records), MAX_CHROMADB_BATCH_SIZE):
+                chunk = records[i:i + MAX_CHROMADB_BATCH_SIZE]
+                success = self._update_batch_chunk(chunk)
+                if not success:
+                    logger.error(f"Failed to update batch chunk starting at index {i}")
+                    return False
+            
+            logger.debug(f"Updated {len(records)} records in EMemory batch")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update batch records in EMemory: {e}")
+            return False
+    
+    def _update_batch_chunk(self, records: List[Record]) -> bool:
+        """Update a chunk of records in the memory."""
+        try:
+            # Step 1: Validate all records have IDs and exist
+            record_ids = [record.id for record in records if record.id]
+            if len(record_ids) != len(records):
+                logger.error("All records must have IDs for batch update")
+                return False
+            
+            # Check existence of all records
+            existing_map = self.exists_batch(record_ids)
+            missing_ids = [rid for rid, exists in existing_map.items() if not exists]
+            if missing_ids:
+                logger.error(f"Records not found for batch update: {missing_ids}")
+                return False
+            
+            # Step 2: Get current vector status for all records
+            old_vector_map = self.has_vector_batch(record_ids)
+            
+            # Step 3: Prepare data for batch operations
+            vectors_to_add = []
+            ids_for_vectors = []
+            ids_to_delete_from_chroma = []
+            db_updates = []
+            
+            for record in records:
+                record_id = record.id
+                old_has_vector = old_vector_map.get(record_id, False)
+                new_has_vector = 1 if record.vector else 0
+                
+                # Prepare timestamp and attributes
+                record_timestamp = record.timestamp or self._get_current_timestamp()
+                record_attributes = record.attributes or {}
+                
+                # Handle vector operations
+                if new_has_vector and record.vector:
+                    # Record has vector - add/update in ChromaDB
+                    vectors_to_add.append(record.vector)
+                    ids_for_vectors.append(record_id)
+                elif old_has_vector and not new_has_vector:
+                    # Record had vector but now doesn't - delete from ChromaDB
+                    ids_to_delete_from_chroma.append(record_id)
+                
+                # Prepare SQLite update data
+                db_updates.append((
+                    json.dumps(record_attributes),
+                    record.content,
+                    record_timestamp,
+                    new_has_vector,
+                    record_id
+                ))
+            
+            # Step 4: Batch operations on ChromaDB
+            successful_vector_ids = set()
+            
+            # Add/update vectors in ChromaDB
+            if vectors_to_add:
+                try:
+                    self.collection.add(
+                        embeddings=vectors_to_add,
+                        ids=ids_for_vectors
+                    )
+                    successful_vector_ids = set(ids_for_vectors)
+                    logger.debug(f"Successfully updated {len(vectors_to_add)} vectors in ChromaDB")
+                except Exception as e:
+                    logger.error(f"Failed to update vectors in ChromaDB: {e}")
+                    # Continue with SQLite updates even if ChromaDB fails
+            
+            # Delete vectors from ChromaDB
+            if ids_to_delete_from_chroma:
+                try:
+                    self.collection.delete(ids=ids_to_delete_from_chroma)
+                    logger.debug(f"Successfully deleted {len(ids_to_delete_from_chroma)} vectors from ChromaDB")
+                except Exception as e:
+                    logger.warning(f"Failed to delete vectors from ChromaDB: {e}")
+            
+            # Step 5: Update has_vector status based on ChromaDB success
+            final_db_updates = []
+            for i, (attributes_json, content, timestamp, original_has_vector, record_id) in enumerate(db_updates):
+                # Set has_vector to 1 only if ChromaDB storage was successful
+                final_has_vector = 1 if record_id in successful_vector_ids else 0
+                final_db_updates.append((
+                    attributes_json,
+                    content,
+                    timestamp,
+                    final_has_vector,
+                    record_id
+                ))
+            
+            # Step 6: Batch update SQLite
+            with sqlite3.connect(self.sqlite_path) as conn:
+                conn.executemany("""
+                    UPDATE records 
+                    SET attributes = ?, content = ?, timestamp = ?, has_vector = ?
+                    WHERE id = ?
+                """, final_db_updates)
+                conn.commit()
+            
+            logger.debug(f"Updated {len(records)} records in batch chunk")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update batch chunk: {e}")
+            return False
+
     def add_batch(self, records: List[Record]) -> bool:
         """
         Add multiple records to the memory in batch.
