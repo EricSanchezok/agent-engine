@@ -128,8 +128,9 @@ class ArxivEmbeddingGenerator:
         self.logger.info(f"Loading papers from database for day range {day_name}")
         
         try:
-            # Get papers from database for the date range
-            papers = self.arxiv_database.get_papers_by_date_range(start_date, end_date)
+            # Get papers from database for the specific date (start_date)
+            # Note: We use start_date since ArxivDatabase.get_papers_by_date takes a single date
+            papers = self.arxiv_database.get_papers_by_date(start_date)
             
             self.logger.info(f"Found {len(papers)} papers in database for day range {day_name}")
             return papers
@@ -264,10 +265,11 @@ class ArxivEmbeddingGenerator:
         self.logger.info(f"Updating {len(papers_with_embeddings)} papers with embeddings in database")
         
         try:
-            # Update embeddings in database
+            # Update embeddings in database using the correct method
             successful_ids = []
             for paper, embedding in papers_with_embeddings:
-                success = self.arxiv_database.update_paper_embedding(paper.full_id, embedding)
+                # Use update_paper method which takes paper and embedding
+                success = self.arxiv_database.update_paper(paper, embedding)
                 if success:
                     successful_ids.append(paper.full_id)
             
