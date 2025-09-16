@@ -79,7 +79,7 @@ class PodEMemory:
         if use_hash_sharding:
             # Hash-based sharding: fixed number of shards
             if num_shards is None:
-                num_shards = 10  # Default number of shards
+                num_shards = 8  # Default number of shards
             self.num_shards = num_shards
             self._shard_count = num_shards
             self._current_shard = None  # Not used in hash sharding

@@ -73,7 +73,7 @@ class PatientMemory:
             vector = _vector_cache.vector
         else:
             # Generate new embedding and cache it
-            vector = await self.llm_client.get_embeddings(model_name=self.embed_model, text=event.event_content)
+            vector = await self.llm_client.embedding(model_name=self.embed_model, text=event.event_content)
             # Cache the vector for future use
             _cache_record = Record(
                 id=event_id,

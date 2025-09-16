@@ -100,7 +100,7 @@ async def preload_single_event(event_info: EventInfo) -> Tuple[str, bool, str]:
                 return event_info.event_id, False, "already_cached"
             
             # Generate embedding
-            vector = await llm_client.get_embeddings(model_name=embed_model, text=event_info.event_content)
+            vector = await llm_client.embedding(model_name=embed_model, text=event_info.event_content)
             
             # Create and add record to cache
             record = Record(
