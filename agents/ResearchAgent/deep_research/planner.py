@@ -22,12 +22,6 @@ class DeepResearchPlanner:
         self.llm_client = AzureClient(api_key=os.getenv('AZURE_API_KEY'))
         self.model_name = 'gpt-4.1'
         self.tavily_client = TavilyClient(os.getenv('TAVILY_API_KEY'))
-        # response = client.search(
-        #     query="What is the latest research on AI agents?",
-        #     include_answer="basic",
-        #     max_results=20
-        # )
-        # print(response)
 
     async def plan(self, user_query: str) -> Dict[str, Any]:
         system_prompt = self.prompt_loader.get_prompt(
