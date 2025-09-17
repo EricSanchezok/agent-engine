@@ -236,7 +236,8 @@ class DailyArxivScheduler:
                 target_date,
                 filter_result,
                 rank_result,
-                saved_files
+                saved_files,
+                filter_result.get("paper_metadata", {})
             )
             
             # Mark as completed
@@ -368,7 +369,7 @@ async def main():
     
     # Run today's pipeline
     print("Running today's pipeline...")
-    result = await scheduler.run_daily_pipeline()
+    result = await scheduler.run_daily_pipeline(date(2025, 9, 15))
     
     print(f"Pipeline Result: {result['success']}")
     if result['success']:

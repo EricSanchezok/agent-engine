@@ -188,7 +188,25 @@ class DailyArxivPaperFilter:
                         "distance": distances[i] if i < len(distances) else None
                     }
                     for i, paper in enumerate(selected_papers)
-                ]
+                ],
+                "paper_metadata": {
+                    paper.full_id: {
+                        "id": paper.id,
+                        "version": paper.version,
+                        "title": paper.title,
+                        "authors": paper.authors,
+                        "categories": paper.categories,
+                        "summary": paper.summary,
+                        "published_date": paper.published_date.isoformat() if paper.published_date else None,
+                        "submitted_date": paper.submitted_date.isoformat() if paper.submitted_date else None,
+                        "pdf_url": paper.pdf_url,
+                        "doi": paper.doi,
+                        "journal_ref": paper.journal_ref,
+                        "comment": paper.comment,
+                        "metadata": paper.metadata
+                    }
+                    for paper in selected_papers
+                }
             }
             
             self.logger.info(f"Filtering completed: {successful_downloads}/{len(selected_papers)} papers downloaded")

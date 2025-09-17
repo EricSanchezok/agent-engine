@@ -187,7 +187,8 @@ class ResultManager:
         target_date: date,
         filter_result: Dict[str, Any],
         swiss_tournament_result: Dict[str, Any],
-        condensed_reports: List[Dict[str, Any]]
+        condensed_reports: List[Dict[str, Any]],
+        paper_metadata: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Save complete daily processing result to JSON file.
@@ -197,6 +198,7 @@ class ResultManager:
             filter_result: Result from paper filtering
             swiss_tournament_result: Result from Swiss tournament ranking
             condensed_reports: List of condensed report information
+            paper_metadata: Optional dictionary mapping paper IDs to full metadata
             
         Returns:
             Path to the saved result file
@@ -220,7 +222,8 @@ class ResultManager:
             },
             "filter_result": filter_result,
             "swiss_tournament_result": swiss_tournament_result,
-            "condensed_reports": condensed_reports
+            "condensed_reports": condensed_reports,
+            "paper_metadata": paper_metadata or {}
         }
         
         # Save to JSON file
