@@ -47,6 +47,13 @@ class DailyArxivConfig:
     MAX_CONCURRENT_DOWNLOADS: int = 4
     MAX_CONCURRENT_EMBEDDINGS: int = 16
     
+    # Swiss Tournament Configuration
+    SWISS_TOURNAMENT_TOP_N: int = 8  # Number of top papers to select from TOP_K_PAPERS
+    SWISS_TOURNAMENT_MODEL: str = "gpt-4.1"  # Model for pairwise comparison
+    SWISS_TOURNAMENT_MAX_TOKENS: int = 640000  # Max tokens for LLM calls
+    SWISS_TOURNAMENT_TEMPERATURE: float = 0.1  # Temperature for LLM calls
+    SWISS_TOURNAMENT_MAX_CONCURRENT: int = 2  # Max concurrent LLM calls
+    
     @classmethod
     def validate(cls) -> bool:
         """Validate that required configuration is present."""
@@ -75,6 +82,19 @@ class DailyArxivConfig:
             print("❌ MAX_CONCURRENT_EMBEDDINGS must be greater than 0")
             return False
         
+        # Validate Swiss Tournament configurations
+        if cls.SWISS_TOURNAMENT_TOP_N <= 0:
+            print("❌ SWISS_TOURNAMENT_TOP_N must be greater than 0")
+            return False
+        
+        if cls.SWISS_TOURNAMENT_TOP_N > cls.TOP_K_PAPERS:
+            print("❌ SWISS_TOURNAMENT_TOP_N cannot be greater than TOP_K_PAPERS")
+            return False
+        
+        if cls.SWISS_TOURNAMENT_MAX_CONCURRENT <= 0:
+            print("❌ SWISS_TOURNAMENT_MAX_CONCURRENT must be greater than 0")
+            return False
+        
         print("✅ DailyArxiv configuration validation passed")
         return True
     
@@ -91,6 +111,12 @@ class DailyArxivConfig:
         print(f"Max Concurrent Downloads: {cls.MAX_CONCURRENT_DOWNLOADS}")
         print(f"Max Concurrent Embeddings: {cls.MAX_CONCURRENT_EMBEDDINGS}")
         print(f"Use Eric VPN: {cls.USE_ERIC_VPN}")
+        print("--- Swiss Tournament Configuration ---")
+        print(f"Swiss Tournament Top N: {cls.SWISS_TOURNAMENT_TOP_N}")
+        print(f"Swiss Tournament Model: {cls.SWISS_TOURNAMENT_MODEL}")
+        print(f"Swiss Tournament Max Tokens: {cls.SWISS_TOURNAMENT_MAX_TOKENS}")
+        print(f"Swiss Tournament Temperature: {cls.SWISS_TOURNAMENT_TEMPERATURE}")
+        print(f"Swiss Tournament Max Concurrent: {cls.SWISS_TOURNAMENT_MAX_CONCURRENT}")
         print("==========================================")
     
     @classmethod

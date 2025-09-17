@@ -139,8 +139,16 @@ class DailyArxivPaperFilter:
             # Step 5: Download selected papers
             download_results = await self._download_papers(selected_papers, max_concurrent_downloads)
             
-            # Calculate statistics
+            # Calculate statistics and collect successful PDF paths
             successful_downloads = sum(1 for success, _ in download_results if success)
+            successful_pdf_paths = []
+            for success, paper in download_results:
+                if success:
+                    # Get PDF path using the same logic as ArxivFetcher
+                    from core.arxiv_fetcher.arxiv_fetcher import get_pdf_storage_path
+                    pdf_path = get_pdf_storage_path(paper, str(self.pdf_storage_dir))
+                    if pdf_path.exists():
+                        successful_pdf_paths.append(str(pdf_path))
             
             result = {
                 "success": True,
@@ -150,6 +158,7 @@ class DailyArxivPaperFilter:
                 "papers_selected": len(selected_papers),
                 "papers_downloaded": successful_downloads,
                 "download_failures": len(selected_papers) - successful_downloads,
+                "successful_pdf_paths": successful_pdf_paths,
                 "selected_papers": [
                     {
                         "full_id": paper.full_id,
