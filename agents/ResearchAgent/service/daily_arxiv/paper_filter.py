@@ -70,7 +70,8 @@ class DailyArxivPaperFilter:
         self, 
         target_date: date,
         top_k: Optional[int] = None,
-        max_concurrent_downloads: Optional[int] = None
+        max_concurrent_downloads: Optional[int] = None,
+        ensure_complete_download: bool = True
     ) -> Dict[str, Any]:
         """
         Filter and download papers for a specific date.
@@ -79,6 +80,7 @@ class DailyArxivPaperFilter:
             target_date: Date to process papers for
             top_k: Number of top papers to select and download (uses config if None)
             max_concurrent_downloads: Maximum concurrent downloads (uses config if None)
+            ensure_complete_download: Whether to ensure complete download by supplementing failed papers
             
         Returns:
             Dictionary with results and statistics
@@ -142,6 +144,8 @@ class DailyArxivPaperFilter:
             # Calculate statistics and collect successful PDF paths
             successful_downloads = sum(1 for success, _ in download_results if success)
             successful_pdf_paths = []
+            failed_papers = []
+            
             for success, paper in download_results:
                 if success:
                     # Get PDF path using the same logic as ArxivFetcher
@@ -149,6 +153,24 @@ class DailyArxivPaperFilter:
                     pdf_path = get_pdf_storage_path(paper, str(self.pdf_storage_dir))
                     if pdf_path.exists():
                         successful_pdf_paths.append(str(pdf_path))
+                else:
+                    failed_papers.append(paper)
+            
+            # Step 6: Supplement failed papers if needed
+            if ensure_complete_download and successful_downloads < top_k and len(failed_papers) > 0:
+                self.logger.info(f"Attempting to supplement {top_k - successful_downloads} failed papers")
+                supplement_results = await self._supplement_failed_papers(
+                    papers, vectors, distances, failed_papers, top_k - successful_downloads, max_concurrent_downloads
+                )
+                
+                # Add supplement results to successful downloads
+                for success, paper in supplement_results:
+                    if success:
+                        from core.arxiv_fetcher.arxiv_fetcher import get_pdf_storage_path
+                        pdf_path = get_pdf_storage_path(paper, str(self.pdf_storage_dir))
+                        if pdf_path.exists():
+                            successful_pdf_paths.append(str(pdf_path))
+                            successful_downloads += 1
             
             result = {
                 "success": True,
@@ -260,6 +282,62 @@ class DailyArxivPaperFilter:
             self.logger.info(f"Download {status}: {paper.full_id}")
         
         return download_results
+    
+    async def _supplement_failed_papers(
+        self,
+        all_papers: List[Any],
+        all_vectors: List[Optional[List[float]]],
+        all_distances: List[Optional[float]],
+        failed_papers: List[Any],
+        needed_count: int,
+        max_concurrent: int
+    ) -> List[Tuple[bool, Any]]:
+        """Supplement failed papers with additional papers from the remaining pool."""
+        self.logger.info(f"Supplementing {needed_count} failed papers from remaining pool")
+        
+        # Create set of failed paper IDs for quick lookup
+        failed_paper_ids = {paper.full_id for paper in failed_papers}
+        
+        # Find papers that weren't selected initially (excluding failed ones)
+        available_papers = []
+        available_vectors = []
+        available_distances = []
+        
+        for i, paper in enumerate(all_papers):
+            if paper.full_id not in failed_paper_ids:
+                # Check if this paper was already selected
+                vector = all_vectors[i] if i < len(all_vectors) else None
+                distance = all_distances[i] if i < len(all_distances) else None
+                
+                if vector is not None and distance is not None:
+                    available_papers.append(paper)
+                    available_vectors.append(vector)
+                    available_distances.append(distance)
+        
+        if not available_papers:
+            self.logger.warning("No available papers for supplementation")
+            return []
+        
+        # Sort available papers by distance (ascending - smaller distance means more similar)
+        paper_distance_pairs = list(zip(available_papers, available_distances))
+        paper_distance_pairs.sort(key=lambda x: x[1])
+        
+        # Select the best remaining papers
+        supplement_papers = [paper for paper, _ in paper_distance_pairs[:needed_count]]
+        
+        if not supplement_papers:
+            self.logger.warning("No papers available for supplementation")
+            return []
+        
+        self.logger.info(f"Selected {len(supplement_papers)} papers for supplementation")
+        
+        # Download supplement papers
+        supplement_results = await self._download_papers(supplement_papers, max_concurrent)
+        
+        successful_supplements = sum(1 for success, _ in supplement_results if success)
+        self.logger.info(f"Supplementation completed: {successful_supplements}/{len(supplement_papers)} successful")
+        
+        return supplement_results
 
 
 async def main():

@@ -111,7 +111,7 @@ class ResultManager:
         status[date_str] = {
             "date": date_str,
             "status": "in_progress",
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now().isoformat(),
             "completed_at": None,
             "error_message": None,
             "result_file_path": None
@@ -145,7 +145,7 @@ class ResultManager:
         
         status[date_str].update({
             "status": "completed",
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now().isoformat(),
             "result_file_path": result_file_path,
             "error_message": None
         })
@@ -174,7 +174,7 @@ class ResultManager:
         
         status[date_str].update({
             "status": "failed",
-            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": datetime.now().isoformat(),
             "error_message": error_message
         })
         
@@ -213,7 +213,7 @@ class ResultManager:
         result_data = {
             "metadata": {
                 "date": target_date.isoformat(),
-                "processed_at": datetime.now(timezone.utc).isoformat(),
+                "processed_at": datetime.now().isoformat(),
                 "version": "1.0",
                 "total_papers_processed": filter_result.get("papers_processed", 0),
                 "total_comparisons": swiss_tournament_result.get("total_comparisons", 0)
