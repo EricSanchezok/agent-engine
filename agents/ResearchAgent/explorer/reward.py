@@ -38,7 +38,7 @@ from typing import Any, Dict, List, Sequence
 
 from agent_engine.agent_logger import AgentLogger
 import numpy as np  # for type annotations and simple means
-from agents.ResearchAgent.vector_density import HNSWVectorDensityEstimator
+from agents.ResearchAgent.explorer.vector_density import HNSWVectorDensityEstimator
 
 
 class ArxivRewardBase(ABC):
