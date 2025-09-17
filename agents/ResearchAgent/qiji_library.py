@@ -33,7 +33,7 @@ from agent_engine.memory.e_memory import EMemory, Record
 from core.arxiv_fetcher import ArxivFetcher, ArxivPaper
 
 # Local imports
-from agents.ResearchAgent.config import QIJI_LIBRARY_DIR, PDF_STROAGE_DIR
+from agents.ResearchAgent.config import QIJI_LIBRARY_DIR, PDF_STROAGE_DIR, QIJI_ARTICLES_DIR
 
 load_dotenv()
 
@@ -106,7 +106,7 @@ class QijiLibrary:
             Dictionary with statistics about the update process
         """
         if qiji_articles_dir is None:
-            qiji_articles_dir = QIJI_LIBRARY_DIR
+            qiji_articles_dir = QIJI_ARTICLES_DIR
         
         qiji_articles_path = Path(qiji_articles_dir)
         if not qiji_articles_path.exists():
