@@ -1,4 +1,10 @@
 """
+Daily arXiv Paper Filter and Download
+
+This module provides a simple class for filtering and downloading papers
+from a specific date based on similarity to qiji library.
+"""
+
 import sys
 import os
 from pathlib import Path
@@ -12,20 +18,12 @@ while project_root.parent != project_root:
     project_root = project_root.parent
 sys.path.insert(0, str(project_root))
 
-
-Daily arXiv Paper Filter and Download
-
-This module provides a simple class for filtering and downloading papers
-from a specific date based on similarity to qiji library.
-"""
-
 import asyncio
 from datetime import date, datetime
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
 
 from agent_engine.agent_logger import AgentLogger
-from agent_engine.utils import get_current_file_dir
 
 from agents.ResearchAgent.arxiv_database import ArxivDatabase
 from agents.ResearchAgent.qiji_library import QijiLibrary
@@ -257,7 +255,7 @@ async def main():
     filter_service = DailyArxivPaperFilter()
     
     # Test with today's date
-    today = date.today()
+    today = date(2025, 9, 16)
     result = await filter_service.filter_and_download_papers(today)
     
     print("Paper Filter Results:")

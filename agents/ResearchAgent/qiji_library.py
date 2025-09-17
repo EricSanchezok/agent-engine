@@ -33,7 +33,7 @@ from agent_engine.memory.e_memory import EMemory, Record
 from core.arxiv_fetcher import ArxivFetcher, ArxivPaper
 
 # Local imports
-from agents.ResearchAgent.config import QIJI_LIBRARY_DIR
+from agents.ResearchAgent.config import QIJI_LIBRARY_DIR, PDF_STROAGE_DIR
 
 load_dotenv()
 
@@ -92,7 +92,7 @@ class QijiLibrary:
         self.embedding_model = "eric-qwen3-embedding-8b"
         self.reranker_model = "eric-qwen3-reranker-8b"
         self.qiji_memory = EMemory(name='qiji_memory', persist_dir=QIJI_LIBRARY_DIR)
-        self.arxiv_fetcher = ArxivFetcher()
+        self.arxiv_fetcher = ArxivFetcher(pdf_storage_dir=PDF_STROAGE_DIR)
         
     async def update_memory(self, qiji_articles_dir: str = None, max_concurrent: int = 1) -> Dict[str, int]:
         """
