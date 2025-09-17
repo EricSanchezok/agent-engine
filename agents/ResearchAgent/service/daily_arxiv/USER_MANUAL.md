@@ -29,8 +29,13 @@ The API server runs on port 5000 by default. Access URLs:
 ```
 
 **Request Parameters:**
-- `start_date` (string, required): Start date in YYYYMMDD format
-- `end_date` (string, required): End date in YYYYMMDD format
+- `start_date` (string, required): Start date in YYYYMMDD format (inclusive)
+- `end_date` (string, required): End date in YYYYMMDD format (inclusive)
+
+**Date Range Behavior:**
+The API uses a **closed interval** (inclusive range), meaning both the start_date and end_date are included in the results. For example:
+- `start_date: "20250914", end_date: "20250916"` returns papers from 2025-09-14, 2025-09-15, and 2025-09-16
+- `start_date: "20250914", end_date: "20250914"` returns only papers from 2025-09-14
 
 **Response Format:**
 ```json
@@ -152,16 +157,24 @@ import json
 # API endpoint
 url = "http://localhost:5000/api/paper-reports"
 
-# Request data
-data = {
+# Example 1: Get papers for a date range (multiple days)
+data_range = {
     "date_range": {
-        "start_date": "20250916",
-        "end_date": "20250917"
+        "start_date": "20250914",
+        "end_date": "20250916"
+    }
+}
+
+# Example 2: Get papers for a single day (closed interval)
+data_single = {
+    "date_range": {
+        "start_date": "20250914",
+        "end_date": "20250914"  # Same date for single day
     }
 }
 
 # Make request
-response = requests.post(url, json=data)
+response = requests.post(url, json=data_single)
 
 # Check response
 if response.status_code == 200:
@@ -186,13 +199,23 @@ else:
 ### cURL Example
 
 ```bash
-# Basic request
+# Example 1: Get papers for a date range (multiple days)
 curl -X POST http://localhost:5000/api/paper-reports \
   -H "Content-Type: application/json" \
   -d '{
     "date_range": {
-      "start_date": "20250916",
-      "end_date": "20250917"
+      "start_date": "20250914",
+      "end_date": "20250916"
+    }
+  }'
+
+# Example 2: Get papers for a single day (closed interval)
+curl -X POST http://localhost:5000/api/paper-reports \
+  -H "Content-Type: application/json" \
+  -d '{
+    "date_range": {
+      "start_date": "20250914",
+      "end_date": "20250914"
     }
   }'
 
@@ -201,8 +224,8 @@ curl -X POST http://localhost:5000/api/paper-reports \
   -H "Content-Type: application/json" \
   -d '{
     "date_range": {
-      "start_date": "20250916",
-      "end_date": "20250917"
+      "start_date": "20250914",
+      "end_date": "20250914"
     }
   }' | python -m json.tool
 
@@ -279,13 +302,15 @@ The `report` field contains a markdown-formatted analysis with the following str
 
 1. **Date Format**: All dates must be in YYYYMMDD format (e.g., "20250916" for September 16, 2025).
 
-2. **Report Availability**: Reports are only available for dates when the daily arXiv processing has completed successfully.
+2. **Date Range**: The API uses a **closed interval** (inclusive range). Both start_date and end_date are included in the results. To get data for a single day, set both start_date and end_date to the same value.
 
-3. **Processing Time**: The daily processing typically runs in the morning and may take 30-60 minutes to complete.
+3. **Report Availability**: Reports are only available for dates when the daily arXiv processing has completed successfully.
 
-4. **Rate Limiting**: Currently no rate limiting is implemented, but please use the API responsibly.
+4. **Processing Time**: The daily processing typically runs in the morning and may take 30-60 minutes to complete.
 
-5. **Data Freshness**: Reports are generated daily and may not be immediately available for the current date.
+5. **Rate Limiting**: Currently no rate limiting is implemented, but please use the API responsibly.
+
+6. **Data Freshness**: Reports are generated daily and may not be immediately available for the current date.
 
 ## Support
 

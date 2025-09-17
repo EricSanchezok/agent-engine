@@ -43,15 +43,15 @@ def test_api(base_url="http://localhost:5000"):
     except Exception as e:
         print(f"   ✗ Status check failed: {e}")
     
-    # Test 3: Paper reports (test with recent date)
-    print("3. Testing paper reports...")
-    today = date.today()
-    test_date = today.strftime("%Y%m%d")
+    # Test 3: Paper reports (test with single date - 2025-09-14)
+    print("3. Testing paper reports for single date...")
+    start_date = "20250914"  # Use string format YYYYMMDD
+    end_date = "20250914"    # Same date for single day
     
     test_data = {
         "date_range": {
-            "start_date": test_date,
-            "end_date": test_date
+            "start_date": start_date,
+            "end_date": end_date
         }
     }
     
