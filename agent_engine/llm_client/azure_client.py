@@ -97,7 +97,52 @@ class AzureClient(LLMClient):
                 backoff=2
             )
             
-            content = completion.choices[0].message.content
+            # Check if response has valid choices
+            if not completion.choices or len(completion.choices) == 0:
+                error_msg = f"No choices returned from Azure OpenAI API. This might be due to max_tokens being too large ({max_tokens}) or other API limits."
+                self.logger.error(f"❌ {error_msg}, trace_id={trace_id}")
+                if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                    try:
+                        await self.monitor.fail_chat(
+                            trace_id=trace_id,
+                            error_message=error_msg,
+                            raw=None,
+                        )
+                    except Exception as e2:
+                        self.logger.warning(f"LLM monitor fail record failed: {e2}")
+                return None
+            
+            # Check if the first choice has valid content
+            first_choice = completion.choices[0]
+            if not first_choice or not hasattr(first_choice, 'message') or not first_choice.message:
+                error_msg = f"Invalid choice structure returned from Azure OpenAI API. Choice: {first_choice}"
+                self.logger.error(f"❌ {error_msg}, trace_id={trace_id}")
+                if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                    try:
+                        await self.monitor.fail_chat(
+                            trace_id=trace_id,
+                            error_message=error_msg,
+                            raw=None,
+                        )
+                    except Exception as e2:
+                        self.logger.warning(f"LLM monitor fail record failed: {e2}")
+                return None
+            
+            content = first_choice.message.content
+            if content is None:
+                error_msg = f"Empty content returned from Azure OpenAI API. This might be due to max_tokens being too large ({max_tokens}) or content filtering."
+                self.logger.error(f"❌ {error_msg}, trace_id={trace_id}")
+                if trace_id and hasattr(self, "monitor") and self.monitor is not None:
+                    try:
+                        await self.monitor.fail_chat(
+                            trace_id=trace_id,
+                            error_message=error_msg,
+                            raw=None,
+                        )
+                    except Exception as e2:
+                        self.logger.warning(f"LLM monitor fail record failed: {e2}")
+                return None
+            
             self.logger.info(f"✅ Azure OpenAI response received successfully, trace_id={trace_id}")
 
             # Extract usage if available
