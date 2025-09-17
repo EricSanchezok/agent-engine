@@ -50,9 +50,19 @@ class DailyArxivConfig:
     # Swiss Tournament Configuration
     SWISS_TOURNAMENT_TOP_N: int = 8  # Number of top papers to select from TOP_K_PAPERS
     SWISS_TOURNAMENT_MODEL: str = "gpt-4.1"  # Model for pairwise comparison
-    SWISS_TOURNAMENT_MAX_TOKENS: int = 640000  # Max tokens for LLM calls
+    SWISS_TOURNAMENT_MAX_TOKENS: int = 32768  # Max tokens for LLM calls
     SWISS_TOURNAMENT_TEMPERATURE: float = 0.1  # Temperature for LLM calls
     SWISS_TOURNAMENT_MAX_CONCURRENT: int = 2  # Max concurrent LLM calls
+    
+    # Paper Condenser Configuration
+    PAPER_CONDENSER_MODEL: str = "gpt-4.1"  # Model for paper condensation
+    PAPER_CONDENSER_MAX_TOKENS: int = 32768  # Max tokens for LLM calls
+    PAPER_CONDENSER_TEMPERATURE: float = 0.1  # Temperature for LLM calls
+    PAPER_CONDENSER_MAX_CONCURRENT: int = 2  # Max concurrent LLM calls
+    
+    # Result Storage Configuration
+    DAILY_ARXIV_RESULT_DIR: str = "daily_arxiv"  # Subdirectory for daily results
+    DAILY_ARXIV_STATUS_FILE: str = "daily_status.json"  # File to track daily processing status
     
     @classmethod
     def validate(cls) -> bool:
@@ -95,6 +105,15 @@ class DailyArxivConfig:
             print("❌ SWISS_TOURNAMENT_MAX_CONCURRENT must be greater than 0")
             return False
         
+        # Validate Paper Condenser configurations
+        if cls.PAPER_CONDENSER_MAX_TOKENS <= 0:
+            print("❌ PAPER_CONDENSER_MAX_TOKENS must be greater than 0")
+            return False
+        
+        if cls.PAPER_CONDENSER_MAX_CONCURRENT <= 0:
+            print("❌ PAPER_CONDENSER_MAX_CONCURRENT must be greater than 0")
+            return False
+        
         print("✅ DailyArxiv configuration validation passed")
         return True
     
@@ -117,6 +136,14 @@ class DailyArxivConfig:
         print(f"Swiss Tournament Max Tokens: {cls.SWISS_TOURNAMENT_MAX_TOKENS}")
         print(f"Swiss Tournament Temperature: {cls.SWISS_TOURNAMENT_TEMPERATURE}")
         print(f"Swiss Tournament Max Concurrent: {cls.SWISS_TOURNAMENT_MAX_CONCURRENT}")
+        print("--- Paper Condenser Configuration ---")
+        print(f"Paper Condenser Model: {cls.PAPER_CONDENSER_MODEL}")
+        print(f"Paper Condenser Max Tokens: {cls.PAPER_CONDENSER_MAX_TOKENS}")
+        print(f"Paper Condenser Temperature: {cls.PAPER_CONDENSER_TEMPERATURE}")
+        print(f"Paper Condenser Max Concurrent: {cls.PAPER_CONDENSER_MAX_CONCURRENT}")
+        print("--- Result Storage Configuration ---")
+        print(f"Daily Arxiv Result Dir: {cls.DAILY_ARXIV_RESULT_DIR}")
+        print(f"Daily Arxiv Status File: {cls.DAILY_ARXIV_STATUS_FILE}")
         print("==========================================")
     
     @classmethod
@@ -130,6 +157,18 @@ class DailyArxivConfig:
         """Get database directory, using default if not configured."""
         from agents.ResearchAgent.config import ARXIV_DATABASE_DIR
         return str(ARXIV_DATABASE_DIR)
+    
+    @classmethod
+    def get_result_storage_dir(cls) -> str:
+        """Get result storage directory for daily arXiv results."""
+        from agents.ResearchAgent.config import ARXIV_DATABASE_DIR
+        return str(ARXIV_DATABASE_DIR / cls.DAILY_ARXIV_RESULT_DIR)
+    
+    @classmethod
+    def get_status_file_path(cls) -> str:
+        """Get status file path for tracking daily processing."""
+        from agents.ResearchAgent.config import ARXIV_DATABASE_DIR
+        return str(ARXIV_DATABASE_DIR / cls.DAILY_ARXIV_STATUS_FILE)
 
 
 if __name__ == "__main__":

@@ -140,7 +140,8 @@ class SwissTournamentRanker:
                         "paper_id": paper_id,
                         "title": next(p.title for p in papers if p.paper_id == paper_id),
                         "score": score,
-                        "rank": i + 1
+                        "rank": i + 1,
+                        "pdf_path": next(p.pdf_path for p in papers if p.paper_id == paper_id)
                     }
                     for i, (paper_id, score) in enumerate(top_papers)
                 ],
@@ -149,9 +150,22 @@ class SwissTournamentRanker:
                         "paper_id": paper_id,
                         "title": next(p.title for p in papers if p.paper_id == paper_id),
                         "score": score,
-                        "rank": i + 1
+                        "rank": i + 1,
+                        "pdf_path": next(p.pdf_path for p in papers if p.paper_id == paper_id)
                     }
                     for i, (paper_id, score) in enumerate(rankings)
+                ],
+                "detailed_comparisons": [
+                    {
+                        "round": self._get_comparison_round(comp),
+                        "paper_one_id": comp.paper_one_id,
+                        "paper_two_id": comp.paper_two_id,
+                        "winner": comp.winner,
+                        "justification": comp.justification,
+                        "comparative_analysis": comp.comparative_analysis,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    for comp in self.comparisons
                 ]
             }
             
@@ -503,6 +517,17 @@ class SwissTournamentRanker:
         rankings = sorted(paper_scores, key=lambda x: (-x[1], x[0]))
         
         return rankings
+    
+    def _get_comparison_round(self, comparison: ComparisonResult) -> int:
+        """Get the round number for a comparison (simplified implementation)."""
+        # This is a simplified implementation - in a real system you might want to track rounds more precisely
+        # For now, we'll estimate based on the position in the comparisons list
+        try:
+            index = self.comparisons.index(comparison)
+            # Estimate round based on position (this is approximate)
+            return (index // (len(self.papers) // 2)) + 1
+        except (ValueError, ZeroDivisionError):
+            return 1
 
 
 async def main():
