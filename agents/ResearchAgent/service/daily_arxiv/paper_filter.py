@@ -194,18 +194,21 @@ class DailyArxivPaperFilter:
         self, 
         papers: List[Any], 
         vectors: List[Optional[List[float]]], 
-        distances: List[float], 
+        distances: List[Optional[float]], 
         top_k: int
     ) -> List[Any]:
         """Select top K papers based on minimum distances."""
-        # Create list of (paper, distance) tuples for papers with valid vectors
+        # Create list of (paper, distance) tuples for papers with valid vectors and distances
         paper_distance_pairs = []
         distance_index = 0
         
         for i, (paper, vector) in enumerate(zip(papers, vectors)):
             if vector is not None:
                 if distance_index < len(distances):
-                    paper_distance_pairs.append((paper, distances[distance_index]))
+                    distance = distances[distance_index]
+                    # Only include papers with valid (non-None) distances
+                    if distance is not None:
+                        paper_distance_pairs.append((paper, distance))
                     distance_index += 1
         
         if not paper_distance_pairs:

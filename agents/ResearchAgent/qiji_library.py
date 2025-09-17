@@ -414,4 +414,4 @@ async def test():
     print(distance)
 
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(update_qiji_memory())
