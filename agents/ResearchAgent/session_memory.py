@@ -26,11 +26,18 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
+from dotenv import load_dotenv
+import tiktoken
 
 from agent_engine.memory.e_memory import EMemory, Record
 from agent_engine.agent_logger.agent_logger import AgentLogger
+from agent_engine.utils import get_current_file_dir, get_relative_path_from_current_file
+from agent_engine.prompt import PromptLoader
+from agent_engine.llm_client import AzureClient
 
 logger = AgentLogger(__name__)
+
+load_dotenv()
 
 
 @dataclass
@@ -83,6 +90,10 @@ class SessionMemory:
         self.max_short_history_tokens = max_short_history_tokens
         self.summarization_threshold = summarization_threshold
         
+        self.llm_client = AzureClient(api_key=os.getenv("AZURE_API_KEY"))
+        self.prompt_loader = PromptLoader(get_relative_path_from_current_file("prompts.yaml"))
+        self.model_name = "gpt-4.1"
+
         # Create database directory structure
         self.db_dir = Path("agents/ResearchAgent/database/runtime") / user_id / session_id
         self.db_dir.mkdir(parents=True, exist_ok=True)
@@ -172,23 +183,32 @@ class SessionMemory:
         except Exception as e:
             logger.error(f"Failed to save context history: {e}")
     
-    def _clear_context_records(self) -> None:
-        """Clear existing context records from memory (no longer needed)"""
-        # This method is no longer needed since we're not storing context in EMemory
-        pass
     
     def _estimate_tokens(self, text: str) -> int:
         """
-        Estimate token count for text.
-        Simple estimation: ~4 characters per token for English text.
+        Estimate token count for text using tiktoken.
+        
+        Args:
+            text: Text to estimate tokens for
+            
+        Returns:
+            Estimated token count
         """
-        return len(text) // 4
+        try:
+            # Use tiktoken to get accurate token count for the model
+            encoding = tiktoken.encoding_for_model(self.model_name)
+            tokens = encoding.encode(text)
+            return len(tokens)
+        except Exception as e:
+            logger.warning(f"Failed to estimate tokens with tiktoken: {e}")
+            # Fallback to simple estimation: ~4 characters per token for English text
+            return len(text) // 4
     
     def _should_summarize(self) -> bool:
         """Check if short history should be summarized"""
         return self.context_history.total_tokens >= self.summarization_threshold
     
-    def add_qa(self, question: str, answer: str) -> None:
+    async def add_qa(self, question: str, answer: str) -> None:
         """
         Add a new Q&A pair to the conversation history.
         
@@ -232,7 +252,7 @@ class SessionMemory:
             # Check if summarization is needed
             if self._should_summarize():
                 logger.info("Short history exceeds threshold, triggering summarization")
-                self._summarize_history()
+                await self._summarize_history()
             
             # Save context history to JSON file
             self._save_context_history()
@@ -242,7 +262,7 @@ class SessionMemory:
         except Exception as e:
             logger.error(f"Failed to add Q&A pair: {e}")
     
-    def _summarize_history(self) -> None:
+    async def _summarize_history(self) -> None:
         """
         Summarize short history and merge with long history.
         This method creates a summary of recent conversations and updates long history.
@@ -251,29 +271,25 @@ class SessionMemory:
             if not self.context_history.short_history:
                 return
             
-            # TODO: Call LLM to summarize the conversation
-            # For now, we'll create a simple summary
-            short_summary_parts = []
-            for qa in self.context_history.short_history:
-                short_summary_parts.append(f"Q: {qa.question}\nA: {qa.answer}")
-            
-            short_summary = "\n\n".join(short_summary_parts)
-            
-            # Combine with existing long history
-            if self.context_history.long_history:
-                combined_history = f"{self.context_history.long_history}\n\n--- Recent Conversation Summary ---\n{short_summary}"
-            else:
-                combined_history = f"--- Conversation Summary ---\n{short_summary}"
-            
-            # Update long history
-            self.context_history.long_history = combined_history
-            
-            # Clear short history (keep only the most recent Q&A pair for context)
-            if len(self.context_history.short_history) > 1:
-                # Keep only the last Q&A pair and reset total_tokens
-                last_qa = self.context_history.short_history[-1]
-                self.context_history.short_history = [last_qa]
-                self.context_history.total_tokens = self._estimate_tokens(last_qa.question) + self._estimate_tokens(last_qa.answer)
+            system_prompt = self.prompt_loader.get_prompt(
+                section="inno_researcher_summarize",
+                prompt_type="system",
+                long_history=self.context_history.long_history,
+                short_history=self.context_history.short_history
+            )
+            user_prompt = self.prompt_loader.get_prompt(
+                section="inno_researcher_summarize",
+                prompt_type="user"
+            )
+
+            try:
+                result = await self.llm_client.chat(system_prompt, user_prompt, model_name=self.model_name, max_tokens=32000)
+                self.context_history.long_history = result
+                self.context_history.short_history = []
+                self.context_history.total_tokens = self._estimate_tokens(result)
+            except Exception as e:
+                logger.error(f"Failed to summarize history: {e}")
+                return
             
             logger.info("History summarization completed")
             logger.info(f"Long history length: {len(self.context_history.long_history)} chars")
@@ -283,37 +299,30 @@ class SessionMemory:
         except Exception as e:
             logger.error(f"Failed to summarize history: {e}")
     
-    def get_context_for_llm(self, max_context_tokens: int = 4000) -> str:
+    def get_context_for_llm(self) -> Tuple[str, str]:
         """
         Get formatted context for LLM input.
-        
-        Args:
-            max_context_tokens: Maximum tokens for context (ignored, returns full context)
             
         Returns:
             Formatted context string
         """
         try:
-            context_parts = []
-            
-            # Add long history if available
+            long_history = ""
             if self.context_history.long_history:
-                context_parts.append("=== Previous Conversation Summary ===")
-                context_parts.append(self.context_history.long_history)
-            
-            # Add recent short history
+                long_history = self.context_history.long_history
+
+            short_history_parts = []
             if self.context_history.short_history:
-                context_parts.append("\n=== Recent Conversation ===")
                 for qa in self.context_history.short_history:
-                    context_parts.append(f"User: {qa.question}")
-                    context_parts.append(f"Assistant: {qa.answer}")
+                    short_history_parts.append(f"User: {qa.question}")
+                    short_history_parts.append(f"Assistant: {qa.answer}")
             
-            context = "\n".join(context_parts)
-            return context
+            short_history = "\n".join(short_history_parts)
+            return long_history, short_history
             
         except Exception as e:
             logger.error(f"Failed to get context for LLM: {e}")
-            return ""
+            return "", ""
     
     def get_session_stats(self) -> Dict[str, Any]:
         """

@@ -29,6 +29,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "pydantic>=2.11.7",
     "websockets>=15.0.1",
+    "tiktoken>=0.8.0",
 ]
 
 [project.optional-dependencies]
