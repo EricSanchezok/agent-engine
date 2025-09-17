@@ -47,6 +47,7 @@ class ContextHistory:
     """Context history containing short and long term memory"""
     short_history: List[QA] = field(default_factory=list)
     long_history: str = field(default_factory=str)
+    total_tokens: int = field(default=0)
 
 
 class SessionMemory:
@@ -82,120 +83,99 @@ class SessionMemory:
         self.max_short_history_tokens = max_short_history_tokens
         self.summarization_threshold = summarization_threshold
         
+        # Create database directory structure
+        self.db_dir = Path("agents/ResearchAgent/database/runtime") / user_id / session_id
+        self.db_dir.mkdir(parents=True, exist_ok=True)
+        
         # Create unique memory name for this user session
         self.memory_name = f"session_{user_id}_{session_id}"
         
-        # Initialize EMemory database
+        # Initialize EMemory database with custom persist_dir
         self.memory = EMemory(
             name=self.memory_name,
-            persist_dir=None  # Use default .memory directory
+            persist_dir=str(self.db_dir)
         )
+        
+        # Context history file path
+        self.context_history_file = self.db_dir / "context_history.json"
         
         # Initialize context history
         self.context_history = ContextHistory()
         
-        # Load existing context from database
+        # Load existing context from file
         self._load_context_history()
         
         logger.info(f"SessionMemory initialized for user={user_id}, session={session_id}")
-        logger.info(f"Memory name: {self.memory_name}")
+        logger.info(f"Database directory: {self.db_dir}")
         logger.info(f"Short history: {len(self.context_history.short_history)} Q&A pairs")
         logger.info(f"Long history length: {len(self.context_history.long_history)} chars")
+        logger.info(f"Total tokens: {self.context_history.total_tokens}")
     
     def _load_context_history(self) -> None:
-        """Load context history from EMemory database"""
+        """Load context history from JSON file"""
         try:
-            # Get all records from the memory
-            records = self.memory.list_all()
-            
-            # Separate short history and long history records
-            short_history_records = []
-            long_history_record = None
-            
-            for record in records:
-                attributes = record.attributes or {}
-                record_type = attributes.get('type', '')
+            if self.context_history_file.exists():
+                with open(self.context_history_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
                 
-                if record_type == 'short_history':
-                    # Parse QA from content
-                    try:
-                        qa_data = json.loads(record.content)
-                        qa = QA(
-                            question=qa_data['question'],
-                            answer=qa_data['answer'],
-                            timestamp=qa_data['timestamp'],
-                            qa_id=qa_data.get('qa_id', str(uuid.uuid4()))
-                        )
-                        short_history_records.append(qa)
-                    except (json.JSONDecodeError, KeyError) as e:
-                        logger.warning(f"Failed to parse short history record: {e}")
-                elif record_type == 'long_history':
-                    long_history_record = record
-            
-            # Sort short history by timestamp
-            short_history_records.sort(key=lambda x: x.timestamp)
-            self.context_history.short_history = short_history_records
-            
-            # Set long history
-            if long_history_record:
-                self.context_history.long_history = long_history_record.content or ""
-            
-            logger.info(f"Loaded context history: {len(short_history_records)} short Q&A pairs")
-            
+                # Load short history
+                short_history_data = data.get('short_history', [])
+                short_history_records = []
+                for qa_data in short_history_data:
+                    qa = QA(
+                        question=qa_data['question'],
+                        answer=qa_data['answer'],
+                        timestamp=qa_data['timestamp'],
+                        qa_id=qa_data.get('qa_id', str(uuid.uuid4()))
+                    )
+                    short_history_records.append(qa)
+                
+                # Load long history and total tokens
+                self.context_history.short_history = short_history_records
+                self.context_history.long_history = data.get('long_history', '')
+                self.context_history.total_tokens = data.get('total_tokens', 0)
+                
+                logger.info(f"Loaded context history: {len(short_history_records)} short Q&A pairs")
+                logger.info(f"Total tokens: {self.context_history.total_tokens}")
+            else:
+                logger.info("No existing context history file found, starting fresh")
+                
         except Exception as e:
             logger.error(f"Failed to load context history: {e}")
             # Initialize empty context history
             self.context_history = ContextHistory()
     
     def _save_context_history(self) -> None:
-        """Save context history to EMemory database"""
+        """Save context history to JSON file"""
         try:
-            # Clear existing context records
-            self._clear_context_records()
+            # Prepare data for JSON serialization
+            data = {
+                'short_history': [
+                    {
+                        'question': qa.question,
+                        'answer': qa.answer,
+                        'timestamp': qa.timestamp,
+                        'qa_id': qa.qa_id
+                    }
+                    for qa in self.context_history.short_history
+                ],
+                'long_history': self.context_history.long_history,
+                'total_tokens': self.context_history.total_tokens
+            }
             
-            # Save short history
-            for qa in self.context_history.short_history:
-                qa_data = {
-                    'question': qa.question,
-                    'answer': qa.answer,
-                    'timestamp': qa.timestamp,
-                    'qa_id': qa.qa_id
-                }
-                
-                record = Record(
-                    id=f"short_{qa.qa_id}",
-                    content=json.dumps(qa_data),
-                    attributes={'type': 'short_history', 'qa_id': qa.qa_id},
-                    timestamp=qa.timestamp
-                )
-                self.memory.add(record)
+            # Save to JSON file
+            with open(self.context_history_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
             
-            # Save long history
-            if self.context_history.long_history:
-                record = Record(
-                    id="long_history",
-                    content=self.context_history.long_history,
-                    attributes={'type': 'long_history'},
-                    timestamp=datetime.utcnow().isoformat() + "Z"
-                )
-                self.memory.add(record)
-            
-            logger.debug("Context history saved to EMemory")
+            logger.debug("Context history saved to JSON file")
             
         except Exception as e:
             logger.error(f"Failed to save context history: {e}")
     
     def _clear_context_records(self) -> None:
-        """Clear existing context records from memory"""
-        try:
-            records = self.memory.list_all()
-            for record in records:
-                attributes = record.attributes or {}
-                record_type = attributes.get('type', '')
-                if record_type in ['short_history', 'long_history']:
-                    self.memory.delete(record.id)
-        except Exception as e:
-            logger.warning(f"Failed to clear context records: {e}")
+        """Clear existing context records from memory (no longer needed)"""
+        # This method is no longer needed since we're not storing context in EMemory
+        pass
     
     def _estimate_tokens(self, text: str) -> int:
         """
@@ -206,16 +186,7 @@ class SessionMemory:
     
     def _should_summarize(self) -> bool:
         """Check if short history should be summarized"""
-        if not self.context_history.short_history:
-            return False
-        
-        # Calculate total tokens in short history
-        total_tokens = 0
-        for qa in self.context_history.short_history:
-            total_tokens += self._estimate_tokens(qa.question)
-            total_tokens += self._estimate_tokens(qa.answer)
-        
-        return total_tokens >= self.summarization_threshold
+        return self.context_history.total_tokens >= self.summarization_threshold
     
     def add_qa(self, question: str, answer: str) -> None:
         """
@@ -233,18 +204,40 @@ class SessionMemory:
                 timestamp=datetime.utcnow().isoformat() + "Z"
             )
             
+            # Calculate tokens for this Q&A pair
+            qa_tokens = self._estimate_tokens(question) + self._estimate_tokens(answer)
+            
             # Add to short history
             self.context_history.short_history.append(qa)
+            
+            # Update total tokens
+            self.context_history.total_tokens += qa_tokens
+            
+            # Add to EMemory database
+            qa_data = {
+                'question': question,
+                'answer': answer,
+                'timestamp': qa.timestamp,
+                'qa_id': qa.qa_id
+            }
+            
+            record = Record(
+                id=f"qa_{qa.qa_id}",
+                content=json.dumps(qa_data),
+                attributes={'type': 'qa_pair', 'qa_id': qa.qa_id, 'tokens': qa_tokens},
+                timestamp=qa.timestamp
+            )
+            self.memory.add(record)
             
             # Check if summarization is needed
             if self._should_summarize():
                 logger.info("Short history exceeds threshold, triggering summarization")
                 self._summarize_history()
             
-            # Save to database
+            # Save context history to JSON file
             self._save_context_history()
             
-            logger.info(f"Added Q&A pair to session memory. Short history: {len(self.context_history.short_history)} pairs")
+            logger.info(f"Added Q&A pair to session memory. Short history: {len(self.context_history.short_history)} pairs, Total tokens: {self.context_history.total_tokens}")
             
         except Exception as e:
             logger.error(f"Failed to add Q&A pair: {e}")
@@ -258,7 +251,8 @@ class SessionMemory:
             if not self.context_history.short_history:
                 return
             
-            # Create summary of short history
+            # TODO: Call LLM to summarize the conversation
+            # For now, we'll create a simple summary
             short_summary_parts = []
             for qa in self.context_history.short_history:
                 short_summary_parts.append(f"Q: {qa.question}\nA: {qa.answer}")
@@ -276,12 +270,15 @@ class SessionMemory:
             
             # Clear short history (keep only the most recent Q&A pair for context)
             if len(self.context_history.short_history) > 1:
-                # Keep only the last Q&A pair
-                self.context_history.short_history = self.context_history.short_history[-1:]
+                # Keep only the last Q&A pair and reset total_tokens
+                last_qa = self.context_history.short_history[-1]
+                self.context_history.short_history = [last_qa]
+                self.context_history.total_tokens = self._estimate_tokens(last_qa.question) + self._estimate_tokens(last_qa.answer)
             
             logger.info("History summarization completed")
             logger.info(f"Long history length: {len(self.context_history.long_history)} chars")
             logger.info(f"Short history reduced to: {len(self.context_history.short_history)} pairs")
+            logger.info(f"Total tokens reset to: {self.context_history.total_tokens}")
             
         except Exception as e:
             logger.error(f"Failed to summarize history: {e}")
@@ -291,7 +288,7 @@ class SessionMemory:
         Get formatted context for LLM input.
         
         Args:
-            max_context_tokens: Maximum tokens for context
+            max_context_tokens: Maximum tokens for context (ignored, returns full context)
             
         Returns:
             Formatted context string
@@ -312,28 +309,6 @@ class SessionMemory:
                     context_parts.append(f"Assistant: {qa.answer}")
             
             context = "\n".join(context_parts)
-            
-            # Truncate if too long
-            if self._estimate_tokens(context) > max_context_tokens:
-                # Keep long history and truncate short history
-                if self.context_history.long_history:
-                    remaining_tokens = max_context_tokens - self._estimate_tokens(self.context_history.long_history) - 200  # Buffer
-                    if remaining_tokens > 0:
-                        recent_context = []
-                        current_tokens = 0
-                        for qa in reversed(self.context_history.short_history):
-                            qa_text = f"User: {qa.question}\nAssistant: {qa.answer}"
-                            qa_tokens = self._estimate_tokens(qa_text)
-                            if current_tokens + qa_tokens <= remaining_tokens:
-                                recent_context.insert(0, qa_text)
-                                current_tokens += qa_tokens
-                            else:
-                                break
-                        
-                        context = f"=== Previous Conversation Summary ===\n{self.context_history.long_history}\n\n=== Recent Conversation ===\n" + "\n".join(recent_context)
-                    else:
-                        context = f"=== Previous Conversation Summary ===\n{self.context_history.long_history}"
-            
             return context
             
         except Exception as e:
@@ -348,21 +323,18 @@ class SessionMemory:
             Dictionary with session statistics
         """
         try:
-            short_history_tokens = 0
-            for qa in self.context_history.short_history:
-                short_history_tokens += self._estimate_tokens(qa.question)
-                short_history_tokens += self._estimate_tokens(qa.answer)
-            
             return {
                 "user_id": self.user_id,
                 "session_id": self.session_id,
                 "memory_name": self.memory_name,
+                "db_dir": str(self.db_dir),
                 "short_history_count": len(self.context_history.short_history),
-                "short_history_tokens": short_history_tokens,
+                "total_tokens": self.context_history.total_tokens,
                 "long_history_length": len(self.context_history.long_history),
                 "long_history_tokens": self._estimate_tokens(self.context_history.long_history),
                 "total_records_in_memory": self.memory.count(),
-                "should_summarize": self._should_summarize()
+                "should_summarize": self._should_summarize(),
+                "summarization_threshold": self.summarization_threshold
             }
             
         except Exception as e:
@@ -377,6 +349,10 @@ class SessionMemory:
             
             # Clear memory database
             self.memory.clear(confirm=False)
+            
+            # Remove context history file if it exists
+            if self.context_history_file.exists():
+                self.context_history_file.unlink()
             
             logger.info(f"Cleared session memory for user={self.user_id}, session={self.session_id}")
             
