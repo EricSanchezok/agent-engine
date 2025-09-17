@@ -11,6 +11,13 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from agent_engine.agent_logger import set_agent_log_directory
+
+current_file_dir = Path(__file__).parent
+log_dir = current_file_dir / 'logs'
+set_agent_log_directory(str(log_dir))
+
+
 from agents.ResearchAgent.service.daily_arxiv.api_server import start_server
 
 def main():
