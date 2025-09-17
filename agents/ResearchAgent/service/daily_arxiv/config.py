@@ -52,13 +52,13 @@ class DailyArxivConfig:
     SWISS_TOURNAMENT_MODEL: str = "gpt-4.1"  # Model for pairwise comparison
     SWISS_TOURNAMENT_MAX_TOKENS: int = 32768  # Max tokens for LLM calls
     SWISS_TOURNAMENT_TEMPERATURE: float = 0.1  # Temperature for LLM calls
-    SWISS_TOURNAMENT_MAX_CONCURRENT: int = 2  # Max concurrent LLM calls
+    SWISS_TOURNAMENT_MAX_CONCURRENT: int = 8  # Max concurrent LLM calls
     
     # Paper Condenser Configuration
     PAPER_CONDENSER_MODEL: str = "gpt-4.1"  # Model for paper condensation
     PAPER_CONDENSER_MAX_TOKENS: int = 32768  # Max tokens for LLM calls
     PAPER_CONDENSER_TEMPERATURE: float = 0.1  # Temperature for LLM calls
-    PAPER_CONDENSER_MAX_CONCURRENT: int = 2  # Max concurrent LLM calls
+    PAPER_CONDENSER_MAX_CONCURRENT: int = 8  # Max concurrent LLM calls
     
     # Result Storage Configuration
     DAILY_ARXIV_RESULT_DIR: str = "daily_arxiv"  # Subdirectory for daily results
