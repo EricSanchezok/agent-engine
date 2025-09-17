@@ -377,7 +377,7 @@ async def main():
     # Run today's pipeline
     print("Running today's pipeline...")
     # For testing, you can specify a date with data: date(2025, 9, 16)
-    result = await scheduler.run_daily_pipeline(date(2025, 9, 16))  # Test with date that has data
+    result = await scheduler.run_daily_pipeline(date(2025, 9, 15))  # Test with 2025-09-15
     
     print(f"Pipeline Result: {result['success']}")
     if result['success']:
