@@ -12,10 +12,16 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json
 from datetime import datetime
+from pathlib import Path
+from agent_engine.agent_logger import set_agent_log_directory
+
+current_file_dir = Path(__file__).parent
+log_dir = current_file_dir / 'logs'
+set_agent_log_directory(str(log_dir))
 
 from agent_engine.agent_logger import agent_logger
-from .deep_research.deep_research_engine import DeepResearchEngine
-from .config import PDF_STROAGE_DIR, ARXIV_DATABASE_DIR, QIJI_LIBRARY_DIR, QIJI_ARTICLES_DIR
+
+# Simple chat service without deep research functionality
 
 
 class ChatRequest(BaseModel):
@@ -34,21 +40,7 @@ class ChatResponse(BaseModel):
     status: str = "success"
 
 
-class ResearchRequest(BaseModel):
-    """Request model for research tasks"""
-    query: str
-    user_id: str
-    research_type: str = "general"  # general, deep, literature_review
-    parameters: Optional[Dict[str, Any]] = None
-
-
-class ResearchResponse(BaseModel):
-    """Response model for research tasks"""
-    results: Dict[str, Any]
-    session_id: str
-    timestamp: str
-    status: str = "success"
-    message: str
+# Removed research-related models for simple chat functionality
 
 
 # Initialize FastAPI app
@@ -67,23 +59,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global variables for service state
-research_engine: Optional[DeepResearchEngine] = None
 user_sessions: Dict[str, Dict[str, Any]] = {}
 
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize the research engine on startup"""
-    global research_engine
+    """Initialize the service on startup"""
     try:
-        agent_logger.info("Initializing Inno-Researcher service...")
-        
-        # Initialize the deep research engine
-        research_engine = DeepResearchEngine()
-        await research_engine.initialize()
-        
-        agent_logger.info("Inno-Researcher service initialized successfully")
+        agent_logger.info("Initializing Inno-Researcher chat service...")
+        agent_logger.info("Inno-Researcher chat service initialized successfully")
         
     except Exception as e:
         agent_logger.error(f"Failed to initialize Inno-Researcher service: {e}")
@@ -93,10 +77,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    global research_engine
-    if research_engine:
-        await research_engine.cleanup()
-    agent_logger.info("Inno-Researcher service shutdown")
+    agent_logger.info("Inno-Researcher chat service shutdown")
 
 
 @app.get("/")
@@ -116,7 +97,6 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Inno-Researcher",
-        "engine_ready": research_engine is not None,
         "active_sessions": len(user_sessions),
         "timestamp": datetime.now().isoformat()
     }
@@ -154,16 +134,8 @@ async def chat(request: ChatRequest):
             "timestamp": datetime.now().isoformat()
         })
         
-        # Generate response using the research engine
-        if research_engine:
-            response_text = await research_engine.process_query(
-                query=request.message,
-                user_id=request.user_id,
-                session_id=session_id,
-                context=request.context or {}
-            )
-        else:
-            response_text = "Research engine is not available. Please try again later."
+        # Generate simple response
+        response_text = f"Hello! I received your message: '{request.message}'. This is a simple chat response from Inno-Researcher."
         
         # Add assistant response to session
         user_sessions[request.user_id]["sessions"][session_id]["messages"].append({
@@ -188,42 +160,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/research", response_model=ResearchResponse)
-async def research(request: ResearchRequest):
-    """
-    Research endpoint for conducting research tasks
-    """
-    try:
-        agent_logger.info(f"Research request from user {request.user_id}: {request.query[:100]}...")
-        
-        session_id = f"research_{request.user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        # Conduct research using the engine
-        if research_engine:
-            results = await research_engine.conduct_research(
-                query=request.query,
-                research_type=request.research_type,
-                user_id=request.user_id,
-                session_id=session_id,
-                parameters=request.parameters or {}
-            )
-            message = "Research completed successfully"
-        else:
-            results = {"error": "Research engine is not available"}
-            message = "Research engine is not available"
-        
-        agent_logger.info(f"Research completed for user {request.user_id}")
-        
-        return ResearchResponse(
-            results=results,
-            session_id=session_id,
-            timestamp=datetime.now().isoformat(),
-            message=message
-        )
-        
-    except Exception as e:
-        agent_logger.error(f"Error in research endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# Removed research endpoint for simple chat functionality
 
 
 @app.get("/sessions/{user_id}")

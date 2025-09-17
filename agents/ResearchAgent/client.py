@@ -77,33 +77,7 @@ class InnoResearcherClient:
             agent_logger.error(f"Chat error: {e}")
             return f"Error: {e}"
     
-    async def research(self, query: str, research_type: str = "general", 
-                      parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Conduct research using the service"""
-        try:
-            payload = {
-                "query": query,
-                "user_id": self.user_id,
-                "research_type": research_type,
-                "parameters": parameters or {}
-            }
-            
-            async with self.session.post(
-                f"{self.base_url}/research",
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            ) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data
-                else:
-                    error_text = await response.text()
-                    agent_logger.error(f"Research request failed: {response.status} - {error_text}")
-                    return {"error": f"{response.status} - {error_text}"}
-        
-        except Exception as e:
-            agent_logger.error(f"Research error: {e}")
-            return {"error": str(e)}
+    # Removed research functionality for simple chat
     
     async def get_sessions(self) -> Dict[str, Any]:
         """Get user sessions"""
@@ -124,9 +98,8 @@ class InnoResearcherClient:
 async def interactive_chat(client: InnoResearcherClient):
     """Interactive chat mode"""
     print("🤖 Welcome to Inno-Researcher!")
-    print("Type your research questions or chat messages. Type 'quit' to exit.")
+    print("Type your chat messages. Type 'quit' to exit.")
     print("Commands:")
-    print("  /research <query> - Conduct research")
     print("  /sessions - Show your sessions")
     print("  /help - Show this help")
     print("  /quit - Exit the program")
@@ -165,24 +138,7 @@ async def handle_command(client: InnoResearcherClient, command: str):
     parts = command.split(' ', 1)
     cmd = parts[0].lower()
     
-    if cmd == '/research':
-        if len(parts) < 2:
-            print("❌ Please provide a research query: /research <query>")
-            return
-        
-        query = parts[1]
-        print(f"🔍 Conducting research: {query}")
-        print("⏳ Please wait...")
-        
-        result = await client.research(query)
-        
-        if "error" in result:
-            print(f"❌ Research failed: {result['error']}")
-        else:
-            print("✅ Research completed!")
-            print(f"📊 Results: {json.dumps(result['results'], indent=2, ensure_ascii=False)}")
-    
-    elif cmd == '/sessions':
+    if cmd == '/sessions':
         sessions = await client.get_sessions()
         if "error" in sessions:
             print(f"❌ Failed to get sessions: {sessions['error']}")
@@ -193,7 +149,6 @@ async def handle_command(client: InnoResearcherClient, command: str):
     
     elif cmd == '/help':
         print("Available commands:")
-        print("  /research <query> - Conduct research")
         print("  /sessions - Show your sessions")
         print("  /help - Show this help")
         print("  /quit - Exit the program")
@@ -216,7 +171,7 @@ async def main():
     parser.add_argument("--url", default="http://localhost:8000", 
                        help="Service URL (default: http://localhost:8000)")
     parser.add_argument("--message", "-m", help="Single message to send")
-    parser.add_argument("--research", "-r", help="Research query to conduct")
+    # Removed research argument for simple chat
     parser.add_argument("--interactive", "-i", action="store_true", 
                        help="Interactive mode (default)")
     
@@ -231,17 +186,7 @@ async def main():
         
         print("✅ Service is healthy!")
         
-        if args.research:
-            # Research mode
-            print(f"🔍 Conducting research: {args.research}")
-            result = await client.research(args.research)
-            if "error" in result:
-                print(f"❌ Research failed: {result['error']}")
-            else:
-                print("✅ Research completed!")
-                print(f"📊 Results: {json.dumps(result['results'], indent=2, ensure_ascii=False)}")
-        
-        elif args.message:
+        if args.message:
             # Single message mode
             await single_chat(client, args.message)
         
