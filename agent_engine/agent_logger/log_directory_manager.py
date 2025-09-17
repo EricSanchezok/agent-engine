@@ -68,6 +68,8 @@ def set_agent_log_directory(log_dir: str) -> None:
         log_dir: Path to the log directory
     """
     log_directory_manager.set_agent_log_dir(log_dir)
+    # Also update existing logger instances
+    update_existing_loggers_directory(log_dir)
 
 
 def get_agent_log_directory() -> Optional[str]:
@@ -83,3 +85,22 @@ def get_agent_log_directory() -> Optional[str]:
 def clear_agent_log_directory() -> None:
     """Convenience function to clear the current agent log directory."""
     log_directory_manager.clear_agent_log_dir()
+
+
+def update_existing_loggers_directory(log_dir: str) -> None:
+    """
+    Update log directory for all existing AgentLogger instances.
+    
+    Args:
+        log_dir: New log directory path
+    """
+    # Import here to avoid circular imports
+    from agent_engine.agent_logger.agent_logger import AgentLogger
+    
+    # Update environment variable
+    os.environ['AGENT_LOG_DIR'] = str(log_dir)
+    
+    # Update all existing logger instances
+    for logger_instance in AgentLogger._instances.values():
+        if hasattr(logger_instance, 'update_log_directory'):
+            logger_instance.update_log_directory(log_dir)
