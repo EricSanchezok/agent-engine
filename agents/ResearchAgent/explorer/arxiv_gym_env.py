@@ -63,7 +63,7 @@ import pyinstrument
 
 from agent_engine.agent_logger import AgentLogger
 from agents.ResearchAgent.arxiv_memory import ArxivMemory # type: ignore
-from agents.ResearchAgent.reward import ArxivRewardBase, ConstantReward
+from agents.ResearchAgent.explorer.reward import ArxivRewardBase, ConstantReward
 
 
 logger = AgentLogger("ResearchArxivEnv")
@@ -620,7 +620,7 @@ class ResearchArxivEnv:
 
 
 if __name__ == "__main__":
-    from agents.ResearchAgent.reward import NoveltyForwardReward
+    from agents.ResearchAgent.explorer.reward import NoveltyForwardReward
     
     # Test with local cache enabled
     logger.info("Testing with local cache enabled...")
