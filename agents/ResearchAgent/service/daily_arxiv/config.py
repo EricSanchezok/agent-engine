@@ -96,16 +96,14 @@ class DailyArxivConfig:
     @classmethod
     def get_pdf_storage_dir(cls) -> str:
         """Get PDF storage directory, using default if not configured."""
-        from agent_engine.utils import get_current_file_dir
-        current_dir = get_current_file_dir()
-        return str(current_dir.parent.parent / 'database' / 'arxiv_pdfs')
+        from agents.ResearchAgent.config import PDF_STROAGE_DIR
+        return str(PDF_STROAGE_DIR)
     
     @classmethod
     def get_database_dir(cls) -> Optional[str]:
         """Get database directory, using default if not configured."""
-        from agent_engine.utils import get_current_file_dir
-        current_dir = get_current_file_dir()
-        return str(current_dir.parent.parent / 'database')
+        from agents.ResearchAgent.config import ARXIV_DATABASE_DIR
+        return str(ARXIV_DATABASE_DIR)
 
 
 if __name__ == "__main__":

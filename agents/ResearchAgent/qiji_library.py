@@ -25,13 +25,15 @@ from datetime import datetime
 import pyinstrument
 
 # Agent Engine imports
-from agent_engine.utils import get_current_file_dir
 from agent_engine.llm_client import QzClient
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.memory.e_memory import EMemory, Record
 
 # Core imports
 from core.arxiv_fetcher import ArxivFetcher, ArxivPaper
+
+# Local imports
+from agents.ResearchAgent.config import QIJI_LIBRARY_DIR
 
 load_dotenv()
 
@@ -89,7 +91,7 @@ class QijiLibrary:
         self.reranker_client = QzClient(api_key=os.getenv('QZ_API_KEY'), base_url=os.getenv('QWEN3_RERANKER_8B_H100_URL') if not USE_ERIC_VPN else os.getenv('ERIC_VPN_URL') + os.getenv('QWEN3_RERANKER_8B_H100_PROXY_ROUTE'))
         self.embedding_model = "eric-qwen3-embedding-8b"
         self.reranker_model = "eric-qwen3-reranker-8b"
-        self.qiji_memory = EMemory(name='qiji_memory', persist_dir=get_current_file_dir() / 'database' / 'qiji_memory')
+        self.qiji_memory = EMemory(name='qiji_memory', persist_dir=QIJI_LIBRARY_DIR)
         self.arxiv_fetcher = ArxivFetcher()
         
     async def update_memory(self, qiji_articles_dir: str = None, max_concurrent: int = 1) -> Dict[str, int]:
@@ -104,7 +106,7 @@ class QijiLibrary:
             Dictionary with statistics about the update process
         """
         if qiji_articles_dir is None:
-            qiji_articles_dir = get_current_file_dir() / 'database' / 'qiji_articles'
+            qiji_articles_dir = QIJI_LIBRARY_DIR
         
         qiji_articles_path = Path(qiji_articles_dir)
         if not qiji_articles_path.exists():
