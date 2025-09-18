@@ -239,6 +239,22 @@ class ArxivMetadataFetcher:
         
         self.logger.info(f"Processing day: {day_name}")
         
+        # Perform health check before processing
+        if self.safe_db.health_monitor:
+            health_result = await self.safe_db.health_monitor.perform_health_check()
+            if health_result.overall_health == "critical":
+                self.logger.error(f"ArxivDatabase health is critical, skipping day {day_name}")
+                return {
+                    "day": day_name,
+                    "total_papers": 0,
+                    "filtered_papers": 0,
+                    "saved_papers": 0,
+                    "failed_papers": 0,
+                    "health_status": "critical"
+                }
+            elif health_result.overall_health == "degraded":
+                self.logger.warning(f"ArxivDatabase health is degraded, proceeding with caution for day {day_name}")
+        
         # Fetch papers for the day
         papers = await self._fetch_papers_for_day(start_date, end_date)
         
@@ -382,6 +398,11 @@ async def main():
                 print(f"Healthy Shards: {last_check['healthy_shards']}/{last_check['total_shards']}")
                 print(f"Total Papers: {last_check['total_papers']:,}")
                 print(f"Papers with Vectors: {last_check['papers_with_vectors']:,}")
+            
+            # Save health report to file
+            if fetcher.safe_db.health_monitor:
+                report_path = fetcher.safe_db.health_monitor.save_health_report()
+                print(f"Health report saved to: {report_path}")
         
     except Exception as e:
         print(f"Metadata fetch failed: {e}")

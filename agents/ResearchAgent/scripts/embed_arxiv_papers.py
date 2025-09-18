@@ -344,6 +344,23 @@ class ArxivEmbeddingGenerator:
         """
         self.logger.info(f"Processing batch: {batch_name} with {len(papers)} papers")
         
+        # Perform health check before processing batch
+        if self.safe_db.health_monitor:
+            health_result = await self.safe_db.health_monitor.perform_health_check()
+            if health_result.overall_health == "critical":
+                self.logger.error(f"ArxivDatabase health is critical, skipping batch {batch_name}")
+                return {
+                    "batch": batch_name,
+                    "total_papers": len(papers),
+                    "filtered_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "updated_papers": 0,
+                    "health_status": "critical"
+                }
+            elif health_result.overall_health == "degraded":
+                self.logger.warning(f"ArxivDatabase health is degraded, proceeding with caution for batch {batch_name}")
+        
         if not papers:
             return {
                 "batch": batch_name,
@@ -507,6 +524,23 @@ async def main():
                   f"{result['successful_embeddings']} successful, "
                   f"{result['failed_embeddings']} failed, "
                   f"{result['updated_papers']} updated")
+        
+        # Print health status and save report
+        health_status = generator.get_health_status()
+        if health_status:
+            print("\n=== ArxivDatabase Health Status ===")
+            print(f"Monitoring Active: {health_status['monitoring_active']}")
+            if health_status['last_check']:
+                last_check = health_status['last_check']
+                print(f"Overall Health: {last_check['overall_health']}")
+                print(f"Healthy Shards: {last_check['healthy_shards']}/{last_check['total_shards']}")
+                print(f"Total Papers: {last_check['total_papers']:,}")
+                print(f"Papers with Vectors: {last_check['papers_with_vectors']:,}")
+            
+            # Save health report to file
+            if generator.safe_db.health_monitor:
+                report_path = generator.safe_db.health_monitor.save_health_report()
+                print(f"Health report saved to: {report_path}")
         
     except Exception as e:
         print(f"Embedding generation failed: {e}")

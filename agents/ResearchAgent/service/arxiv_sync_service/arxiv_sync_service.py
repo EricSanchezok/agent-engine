@@ -73,6 +73,7 @@ class ArxivSyncService:
         # Service state
         self.is_running = False
         self.last_sync_date = None
+        self.last_health_report_date = None
         self.sync_stats = {
             "total_syncs": 0,
             "successful_syncs": 0,
@@ -317,6 +318,23 @@ class ArxivSyncService:
         
         self.logger.info(f"Processing day: {day_str}")
         
+        # Perform health check before processing
+        if self.safe_db.health_monitor:
+            health_result = await self.safe_db.health_monitor.perform_health_check()
+            if health_result.overall_health == "critical":
+                self.logger.error(f"ArxivDatabase health is critical, skipping day {day_str}")
+                return {
+                    "date": day_str,
+                    "total_papers": 0,
+                    "new_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "saved_papers": 0,
+                    "health_status": "critical"
+                }
+            elif health_result.overall_health == "degraded":
+                self.logger.warning(f"ArxivDatabase health is degraded, proceeding with caution for day {day_str}")
+        
         # Fetch papers for the day
         papers = await self._fetch_papers_for_day(day_start, day_end)
         
@@ -478,12 +496,40 @@ class ArxivSyncService:
             while self.is_running:
                 self.logger.info("Starting sync cycle...")
                 
+                # Perform health check before sync cycle
+                if self.safe_db.health_monitor:
+                    health_result = await self.safe_db.health_monitor.perform_health_check()
+                    if health_result.overall_health == "critical":
+                        self.logger.error("ArxivDatabase health is critical, skipping sync cycle")
+                        self.logger.info("Attempting automatic repair...")
+                        await self.safe_db.health_monitor.repair_corrupted_shards(health_result)
+                        # Save health report after critical issue
+                        report_path = self.safe_db.health_monitor.save_health_report()
+                        self.logger.info(f"Critical health report saved to: {report_path}")
+                        # Wait shorter time before retry
+                        await asyncio.sleep(300)  # 5 minutes
+                        continue
+                    elif health_result.overall_health == "degraded":
+                        self.logger.warning("ArxivDatabase health is degraded, proceeding with caution")
+                        # Save health report for degraded status
+                        report_path = self.safe_db.health_monitor.save_health_report()
+                        self.logger.info(f"Degraded health report saved to: {report_path}")
+                
                 success = await self._sync_with_retry()
                 
                 if success:
                     self.logger.info("Sync cycle completed successfully")
                 else:
                     self.logger.error("Sync cycle failed")
+                
+                # Save daily health report (once per day)
+                current_date = datetime.now().date()
+                if (self.last_health_report_date is None or 
+                    current_date > self.last_health_report_date):
+                    if self.safe_db.health_monitor:
+                        report_path = self.safe_db.health_monitor.save_health_report()
+                        self.logger.info(f"Daily health report saved to: {report_path}")
+                        self.last_health_report_date = current_date
                 
                 # Wait for next sync cycle
                 self.logger.info(f"Waiting {self.config.SYNC_INTERVAL_MINUTES} minutes for next sync...")

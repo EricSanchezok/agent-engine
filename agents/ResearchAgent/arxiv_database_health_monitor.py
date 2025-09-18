@@ -19,6 +19,7 @@ from dataclasses import dataclass, asdict
 from agent_engine.agent_logger import AgentLogger
 from agent_engine.memory.e_memory.pod_ememory import PodEMemory, ShardHealthStatus, ShardHealthInfo
 from agent_engine.memory.e_memory.safe_operations import SafeOperationManager
+from agent_engine.utils.project_root import get_project_root
 
 logger = AgentLogger(__name__)
 
@@ -391,8 +392,13 @@ class ArxivDatabaseHealthMonitor:
     def save_health_report(self, filepath: Optional[Path] = None) -> Path:
         """Save comprehensive ArxivDatabase health report to file."""
         if filepath is None:
+            # Get project root and create health reports directory
+            project_root = get_project_root()
+            reports_dir = project_root / "agents" / "ResearchAgent" / "database" / "database_health_reports"
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filepath = Path(f"arxiv_database_health_report_{timestamp}.json")
+            filepath = reports_dir / f"arxiv_database_health_report_{timestamp}.json"
         
         report = {
             "timestamp": datetime.now().isoformat(),
