@@ -633,44 +633,52 @@ class ArxivSyncService:
             while self.is_running:
                 self.logger.info("Starting sync cycle...")
                 
-                success = await self._sync_with_retry()
-                
-                if success:
-                    self.logger.info("Sync cycle completed successfully")
-                else:
-                    self.logger.error("Sync cycle failed")
-                    # Only perform health check after sync failure
-                    if self.safe_db.health_monitor:
-                        self.logger.warning("Sync cycle failed, performing health check...")
-                        health_result = await self.safe_db.health_monitor.perform_health_check()
-                        if health_result.overall_health == "critical":
-                            self.logger.error("ArxivDatabase health is critical after sync failure")
-                            self.logger.info("Attempting automatic repair...")
-                            await self.safe_db.health_monitor.repair_corrupted_shards(health_result)
-                            # Save health report after critical issue
+                try:
+                    success = await self._sync_with_retry()
+                    
+                    if success:
+                        self.logger.info("Sync cycle completed successfully")
+                    else:
+                        self.logger.error("Sync cycle failed")
+                        # Only perform health check after sync failure
+                        if self.safe_db.health_monitor:
+                            self.logger.warning("Sync cycle failed, performing health check...")
+                            health_result = await self.safe_db.health_monitor.perform_health_check()
+                            if health_result.overall_health == "critical":
+                                self.logger.error("ArxivDatabase health is critical after sync failure")
+                                self.logger.info("Attempting automatic repair...")
+                                await self.safe_db.health_monitor.repair_corrupted_shards(health_result)
+                                # Save health report after critical issue
+                                report_path = self.safe_db.health_monitor.save_health_report()
+                                self.logger.info(f"Critical health report saved to: {report_path}")
+                                # Wait shorter time before retry
+                                await asyncio.sleep(300)  # 5 minutes
+                                continue
+                            elif health_result.overall_health == "degraded":
+                                self.logger.warning("ArxivDatabase health is degraded after sync failure")
+                                # Save health report for degraded status
+                                report_path = self.safe_db.health_monitor.save_health_report()
+                                self.logger.info(f"Degraded health report saved to: {report_path}")
+                    
+                    # Save daily health report (once per day)
+                    current_date = datetime.now().date()
+                    if (self.last_health_report_date is None or 
+                        current_date > self.last_health_report_date):
+                        if self.safe_db.health_monitor:
                             report_path = self.safe_db.health_monitor.save_health_report()
-                            self.logger.info(f"Critical health report saved to: {report_path}")
-                            # Wait shorter time before retry
-                            await asyncio.sleep(300)  # 5 minutes
-                            continue
-                        elif health_result.overall_health == "degraded":
-                            self.logger.warning("ArxivDatabase health is degraded after sync failure")
-                            # Save health report for degraded status
-                            report_path = self.safe_db.health_monitor.save_health_report()
-                            self.logger.info(f"Degraded health report saved to: {report_path}")
-                
-                # Save daily health report (once per day)
-                current_date = datetime.now().date()
-                if (self.last_health_report_date is None or 
-                    current_date > self.last_health_report_date):
-                    if self.safe_db.health_monitor:
-                        report_path = self.safe_db.health_monitor.save_health_report()
-                        self.logger.info(f"Daily health report saved to: {report_path}")
-                        self.last_health_report_date = current_date
-                
-                # Wait for next sync cycle
-                self.logger.info(f"Waiting {self.config.SYNC_INTERVAL_MINUTES} minutes for next sync...")
-                await asyncio.sleep(self.config.SYNC_INTERVAL_MINUTES * 60)
+                            self.logger.info(f"Daily health report saved to: {report_path}")
+                            self.last_health_report_date = current_date
+                    
+                    # Wait for next sync cycle
+                    self.logger.info(f"Waiting {self.config.SYNC_INTERVAL_MINUTES} minutes for next sync...")
+                    await asyncio.sleep(self.config.SYNC_INTERVAL_MINUTES * 60)
+                    
+                except Exception as e:
+                    self.logger.error(f"Error in sync cycle: {e}")
+                    self.logger.error(f"Traceback: {traceback.format_exc()}")
+                    # Continue to next cycle instead of stopping the service
+                    self.logger.info("Continuing to next sync cycle...")
+                    await asyncio.sleep(60)  # Wait 1 minute before retry
                 
         except KeyboardInterrupt:
             self.logger.info("Service interrupted by user")
@@ -678,6 +686,7 @@ class ArxivSyncService:
             self.logger.error(f"Service error: {e}")
             self.logger.error(f"Traceback: {traceback.format_exc()}")
         finally:
+            self.logger.info("Service is stopping...")
             await self.stop()
     
     async def stop(self):
