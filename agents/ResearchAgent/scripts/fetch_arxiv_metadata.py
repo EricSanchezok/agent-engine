@@ -34,6 +34,7 @@ from agent_engine.agent_logger import AgentLogger
 from core.arxiv_fetcher.arxiv_fetcher import ArxivFetcher
 from core.arxiv_fetcher.arxiv_paper import ArxivPaper
 from agents.ResearchAgent.arxiv_database import ArxivDatabase
+from agents.ResearchAgent.arxiv_database_health_monitor import SafeArxivDatabaseOperations, ArxivRepairConfig
 
 
 class ArxivMetadataFetcher:
@@ -42,7 +43,8 @@ class ArxivMetadataFetcher:
     def __init__(
         self,
         database_name: str = "arxiv_papers",
-        database_dir: Optional[str] = None
+        database_dir: Optional[str] = None,
+        enable_health_monitoring: bool = True
     ):
         """
         Initialize the Arxiv metadata fetcher.
@@ -50,6 +52,7 @@ class ArxivMetadataFetcher:
         Args:
             database_name: Name for the ArxivDatabase
             database_dir: Directory for database storage
+            enable_health_monitoring: Whether to enable database health monitoring
         """
         self.logger = AgentLogger(self.__class__.__name__)
         
@@ -60,11 +63,17 @@ class ArxivMetadataFetcher:
             persist_dir=database_dir
         )
         
+        # Initialize safe ArxivDatabase operations with health monitoring
+        self.safe_db = SafeArxivDatabaseOperations(
+            self.arxiv_database, 
+            enable_monitoring=enable_health_monitoring
+        )
+        
         # Create failed IDs directory
         self.failed_ids_dir = Path(__file__).parent.parent / "database" / "fetch_failed_ids"
         self.failed_ids_dir.mkdir(parents=True, exist_ok=True)
         
-        self.logger.info("ArxivMetadataFetcher initialized")
+        self.logger.info("ArxivMetadataFetcher initialized with health monitoring")
         self.logger.info(f"Failed IDs will be saved to: {self.failed_ids_dir}")
     
     def _get_day_range(self, target_date: datetime) -> Tuple[datetime, datetime]:
@@ -172,9 +181,9 @@ class ArxivMetadataFetcher:
         self.logger.info(f"Saving {len(papers)} paper metadata to database")
         
         try:
-            # Save to database without embeddings (None for embeddings)
+            # Save to database without embeddings (None for embeddings) using safe operations
             embeddings = [None] * len(papers)
-            record_ids = self.arxiv_database.add_papers(papers, embeddings)
+            record_ids = self.safe_db.add_papers_safe(papers, embeddings)
             
             self.logger.info(f"Successfully saved {len(record_ids)} paper metadata to database")
             return [paper.full_id for paper in papers]
@@ -323,6 +332,15 @@ class ArxivMetadataFetcher:
         self.logger.info(f"  Failed to save: {total_failed}")
         
         return results
+    
+    def get_health_status(self):
+        """Get current database health status."""
+        return self.safe_db.get_health_status()
+    
+    def close(self):
+        """Close health monitoring and cleanup resources."""
+        self.safe_db.close()
+        self.logger.info("ArxivMetadataFetcher closed")
 
 
 async def main():
@@ -353,10 +371,25 @@ async def main():
                   f"{result['saved_papers']} saved, "
                   f"{result['failed_papers']} failed")
         
+        # Print health status
+        health_status = fetcher.get_health_status()
+        if health_status:
+            print("\n=== ArxivDatabase Health Status ===")
+            print(f"Monitoring Active: {health_status['monitoring_active']}")
+            if health_status['last_check']:
+                last_check = health_status['last_check']
+                print(f"Overall Health: {last_check['overall_health']}")
+                print(f"Healthy Shards: {last_check['healthy_shards']}/{last_check['total_shards']}")
+                print(f"Total Papers: {last_check['total_papers']:,}")
+                print(f"Papers with Vectors: {last_check['papers_with_vectors']:,}")
+        
     except Exception as e:
         print(f"Metadata fetch failed: {e}")
         import traceback
         traceback.print_exc()
+    finally:
+        # Always close the fetcher
+        fetcher.close()
 
 
 if __name__ == "__main__":

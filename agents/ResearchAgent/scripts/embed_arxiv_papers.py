@@ -35,6 +35,7 @@ from agent_engine.llm_client.qz_client import QzClient
 
 from core.arxiv_fetcher.arxiv_paper import ArxivPaper
 from agents.ResearchAgent.arxiv_database import ArxivDatabase
+from agents.ResearchAgent.arxiv_database_health_monitor import SafeArxivDatabaseOperations, ArxivRepairConfig
 
 
 class ArxivEmbeddingGenerator:
@@ -48,7 +49,8 @@ class ArxivEmbeddingGenerator:
         max_concurrent_embeddings: int = 10,
         database_name: str = "arxiv_papers",
         database_dir: Optional[str] = None,
-        batch_size: int = 1000
+        batch_size: int = 1000,
+        enable_health_monitoring: bool = True
     ):
         """
         Initialize the Arxiv embedding generator.
@@ -61,6 +63,7 @@ class ArxivEmbeddingGenerator:
             database_name: Name for the ArxivDatabase
             database_dir: Directory for database storage
             batch_size: Number of papers to process in each batch
+            enable_health_monitoring: Whether to enable database health monitoring
         """
         self.logger = AgentLogger(self.__class__.__name__)
         
@@ -69,6 +72,12 @@ class ArxivEmbeddingGenerator:
         self.arxiv_database = ArxivDatabase(
             name=database_name,
             persist_dir=database_dir
+        )
+        
+        # Initialize safe ArxivDatabase operations with health monitoring
+        self.safe_db = SafeArxivDatabaseOperations(
+            self.arxiv_database, 
+            enable_monitoring=enable_health_monitoring
         )
         
         # Configuration
@@ -82,12 +91,18 @@ class ArxivEmbeddingGenerator:
         
         self.logger.info(f"ArxivEmbeddingGenerator initialized with embedding model: {embedding_model}")
         self.logger.info(f"Batch size: {batch_size}, Max concurrent embeddings: {max_concurrent_embeddings}")
+        self.logger.info(f"Health monitoring enabled: {enable_health_monitoring}")
         self.logger.info(f"Failed IDs will be saved to: {self.failed_ids_dir}")
     
     async def close(self):
         """Close all connections."""
         await self.qz_client.close()
+        self.safe_db.close()
         self.logger.info("ArxivEmbeddingGenerator connections closed")
+    
+    def get_health_status(self):
+        """Get current database health status."""
+        return self.safe_db.get_health_status()
     
     def _get_day_range(self, target_date: datetime) -> Tuple[datetime, datetime]:
         """
@@ -269,8 +284,8 @@ class ArxivEmbeddingGenerator:
             papers = [paper for paper, _ in papers_with_embeddings]
             embeddings = [embedding for _, embedding in papers_with_embeddings]
             
-            # Use batch update method for better performance
-            success = self.arxiv_database.update_papers(papers, embeddings)
+            # Use batch update method for better performance with safe operations
+            success = self.safe_db.update_papers_safe(papers, embeddings)
             
             if success:
                 successful_ids = [paper.full_id for paper in papers]

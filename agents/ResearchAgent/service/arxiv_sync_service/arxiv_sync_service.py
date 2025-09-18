@@ -35,6 +35,7 @@ from core.arxiv_fetcher.arxiv_fetcher import ArxivFetcher
 from core.arxiv_fetcher.arxiv_paper import ArxivPaper
 
 from agents.ResearchAgent.arxiv_database import ArxivDatabase
+from agents.ResearchAgent.arxiv_database_health_monitor import SafeArxivDatabaseOperations, ArxivRepairConfig
 from agents.ResearchAgent.service.arxiv_sync_service.config import ArxivSyncConfig
 
 
@@ -63,6 +64,12 @@ class ArxivSyncService:
             persist_dir=self.config.DATABASE_DIR
         )
         
+        # Initialize safe ArxivDatabase operations with health monitoring
+        self.safe_db = SafeArxivDatabaseOperations(
+            self.arxiv_database, 
+            enable_monitoring=True
+        )
+        
         # Service state
         self.is_running = False
         self.last_sync_date = None
@@ -81,7 +88,12 @@ class ArxivSyncService:
     async def close(self):
         """Close all connections."""
         await self.qz_client.close()
+        self.safe_db.close()
         self.logger.info(f"{self.config.SERVICE_NAME} connections closed")
+    
+    def get_health_status(self):
+        """Get current database health status."""
+        return self.safe_db.get_health_status()
     
     def _get_rolling_week_dates(self) -> List[datetime]:
         """
@@ -255,8 +267,8 @@ class ArxivSyncService:
             papers = [item[0] for item in papers_with_embeddings]
             embeddings = [item[1] for item in papers_with_embeddings]
             
-            # Save to database
-            record_ids = self.arxiv_database.add_papers(papers, embeddings)
+            # Save to database using safe operations
+            record_ids = self.safe_db.add_papers_safe(papers, embeddings)
             
             self.logger.info(f"Successfully saved {len(record_ids)} papers to database")
             return [paper.full_id for paper in papers]
