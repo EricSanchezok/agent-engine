@@ -97,7 +97,7 @@ class EMemory:
         logger.info(f"ChromaDB: {self.chroma_path}")
 
     def _init_sqlite(self) -> None:
-        """Initialize SQLite database with required schema."""
+        """Initialize SQLite database with required schema and optimized indexes."""
         with sqlite3.connect(self.sqlite_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS records (
@@ -108,8 +108,22 @@ class EMemory:
                     has_vector INTEGER DEFAULT 0
                 )
             """)
+            
+            # Create optimized indexes for better query performance
             conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON records(timestamp)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_has_vector ON records(has_vector)")
+            
+            # Create composite index for timestamp range queries with has_vector filter
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp_has_vector ON records(timestamp, has_vector)")
+            
+            # Enable WAL mode for better concurrent access
+            conn.execute("PRAGMA journal_mode=WAL")
+            
+            # Optimize for better performance
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA cache_size=10000")
+            conn.execute("PRAGMA temp_store=MEMORY")
+            
             conn.commit()
 
     def _init_chromadb(self) -> None:

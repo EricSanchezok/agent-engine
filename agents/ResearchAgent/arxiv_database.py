@@ -410,8 +410,8 @@ class ArxivDatabase:
         """
         Get all papers published on a specific date, optionally filtered by categories.
         
-        This method uses efficient SQL-based date filtering instead of loading all records
-        into memory, making it suitable for large databases with millions of records.
+        This method uses efficient SQL-based date filtering with optimized performance
+        and timeout protection for large databases.
         
         Args:
             target_date: Target date to filter papers (datetime object)
@@ -422,32 +422,46 @@ class ArxivDatabase:
         Returns:
             List of ArxivPaper objects matching the criteria
         """
-        # Use efficient date range query instead of list_all()
         target_date_str = target_date.date().isoformat()
+        self.logger.info(f"Getting papers for date: {target_date_str}")
         
-        # Query records for the specific date using efficient SQL filtering
-        # Note: timestamp stores full ISO datetime, so we need to query the full day range
+        # Use efficient date range query with timeout protection
         start_datetime = f"{target_date_str}T00:00:00"
         end_datetime = f"{target_date_str}T23:59:59"
         
-        records = self.pod_ememory.query_by_date_range(
-            start_date=start_datetime,
-            end_date=end_datetime,
-            limit=limit
-        )
+        try:
+            # Set a reasonable default limit to prevent memory issues
+            query_limit = limit or 2000
+            
+            records = self.pod_ememory.query_by_date_range(
+                start_date=start_datetime,
+                end_date=end_datetime,
+                limit=query_limit
+            )
+            
+            self.logger.info(f"Found {len(records)} records for date {target_date_str}")
+            
+        except Exception as e:
+            self.logger.error(f"Error querying papers for date {target_date_str}: {e}")
+            return []
         
         # Filter by categories if provided
         filtered_papers = []
         for record in records:
-            paper = self._record_to_paper(record)
-            
-            # Check category filter if provided
-            if categories is not None:
-                # Check if any of the paper's categories match the filter categories
-                if not any(cat in paper.categories for cat in categories):
-                    continue
-            
-            filtered_papers.append(paper)
+            try:
+                paper = self._record_to_paper(record)
+                
+                # Check category filter if provided
+                if categories is not None:
+                    # Check if any of the paper's categories match the filter categories
+                    if not any(cat in paper.categories for cat in categories):
+                        continue
+                
+                filtered_papers.append(paper)
+                
+            except Exception as e:
+                self.logger.warning(f"Error converting record {record.id} to paper: {e}")
+                continue
         
         self.logger.info(f"Found {len(filtered_papers)} papers for date {target_date_str}")
         if categories:

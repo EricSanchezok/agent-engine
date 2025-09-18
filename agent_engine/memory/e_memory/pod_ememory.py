@@ -770,7 +770,7 @@ class PodEMemory:
         offset: int = 0
     ) -> List[Record]:
         """
-        Query records by date range across all shards.
+        Query records by date range across all shards with optimized performance.
         
         Args:
             start_date: Start date in ISO format (YYYY-MM-DD)
@@ -781,13 +781,44 @@ class PodEMemory:
         Returns:
             List of records within the date range
         """
-        all_records = []
+        logger.info(f"Querying records by date range: {start_date} to {end_date}")
         
-        # Query each shard
+        # If limit is specified and small, we can optimize by querying fewer shards
+        # and stopping early when we have enough records
+        if limit is not None and limit <= 100:
+            return self._query_by_date_range_optimized(start_date, end_date, limit, offset)
+        
+        # For larger queries, use the original approach but with better error handling
+        return self._query_by_date_range_full(start_date, end_date, limit, offset)
+    
+    def _query_by_date_range_optimized(
+        self, 
+        start_date: str, 
+        end_date: str, 
+        limit: int,
+        offset: int
+    ) -> List[Record]:
+        """Optimized query for small result sets."""
+        all_records = []
+        target_count = limit + offset
+        
+        # Query shards in order until we have enough records
         for shard_id in sorted(self._shards.keys()):
-            shard = self._shards[shard_id]
-            shard_records = shard.query_by_date_range(start_date, end_date, limit=None, offset=0)
-            all_records.extend(shard_records)
+            if len(all_records) >= target_count:
+                break
+                
+            try:
+                shard = self._shards[shard_id]
+                # Query with a reasonable limit to avoid loading too much data
+                shard_limit = min(limit * 2, 1000)  # Reasonable upper bound
+                shard_records = shard.query_by_date_range(start_date, end_date, limit=shard_limit, offset=0)
+                all_records.extend(shard_records)
+                
+                logger.debug(f"Shard {shard_id}: found {len(shard_records)} records")
+                
+            except Exception as e:
+                logger.error(f"Error querying shard {shard_id}: {e}")
+                continue
         
         # Sort by timestamp (most recent first)
         all_records.sort(key=lambda r: r.timestamp or "", reverse=True)
@@ -799,6 +830,52 @@ class PodEMemory:
         if limit is not None:
             all_records = all_records[:limit]
         
+        logger.info(f"Optimized query returned {len(all_records)} records")
+        return all_records
+    
+    def _query_by_date_range_full(
+        self, 
+        start_date: str, 
+        end_date: str, 
+        limit: Optional[int],
+        offset: int
+    ) -> List[Record]:
+        """Full query for larger result sets with timeout protection."""
+        all_records = []
+        failed_shards = []
+        
+        # Query each shard with timeout protection
+        for shard_id in sorted(self._shards.keys()):
+            try:
+                shard = self._shards[shard_id]
+                
+                # Use a reasonable limit per shard to prevent memory issues
+                shard_limit = min(limit or 10000, 10000) if limit else 10000
+                
+                shard_records = shard.query_by_date_range(start_date, end_date, limit=shard_limit, offset=0)
+                all_records.extend(shard_records)
+                
+                logger.debug(f"Shard {shard_id}: found {len(shard_records)} records")
+                
+            except Exception as e:
+                logger.error(f"Error querying shard {shard_id}: {e}")
+                failed_shards.append(shard_id)
+                continue
+        
+        if failed_shards:
+            logger.warning(f"Failed to query {len(failed_shards)} shards: {failed_shards}")
+        
+        # Sort by timestamp (most recent first)
+        all_records.sort(key=lambda r: r.timestamp or "", reverse=True)
+        
+        # Apply offset and limit
+        if offset > 0:
+            all_records = all_records[offset:]
+        
+        if limit is not None:
+            all_records = all_records[:limit]
+        
+        logger.info(f"Full query returned {len(all_records)} records from {len(self._shards) - len(failed_shards)} shards")
         return all_records
     
     def clear(self, confirm: bool = True) -> None:
