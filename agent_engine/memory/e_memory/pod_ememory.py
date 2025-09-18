@@ -1255,7 +1255,7 @@ class PodEMemory:
     
     def _repair_shard_python(self, shard_id: int, sqlite_file: Path) -> bool:
         """
-        Attempt Python-based shard repair.
+        Attempt Python-based shard repair with improved error handling.
         
         Args:
             shard_id: Shard ID to repair
@@ -1264,31 +1264,72 @@ class PodEMemory:
         Returns:
             True if repair was successful, False otherwise
         """
+        recovered_file = sqlite_file.parent / f"{sqlite_file.stem}_recovered.sqlite"
+        
         try:
-            # Try to read what we can from the corrupted database
+            # Step 1: Try to read what we can from the corrupted database
+            logger.info(f"Attempting Python repair for shard {shard_id}")
+            
+            # Use WAL mode and PRAGMA settings for better recovery
             conn = sqlite3.connect(str(sqlite_file))
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=OFF")  # Faster but less safe
             cursor = conn.cursor()
             
             # Try to get table schema
-            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table'")
-            schemas = cursor.fetchall()
-            
-            if not schemas:
-                logger.error(f"No table schemas found in shard {shard_id}")
+            try:
+                cursor.execute("SELECT sql FROM sqlite_master WHERE type='table'")
+                schemas = cursor.fetchall()
+                
+                if not schemas:
+                    logger.error(f"No table schemas found in shard {shard_id}")
+                    conn.close()
+                    return False
+                
+                logger.info(f"Found {len(schemas)} table schemas in corrupted database")
+                
+            except sqlite3.Error as e:
+                logger.error(f"Failed to read schemas from shard {shard_id}: {str(e)}")
                 conn.close()
                 return False
             
-            # Create new database
-            recovered_file = sqlite_file.parent / f"{sqlite_file.stem}_recovered.sqlite"
+            # Step 2: Create new clean database
+            if recovered_file.exists():
+                recovered_file.unlink()  # Remove any existing recovered file
+            
             new_conn = sqlite3.connect(str(recovered_file))
             new_cursor = new_conn.cursor()
             
-            # Recreate tables
-            for schema in schemas:
-                new_cursor.execute(schema[0])
+            # Enable WAL mode for better performance
+            new_cursor.execute("PRAGMA journal_mode=WAL")
+            new_cursor.execute("PRAGMA synchronous=NORMAL")
             
-            # Try to copy data
+            # Step 3: Recreate tables with error handling
+            for schema in schemas:
+                try:
+                    # Use IF NOT EXISTS to avoid conflicts
+                    schema_sql = schema[0]
+                    if "CREATE TABLE" in schema_sql.upper():
+                        # Add IF NOT EXISTS to avoid table already exists error
+                        if "IF NOT EXISTS" not in schema_sql.upper():
+                            schema_sql = schema_sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
+                    
+                    new_cursor.execute(schema_sql)
+                    logger.debug(f"Created table from schema: {schema_sql[:50]}...")
+                    
+                except sqlite3.Error as e:
+                    logger.warning(f"Failed to create table from schema: {str(e)}")
+                    continue
+            
+            # Step 4: Try to copy data with multiple strategies
+            data_copied = False
+            
+            # Strategy 1: Try to copy all records at once
             try:
+                cursor.execute("SELECT COUNT(*) FROM records")
+                total_records = cursor.fetchone()[0]
+                logger.info(f"Attempting to copy {total_records} records from corrupted database")
+                
                 cursor.execute("SELECT * FROM records")
                 records = cursor.fetchall()
                 
@@ -1296,35 +1337,151 @@ class PodEMemory:
                 cursor.execute("PRAGMA table_info(records)")
                 columns = [col[1] for col in cursor.fetchall()]
                 
-                # Insert records into new database
+                # Insert records in batches
                 placeholders = ", ".join(["?" for _ in columns])
                 insert_sql = f"INSERT INTO records ({', '.join(columns)}) VALUES ({placeholders})"
                 
-                for record in records:
-                    new_cursor.execute(insert_sql, record)
+                batch_size = 1000
+                for i in range(0, len(records), batch_size):
+                    batch = records[i:i + batch_size]
+                    new_cursor.executemany(insert_sql, batch)
+                    logger.debug(f"Copied batch {i//batch_size + 1}/{(len(records) + batch_size - 1)//batch_size}")
                 
                 new_conn.commit()
-                new_cursor.close()
-                new_conn.close()
-                conn.close()
-                
-                # Replace original file
-                sqlite_file.unlink()
-                recovered_file.rename(sqlite_file)
-                
-                logger.info(f"Successfully repaired shard {shard_id} using Python method")
-                return True
+                data_copied = True
+                logger.info(f"Successfully copied {len(records)} records")
                 
             except sqlite3.Error as e:
-                logger.error(f"Failed to copy data for shard {shard_id}: {str(e)}")
-                new_cursor.close()
-                new_conn.close()
-                conn.close()
+                logger.warning(f"Strategy 1 failed: {str(e)}")
+                
+                # Strategy 2: Try to copy records one by one
+                try:
+                    logger.info("Trying strategy 2: copy records one by one")
+                    
+                    cursor.execute("SELECT * FROM records")
+                    cursor.execute("PRAGMA table_info(records)")
+                    columns = [col[1] for col in cursor.fetchall()]
+                    
+                    placeholders = ", ".join(["?" for _ in columns])
+                    insert_sql = f"INSERT INTO records ({', '.join(columns)}) VALUES ({placeholders})"
+                    
+                    records_copied = 0
+                    while True:
+                        try:
+                            record = cursor.fetchone()
+                            if record is None:
+                                break
+                            
+                            new_cursor.execute(insert_sql, record)
+                            records_copied += 1
+                            
+                            if records_copied % 1000 == 0:
+                                new_conn.commit()
+                                logger.debug(f"Copied {records_copied} records")
+                                
+                        except sqlite3.Error as record_error:
+                            logger.warning(f"Skipping corrupted record: {str(record_error)}")
+                            continue
+                    
+                    new_conn.commit()
+                    data_copied = True
+                    logger.info(f"Successfully copied {records_copied} records using strategy 2")
+                    
+                except sqlite3.Error as e2:
+                    logger.warning(f"Strategy 2 failed: {str(e2)}")
+                    
+                    # Strategy 3: Try to recover what we can
+                    try:
+                        logger.info("Trying strategy 3: recover what we can")
+                        
+                        # Try to get any readable data
+                        cursor.execute("SELECT * FROM records LIMIT 1")
+                        sample_record = cursor.fetchone()
+                        
+                        if sample_record:
+                            # Create a minimal database with what we can recover
+                            cursor.execute("SELECT COUNT(*) FROM records")
+                            total_count = cursor.fetchone()[0]
+                            
+                            logger.info(f"Database has {total_count} records, attempting partial recovery")
+                            
+                            # Try to recover in smaller chunks
+                            chunk_size = 100
+                            recovered_count = 0
+                            
+                            for offset in range(0, total_count, chunk_size):
+                                try:
+                                    cursor.execute(f"SELECT * FROM records LIMIT {chunk_size} OFFSET {offset}")
+                                    chunk_records = cursor.fetchall()
+                                    
+                                    if chunk_records:
+                                        new_cursor.executemany(insert_sql, chunk_records)
+                                        recovered_count += len(chunk_records)
+                                        
+                                except sqlite3.Error:
+                                    logger.warning(f"Skipping chunk at offset {offset}")
+                                    continue
+                            
+                            new_conn.commit()
+                            data_copied = True
+                            logger.info(f"Partially recovered {recovered_count} records")
+                        
+                    except sqlite3.Error as e3:
+                        logger.error(f"Strategy 3 failed: {str(e3)}")
+            
+            # Clean up connections
+            new_cursor.close()
+            new_conn.close()
+            cursor.close()
+            conn.close()
+            
+            # Step 5: Verify the recovered database
+            if data_copied:
+                try:
+                    verify_conn = sqlite3.connect(str(recovered_file))
+                    verify_cursor = verify_conn.cursor()
+                    
+                    # Check integrity
+                    verify_cursor.execute("PRAGMA integrity_check")
+                    integrity_result = verify_cursor.fetchone()
+                    
+                    if integrity_result[0] == "ok":
+                        # Count records
+                        verify_cursor.execute("SELECT COUNT(*) FROM records")
+                        record_count = verify_cursor.fetchone()[0]
+                        
+                        verify_cursor.close()
+                        verify_conn.close()
+                        
+                        # Replace original file
+                        sqlite_file.unlink()
+                        recovered_file.rename(sqlite_file)
+                        
+                        logger.info(f"Successfully repaired shard {shard_id} with {record_count} records")
+                        return True
+                    else:
+                        logger.error(f"Recovered database failed integrity check: {integrity_result[0]}")
+                        verify_cursor.close()
+                        verify_conn.close()
+                        return False
+                        
+                except Exception as verify_error:
+                    logger.error(f"Failed to verify recovered database: {str(verify_error)}")
+                    return False
+            else:
+                logger.error(f"No data could be recovered from shard {shard_id}")
                 return False
                 
         except Exception as e:
             logger.error(f"Python repair failed for shard {shard_id}: {str(e)}")
             return False
+        finally:
+            # Clean up recovered file if it exists
+            if recovered_file.exists():
+                try:
+                    recovered_file.unlink()
+                except:
+                    pass
     
     def log_health_status(self) -> None:
         """
