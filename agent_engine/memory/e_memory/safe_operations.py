@@ -26,14 +26,30 @@ logger = AgentLogger(__name__)
 class SafeOperationManager:
     """
     Manages safe database operations with signal handling and transaction management.
+    Uses singleton pattern to ensure only one signal handler is registered.
     """
     
+    _instance = None
+    _lock = threading.Lock()
+    
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self):
+        if self._initialized:
+            return
+            
         self._interrupted = False
         self._operation_lock = threading.Lock()
         self._active_operations: Dict[str, Dict[str, Any]] = {}
         self._signal_handlers = {}
         self._setup_signal_handlers()
+        self._initialized = True
     
     def _setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown."""
@@ -45,8 +61,23 @@ class SafeOperationManager:
             if self._active_operations:
                 logger.warning(f"Active operations: {list(self._active_operations.keys())}")
             
-            # Don't exit immediately, let operations finish gracefully
-            # The actual exit will be handled by the operation context managers
+            # Call the original handler if it exists and is not the default handler
+            original_handler = self._signal_handlers.get(signum)
+            if original_handler and original_handler != signal.SIG_DFL and original_handler != signal.SIG_IGN:
+                logger.debug(f"Calling original signal handler for {signum}")
+                try:
+                    original_handler(signum, frame)
+                except Exception as e:
+                    logger.error(f"Error calling original signal handler: {e}")
+            else:
+                # If no original handler or it's default, force exit after a short delay
+                logger.warning("No original handler found, forcing exit in 2 seconds...")
+                import threading
+                def force_exit():
+                    time.sleep(2)
+                    logger.warning("Forcing exit due to signal")
+                    sys.exit(1)
+                threading.Thread(target=force_exit, daemon=True).start()
         
         # Register handlers for common termination signals
         for sig in [signal.SIGINT, signal.SIGTERM]:
@@ -60,6 +91,24 @@ class SafeOperationManager:
     def is_interrupted(self) -> bool:
         """Check if an interrupt signal has been received."""
         return self._interrupted
+    
+    def force_shutdown(self, timeout: float = 5.0):
+        """
+        Force shutdown after a timeout period.
+        
+        Args:
+            timeout: Time to wait before forcing exit (seconds)
+        """
+        logger.warning(f"Forcing shutdown in {timeout} seconds...")
+        self._interrupted = True
+        
+        def delayed_exit():
+            time.sleep(timeout)
+            logger.warning("Timeout reached, forcing exit")
+            sys.exit(1)
+        
+        import threading
+        threading.Thread(target=delayed_exit, daemon=True).start()
     
     def register_operation(self, operation_id: str, operation_type: str, 
                           shard_id: Optional[int] = None) -> None:
@@ -98,6 +147,12 @@ class SafeOperationManager:
         
         try:
             logger.debug(f"Starting safe operation: {operation_id} ({operation_type})")
+            
+            # Check for interruption before starting
+            if self.is_interrupted():
+                logger.warning(f"Operation {operation_id} skipped due to interruption")
+                raise KeyboardInterrupt("Operation interrupted before starting")
+            
             yield self
             
             if self.is_interrupted():
@@ -105,6 +160,9 @@ class SafeOperationManager:
             else:
                 logger.debug(f"Operation {operation_id} completed successfully")
                 
+        except KeyboardInterrupt:
+            logger.warning(f"Operation {operation_id} interrupted by user")
+            raise
         except Exception as e:
             logger.error(f"Operation {operation_id} failed: {e}")
             raise
