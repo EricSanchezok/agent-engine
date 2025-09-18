@@ -250,7 +250,7 @@ class ArxivSyncService:
         papers_with_embeddings: List[tuple[ArxivPaper, List[float]]]
     ) -> List[str]:
         """
-        Save papers with embeddings to the database.
+        Save papers with embeddings to the database in smaller batches.
         
         Args:
             papers_with_embeddings: List of (paper, embedding) tuples
@@ -268,14 +268,98 @@ class ArxivSyncService:
             papers = [item[0] for item in papers_with_embeddings]
             embeddings = [item[1] for item in papers_with_embeddings]
             
-            # Save to database using safe operations
-            record_ids = self.safe_db.add_papers_safe(papers, embeddings)
+            # Save to database with detailed logging and error handling
+            self.logger.info(f"Starting database save operation for {len(papers)} papers...")
             
-            self.logger.info(f"Successfully saved {len(record_ids)} papers to database")
-            return [paper.full_id for paper in papers]
+            # Validate embeddings before saving
+            valid_embeddings = []
+            invalid_count = 0
+            for i, embedding in enumerate(embeddings):
+                if embedding is None or len(embedding) == 0:
+                    invalid_count += 1
+                    self.logger.warning(f"Invalid embedding for paper {i}: {embedding}")
+                else:
+                    valid_embeddings.append(embedding)
+            
+            if invalid_count > 0:
+                self.logger.warning(f"Found {invalid_count} invalid embeddings out of {len(embeddings)}")
+            
+            # Save to database in small batches to avoid blocking
+            self.logger.info(f"Starting batch save operation for {len(papers)} papers...")
+            
+            # Process in small batches to avoid database blocking
+            batch_size = 10  # Very small batch size to avoid issues
+            saved_paper_ids = []
+            
+            for i in range(0, len(papers), batch_size):
+                batch_papers = papers[i:i + batch_size]
+                batch_embeddings = embeddings[i:i + batch_size] if embeddings else None
+                
+                batch_num = i // batch_size + 1
+                total_batches = (len(papers) + batch_size - 1) // batch_size
+                
+                self.logger.info(f"Saving batch {batch_num}/{total_batches} ({len(batch_papers)} papers)...")
+                
+                try:
+                    # Validate batch data before saving
+                    valid_batch_papers = []
+                    valid_batch_embeddings = []
+                    
+                    for j, paper in enumerate(batch_papers):
+                        try:
+                            # Check if paper data is valid
+                            if not paper.id or not paper.title:
+                                self.logger.warning(f"Skipping invalid paper in batch {batch_num}: missing id or title")
+                                continue
+                                
+                            # Check if embedding is valid
+                            embedding = batch_embeddings[j] if batch_embeddings and j < len(batch_embeddings) else None
+                            if embedding is not None and (not embedding or len(embedding) == 0):
+                                self.logger.warning(f"Skipping paper {paper.id} in batch {batch_num}: invalid embedding")
+                                continue
+                                
+                            valid_batch_papers.append(paper)
+                            if batch_embeddings:
+                                valid_batch_embeddings.append(embedding)
+                                
+                        except Exception as e:
+                            self.logger.warning(f"Skipping paper in batch {batch_num} due to validation error: {e}")
+                            continue
+                    
+                    if not valid_batch_papers:
+                        self.logger.warning(f"No valid papers in batch {batch_num}, skipping...")
+                        continue
+                    
+                    # Save valid batch
+                    batch_record_ids = self.safe_db.add_papers_safe(valid_batch_papers, valid_batch_embeddings if valid_batch_embeddings else None)
+                    saved_paper_ids.extend(batch_record_ids)
+                    self.logger.info(f"Successfully saved batch {batch_num}: {len(batch_record_ids)} papers")
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to save batch {batch_num}: {e}")
+                    self.logger.error(f"Exception type: {type(e).__name__}")
+                    import traceback
+                    self.logger.error(f"Traceback: {traceback.format_exc()}")
+                    
+                    # Try to save batch without embeddings as fallback
+                    try:
+                        self.logger.info(f"Attempting to save batch {batch_num} without embeddings...")
+                        batch_record_ids = self.safe_db.add_papers_safe(valid_batch_papers, None)
+                        saved_paper_ids.extend(batch_record_ids)
+                        self.logger.info(f"Successfully saved batch {batch_num} without embeddings: {len(batch_record_ids)} papers")
+                    except Exception as e2:
+                        self.logger.error(f"Failed to save batch {batch_num} without embeddings: {e2}")
+                        continue
+            
+            self.logger.info(f"Batch save completed: {len(saved_paper_ids)} papers saved successfully")
+            
+            return saved_paper_ids
             
         except Exception as e:
             self.logger.error(f"Failed to save papers to database: {e}")
+            self.logger.error(f"Exception type: {type(e).__name__}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
             return []
     
     def _filter_new_papers(self, papers: List[ArxivPaper]) -> List[ArxivPaper]:

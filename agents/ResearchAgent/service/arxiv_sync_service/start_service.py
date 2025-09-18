@@ -52,14 +52,24 @@ async def main():
             print(f"Starting service (attempt {restart_count + 1}/{max_restarts})...")
             service = ArxivSyncService()
             await service.start()
-            # If we reach here, the service stopped normally
-            break
+            # Service should run continuously, if it exits it means there was an error
+            print("Service exited unexpectedly, restarting...")
+            restart_count += 1
             
         except KeyboardInterrupt:
             print("\nService interrupted by user")
             if service:
                 await service.stop()
             break
+        except Exception as e:
+            print(f"Service error: {e}")
+            restart_count += 1
+            if restart_count < max_restarts:
+                print(f"Restarting in 10 seconds... (attempt {restart_count + 1}/{max_restarts})")
+                await asyncio.sleep(10)
+            else:
+                print("Max restart attempts reached, exiting...")
+                break
 
 
 if __name__ == "__main__":
