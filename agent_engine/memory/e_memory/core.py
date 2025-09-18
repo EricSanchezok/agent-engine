@@ -22,6 +22,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
+import signal
+import threading
+import time
 
 import numpy as np
 import chromadb
@@ -30,6 +33,7 @@ from chromadb.config import Settings
 from ...agent_logger.agent_logger import AgentLogger
 from ...utils.project_root import get_project_root
 from .models import Record
+from .safe_operations import SafeOperationManager, SafeSQLiteConnection, SafeBatchProcessor
 
 
 logger = AgentLogger(__name__)
@@ -63,6 +67,10 @@ class EMemory:
         """
         self.name = name
         self.distance_metric = distance_metric
+        
+        # Initialize safe operation manager
+        self.safe_ops = SafeOperationManager()
+        self.batch_processor = SafeBatchProcessor()
         
         # Determine storage directory [[memory:8183017]]
         if persist_dir is None:
@@ -399,7 +407,7 @@ class EMemory:
 
     def add_batch(self, records: List[Record]) -> bool:
         """
-        Add multiple records to the memory in batch.
+        Add multiple records to the memory in batch with safe operation handling.
         
         Args:
             records: List of Record objects to add
@@ -410,20 +418,47 @@ class EMemory:
         if not records:
             return True
         
+        operation_id = f"add_batch_{self.name}_{int(time.time())}"
+        
         try:
-            # ChromaDB has a maximum batch size limit
-            MAX_CHROMADB_BATCH_SIZE = 5000
-            
-            # Process records in chunks to respect ChromaDB batch size limits
-            for i in range(0, len(records), MAX_CHROMADB_BATCH_SIZE):
-                chunk = records[i:i + MAX_CHROMADB_BATCH_SIZE]
-                success = self._add_batch_chunk(chunk)
-                if not success:
-                    logger.error(f"Failed to add batch chunk starting at index {i}")
+            with self.safe_ops.safe_operation(operation_id, "batch_add"):
+                # Check for interruption before starting
+                if self.safe_ops.is_interrupted():
+                    logger.warning("Batch add operation interrupted before starting")
                     return False
-            
-            logger.debug(f"Added {len(records)} records to EMemory in batch")
-            return True
+                
+                # ChromaDB has a maximum batch size limit
+                MAX_CHROMADB_BATCH_SIZE = 5000
+                
+                def process_chunk(chunk: List[Record]) -> bool:
+                    """Process a chunk of records safely."""
+                    if self.safe_ops.is_interrupted():
+                        logger.warning("Chunk processing interrupted")
+                        return False
+                    
+                    return self._add_batch_chunk(chunk)
+                
+                # Process records in chunks to respect ChromaDB batch size limits
+                total_processed = 0
+                for i in range(0, len(records), MAX_CHROMADB_BATCH_SIZE):
+                    chunk = records[i:i + MAX_CHROMADB_BATCH_SIZE]
+                    chunk_id = f"{operation_id}_chunk_{i//MAX_CHROMADB_BATCH_SIZE}"
+                    
+                    with self.safe_ops.safe_operation(chunk_id, "batch_chunk"):
+                        success = process_chunk(chunk)
+                        if not success:
+                            logger.error(f"Failed to add batch chunk starting at index {i}")
+                            return False
+                        
+                        total_processed += len(chunk)
+                        
+                        # Log progress
+                        if total_processed % 10000 == 0:
+                            progress_pct = (total_processed / len(records)) * 100
+                            logger.info(f"Batch add progress: {total_processed}/{len(records)} ({progress_pct:.1f}%)")
+                
+                logger.info(f"Successfully added {len(records)} records to EMemory in batch")
+                return True
             
         except Exception as e:
             logger.error(f"Failed to add batch records to EMemory: {e}")
@@ -487,13 +522,14 @@ class EMemory:
                     final_has_vector
                 ))
             
-            # Batch insert into SQLite (contains all metadata)
-            with sqlite3.connect(self.sqlite_path) as conn:
+            # Batch insert into SQLite (contains all metadata) with safe connection
+            with SafeSQLiteConnection(self.sqlite_path) as conn:
+                conn.execute("BEGIN TRANSACTION")
                 conn.executemany("""
                     INSERT OR REPLACE INTO records (id, attributes, content, timestamp, has_vector)
                     VALUES (?, ?, ?, ?, ?)
                 """, final_db_data)
-                conn.commit()
+                conn.execute("COMMIT")
             
             return True
             

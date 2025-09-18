@@ -24,9 +24,11 @@ import shutil
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
+import time
 
 from .core import EMemory
 from .models import Record
+from .safe_operations import SafeOperationManager, SafeBatchProcessor
 from ...agent_logger.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
@@ -97,6 +99,10 @@ class PodEMemory:
         self.max_elements_per_shard = max_elements_per_shard
         self.distance_metric = distance_metric
         self.use_hash_sharding = use_hash_sharding
+        
+        # Initialize safe operation manager
+        self.safe_ops = SafeOperationManager()
+        self.batch_processor = SafeBatchProcessor()
         
         # Determine storage directory
         if persist_dir is None:
@@ -337,7 +343,7 @@ class PodEMemory:
 
     def add_batch(self, records: List[Record]) -> bool:
         """
-        Add multiple records to the pod in batch.
+        Add multiple records to the pod in batch with safe operation handling.
         
         Optimized implementation that reduces database queries from O(N*M) to O(M)
         where N is number of records and M is number of shards.
@@ -351,70 +357,98 @@ class PodEMemory:
         if not records:
             return True
         
+        operation_id = f"pod_add_batch_{self.name}_{int(time.time())}"
+        
         try:
-            # Generate IDs for records that don't have them
-            for record in records:
-                if not record.id:
-                    import uuid
-                    record.id = str(uuid.uuid4())
-            
-            # Step 1: Batch find existing records and their shards (O(M) queries)
-            existing_map = self._find_shards_for_records_batch([r.id for r in records])
-            
-            # Step 2: Group records by target shard
-            shard_groups: Dict[int, List[Record]] = {}
-            new_records = []
-            
-            for record in records:
-                if record.id in existing_map:
-                    # Record exists, add to existing shard
-                    shard_id = existing_map[record.id]
-                    if shard_id not in shard_groups:
-                        shard_groups[shard_id] = []
-                    shard_groups[shard_id].append(record)
-                else:
-                    # New record, will be allocated later
-                    new_records.append(record)
-            
-            # Step 3: Allocate new records to appropriate shards
-            if new_records:
-                if self.use_hash_sharding:
-                    # Hash sharding: use hash function to determine shard for each record
-                    for record in new_records:
-                        shard_id = self._get_hash_shard_for_record(record.id)
-                        if shard_id not in shard_groups:
-                            shard_groups[shard_id] = []
-                        shard_groups[shard_id].append(record)
-                else:
-                    # Sequential sharding: use existing logic
-                    shard_counts = {sid: shard.count() for sid, shard in self._shards.items()}
-                    current_shard = self._current_shard
-                    
-                    for record in new_records:
-                        # Find next available shard
-                        while shard_counts.get(current_shard, 0) >= self.max_elements_per_shard:
-                            current_shard += 1
-                            if current_shard not in self._shards:
-                                self._create_new_shard()
-                                shard_counts[current_shard] = 0
-                        
-                        shard_id = current_shard
-                        if shard_id not in shard_groups:
-                            shard_groups[shard_id] = []
-                        shard_groups[shard_id].append(record)
-                        shard_counts[shard_id] += 1
-            
-            # Step 4: Batch write to each shard
-            for shard_id, recs in shard_groups.items():
-                shard = self._shards[shard_id]
-                success = shard.add_batch(recs)
-                if not success:
-                    logger.error(f"Failed to add batch to shard {shard_id}")
+            with self.safe_ops.safe_operation(operation_id, "pod_batch_add"):
+                # Check for interruption before starting
+                if self.safe_ops.is_interrupted():
+                    logger.warning("Pod batch add operation interrupted before starting")
                     return False
-                logger.debug(f"Added {len(recs)} records to shard {shard_id}")
-            
-            logger.info(f"Added {len(records)} records to PodEMemory in batch across {len(shard_groups)} shards")
-            return True
+                
+                # Generate IDs for records that don't have them
+                for record in records:
+                    if not record.id:
+                        import uuid
+                        record.id = str(uuid.uuid4())
+                
+                # Step 1: Batch find existing records and their shards (O(M) queries)
+                existing_map = self._find_shards_for_records_batch([r.id for r in records])
+                
+                # Step 2: Group records by target shard
+                shard_groups: Dict[int, List[Record]] = {}
+                new_records = []
+                
+                for record in records:
+                    if record.id in existing_map:
+                        # Record exists, add to existing shard
+                        shard_id = existing_map[record.id]
+                        if shard_id not in shard_groups:
+                            shard_groups[shard_id] = []
+                        shard_groups[shard_id].append(record)
+                    else:
+                        # New record, will be allocated later
+                        new_records.append(record)
+                
+                # Step 3: Allocate new records to appropriate shards
+                if new_records:
+                    if self.use_hash_sharding:
+                        # Hash sharding: use hash function to determine shard for each record
+                        for record in new_records:
+                            shard_id = self._get_hash_shard_for_record(record.id)
+                            if shard_id not in shard_groups:
+                                shard_groups[shard_id] = []
+                            shard_groups[shard_id].append(record)
+                    else:
+                        # Sequential sharding: use existing logic
+                        shard_counts = {sid: shard.count() for sid, shard in self._shards.items()}
+                        current_shard = self._current_shard
+                        
+                        for record in new_records:
+                            # Check for interruption during allocation
+                            if self.safe_ops.is_interrupted():
+                                logger.warning("Pod batch add interrupted during shard allocation")
+                                return False
+                            
+                            # Find next available shard
+                            while shard_counts.get(current_shard, 0) >= self.max_elements_per_shard:
+                                current_shard += 1
+                                if current_shard not in self._shards:
+                                    self._create_new_shard()
+                                    shard_counts[current_shard] = 0
+                            
+                            shard_id = current_shard
+                            if shard_id not in shard_groups:
+                                shard_groups[shard_id] = []
+                            shard_groups[shard_id].append(record)
+                            shard_counts[shard_id] += 1
+                
+                # Step 4: Batch write to each shard with progress tracking
+                total_processed = 0
+                for shard_id, recs in shard_groups.items():
+                    # Check for interruption before processing each shard
+                    if self.safe_ops.is_interrupted():
+                        logger.warning(f"Pod batch add interrupted at shard {shard_id}")
+                        return False
+                    
+                    shard_operation_id = f"{operation_id}_shard_{shard_id}"
+                    with self.safe_ops.safe_operation(shard_operation_id, "shard_batch_add", shard_id):
+                        shard = self._shards[shard_id]
+                        success = shard.add_batch(recs)
+                        if not success:
+                            logger.error(f"Failed to add batch to shard {shard_id}")
+                            return False
+                        
+                        total_processed += len(recs)
+                        logger.debug(f"Added {len(recs)} records to shard {shard_id}")
+                        
+                        # Log progress
+                        if total_processed % 10000 == 0:
+                            progress_pct = (total_processed / len(records)) * 100
+                            logger.info(f"Pod batch add progress: {total_processed}/{len(records)} ({progress_pct:.1f}%)")
+                
+                logger.info(f"Successfully added {len(records)} records to PodEMemory in batch across {len(shard_groups)} shards")
+                return True
             
         except Exception as e:
             logger.error(f"Failed to add batch records to pod: {e}")
