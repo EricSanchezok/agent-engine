@@ -431,7 +431,7 @@ class ArxivDatabase:
         
         try:
             # Set a reasonable default limit to prevent memory issues
-            query_limit = limit or 2000
+            query_limit = limit or 5000
             
             records = self.pod_ememory.query_by_date_range(
                 start_date=start_datetime,
