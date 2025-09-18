@@ -25,13 +25,14 @@ from typing import Any, Dict, List, Optional, Union
 import pyinstrument
 
 from agent_engine.agent_logger import AgentLogger
-from agent_engine.memory.e_memory.pod_ememory import PodEMemory
+from agent_engine.memory.e_memory.pod_ememory import PodEMemory, ShardHealthStatus, ShardHealthInfo
 from agent_engine.memory.e_memory.models import Record
 from agent_engine.utils import get_current_file_dir
 
 from core.arxiv_fetcher import ArxivPaper
 
 MAX_ELEMENTS_PER_SHARD = 200000
+
 
 class ArxivDatabase:
     """
@@ -603,3 +604,52 @@ class ArxivDatabase:
         )
         
         return paper
+    
+    def check_shard_health(self, shard_id: int) -> ShardHealthInfo:
+        """
+        Check the health status of a specific shard.
+        
+        Args:
+            shard_id: Shard ID to check
+            
+        Returns:
+            ShardHealthInfo object with health status
+        """
+        return self.pod_ememory.check_shard_health(shard_id)
+    
+    def check_all_shards_health(self) -> Dict[int, ShardHealthInfo]:
+        """
+        Check the health status of all shards.
+        
+        Returns:
+            Dictionary mapping shard_id to ShardHealthInfo
+        """
+        return self.pod_ememory.check_all_shards_health()
+    
+    def get_database_health_summary(self) -> Dict[str, Any]:
+        """
+        Get a comprehensive health summary of the database.
+        
+        Returns:
+            Dictionary with health summary information
+        """
+        return self.pod_ememory.get_health_summary()
+    
+    def repair_corrupted_shard(self, shard_id: int, backup_dir: Optional[str] = None) -> bool:
+        """
+        Attempt to repair a corrupted shard.
+        
+        Args:
+            shard_id: Shard ID to repair
+            backup_dir: Optional backup directory for corrupted files
+            
+        Returns:
+            True if repair was successful, False otherwise
+        """
+        return self.pod_ememory.repair_corrupted_shard(shard_id, backup_dir)
+    
+    def log_health_status(self) -> None:
+        """
+        Log the current health status of all shards.
+        """
+        self.pod_ememory.log_health_status()

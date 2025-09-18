@@ -19,6 +19,10 @@ while project_root.parent != project_root:
 sys.path.insert(0, str(project_root))
 
 import hashlib
+import sqlite3
+import shutil
+from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 from .core import EMemory
@@ -26,6 +30,38 @@ from .models import Record
 from ...agent_logger.agent_logger import AgentLogger
 
 logger = AgentLogger(__name__)
+
+
+class ShardHealthStatus(Enum):
+    """Shard health status enumeration"""
+    HEALTHY = "healthy"
+    CORRUPTED = "corrupted"
+    MISSING = "missing"
+    ERROR = "error"
+
+
+class ShardHealthInfo:
+    """Information about shard health status"""
+    def __init__(self, shard_id: int, status: ShardHealthStatus, 
+                 record_count: int = 0, error_message: str = "", 
+                 file_size: int = 0, last_modified: Optional[datetime] = None):
+        self.shard_id = shard_id
+        self.status = status
+        self.record_count = record_count
+        self.error_message = error_message
+        self.file_size = file_size
+        self.last_modified = last_modified
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for logging/reporting"""
+        return {
+            "shard_id": self.shard_id,
+            "status": self.status.value,
+            "record_count": self.record_count,
+            "error_message": self.error_message,
+            "file_size": self.file_size,
+            "last_modified": self.last_modified.isoformat() if self.last_modified else None
+        }
 
 
 class PodEMemory:
@@ -983,6 +1019,336 @@ class PodEMemory:
             shard_info.append(info)
         
         return shard_info
+    
+    def check_shard_health(self, shard_id: int) -> ShardHealthInfo:
+        """
+        Check the health status of a specific shard.
+        
+        Args:
+            shard_id: Shard ID to check
+            
+        Returns:
+            ShardHealthInfo object with health status
+        """
+        if shard_id not in self._shards:
+            return ShardHealthInfo(
+                shard_id=shard_id,
+                status=ShardHealthStatus.MISSING,
+                error_message=f"Shard {shard_id} not found in PodEMemory"
+            )
+        
+        shard = self._shards[shard_id]
+        shard_name = shard.name
+        sqlite_file = shard.persist_dir / f"{shard_name}.sqlite"
+        
+        # Check if SQLite file exists
+        if not sqlite_file.exists():
+            return ShardHealthInfo(
+                shard_id=shard_id,
+                status=ShardHealthStatus.MISSING,
+                error_message=f"SQLite file not found: {sqlite_file}"
+            )
+        
+        # Get file info
+        file_size = sqlite_file.stat().st_size
+        last_modified = datetime.fromtimestamp(sqlite_file.stat().st_mtime)
+        
+        try:
+            # Test SQLite database integrity
+            conn = sqlite3.connect(str(sqlite_file))
+            cursor = conn.cursor()
+            
+            # Run integrity check
+            cursor.execute("PRAGMA integrity_check")
+            integrity_result = cursor.fetchone()
+            
+            if integrity_result[0] != "ok":
+                conn.close()
+                return ShardHealthInfo(
+                    shard_id=shard_id,
+                    status=ShardHealthStatus.CORRUPTED,
+                    error_message=f"Database integrity check failed: {integrity_result[0]}",
+                    file_size=file_size,
+                    last_modified=last_modified
+                )
+            
+            # Count records
+            cursor.execute("SELECT COUNT(*) FROM records")
+            record_count = cursor.fetchone()[0]
+            
+            conn.close()
+            
+            return ShardHealthInfo(
+                shard_id=shard_id,
+                status=ShardHealthStatus.HEALTHY,
+                record_count=record_count,
+                file_size=file_size,
+                last_modified=last_modified
+            )
+            
+        except sqlite3.Error as e:
+            return ShardHealthInfo(
+                shard_id=shard_id,
+                status=ShardHealthStatus.ERROR,
+                error_message=f"SQLite error: {str(e)}",
+                file_size=file_size,
+                last_modified=last_modified
+            )
+        except Exception as e:
+            return ShardHealthInfo(
+                shard_id=shard_id,
+                status=ShardHealthStatus.ERROR,
+                error_message=f"Unexpected error: {str(e)}",
+                file_size=file_size,
+                last_modified=last_modified
+            )
+    
+    def check_all_shards_health(self) -> Dict[int, ShardHealthInfo]:
+        """
+        Check the health status of all shards.
+        
+        Returns:
+            Dictionary mapping shard_id to ShardHealthInfo
+        """
+        health_info = {}
+        
+        for shard_id in self._shards.keys():
+            health_info[shard_id] = self.check_shard_health(shard_id)
+        
+        return health_info
+    
+    def get_health_summary(self) -> Dict[str, Any]:
+        """
+        Get a comprehensive health summary of the PodEMemory.
+        
+        Returns:
+            Dictionary with health summary information
+        """
+        shard_health = self.check_all_shards_health()
+        
+        # Count shards by status
+        status_counts = {}
+        total_records = 0
+        total_size = 0
+        corrupted_shards = []
+        missing_shards = []
+        error_shards = []
+        
+        for shard_id, health_info in shard_health.items():
+            status = health_info.status.value
+            status_counts[status] = status_counts.get(status, 0) + 1
+            
+            total_records += health_info.record_count
+            total_size += health_info.file_size
+            
+            if health_info.status == ShardHealthStatus.CORRUPTED:
+                corrupted_shards.append(shard_id)
+            elif health_info.status == ShardHealthStatus.MISSING:
+                missing_shards.append(shard_id)
+            elif health_info.status == ShardHealthStatus.ERROR:
+                error_shards.append(shard_id)
+        
+        # Determine overall health
+        overall_health = "healthy"
+        if corrupted_shards or error_shards:
+            overall_health = "unhealthy"
+        elif missing_shards:
+            overall_health = "degraded"
+        
+        return {
+            "overall_health": overall_health,
+            "total_shards": len(self._shards),
+            "status_counts": status_counts,
+            "total_records": total_records,
+            "total_size_bytes": total_size,
+            "total_size_mb": round(total_size / (1024 * 1024), 2),
+            "corrupted_shards": corrupted_shards,
+            "missing_shards": missing_shards,
+            "error_shards": error_shards,
+            "shard_details": {shard_id: info.to_dict() for shard_id, info in shard_health.items()}
+        }
+    
+    def repair_corrupted_shard(self, shard_id: int, backup_dir: Optional[str] = None) -> bool:
+        """
+        Attempt to repair a corrupted shard.
+        
+        Args:
+            shard_id: Shard ID to repair
+            backup_dir: Optional backup directory for corrupted files
+            
+        Returns:
+            True if repair was successful, False otherwise
+        """
+        if shard_id not in self._shards:
+            logger.error(f"Shard {shard_id} not found in PodEMemory")
+            return False
+        
+        shard = self._shards[shard_id]
+        shard_name = shard.name
+        sqlite_file = shard.persist_dir / f"{shard_name}.sqlite"
+        
+        logger.info(f"Attempting to repair corrupted shard {shard_id}")
+        
+        # Check if shard is actually corrupted
+        health_info = self.check_shard_health(shard_id)
+        if health_info.status != ShardHealthStatus.CORRUPTED:
+            logger.warning(f"Shard {shard_id} is not corrupted, status: {health_info.status.value}")
+            return False
+        
+        try:
+            # Create backup if backup_dir is provided
+            if backup_dir:
+                backup_path = Path(backup_dir) / f"{shard_name}_corrupted_backup.sqlite"
+                shutil.copy2(sqlite_file, backup_path)
+                logger.info(f"Created backup of corrupted shard at: {backup_path}")
+            
+            # Try to recover data using SQLite's recovery mechanisms
+            recovered_file = shard.persist_dir / f"{shard_name}_recovered.sqlite"
+            
+            # Use sqlite3 command line tool for recovery if available
+            import subprocess
+            try:
+                # Try to dump and restore the database
+                dump_cmd = ["sqlite3", str(sqlite_file), ".dump"]
+                restore_cmd = ["sqlite3", str(recovered_file)]
+                
+                # Run dump command
+                dump_result = subprocess.run(dump_cmd, capture_output=True, text=True, timeout=300)
+                
+                if dump_result.returncode == 0:
+                    # Run restore command
+                    restore_result = subprocess.run(restore_cmd, input=dump_result.stdout, 
+                                                   capture_output=True, text=True, timeout=300)
+                    
+                    if restore_result.returncode == 0:
+                        # Replace original file with recovered file
+                        sqlite_file.unlink()
+                        recovered_file.rename(sqlite_file)
+                        
+                        # Verify the repair
+                        new_health = self.check_shard_health(shard_id)
+                        if new_health.status == ShardHealthStatus.HEALTHY:
+                            logger.info(f"Successfully repaired shard {shard_id}")
+                            return True
+                        else:
+                            logger.error(f"Repair failed for shard {shard_id}: {new_health.error_message}")
+                            return False
+                    else:
+                        logger.error(f"Restore failed for shard {shard_id}: {restore_result.stderr}")
+                        return False
+                else:
+                    logger.error(f"Dump failed for shard {shard_id}: {dump_result.stderr}")
+                    return False
+                    
+            except subprocess.TimeoutExpired:
+                logger.error(f"Repair timeout for shard {shard_id}")
+                return False
+            except FileNotFoundError:
+                logger.warning("sqlite3 command line tool not available, trying Python recovery")
+                
+                # Fallback: try Python-based recovery
+                return self._repair_shard_python(shard_id, sqlite_file)
+                
+        except Exception as e:
+            logger.error(f"Failed to repair shard {shard_id}: {str(e)}")
+            return False
+    
+    def _repair_shard_python(self, shard_id: int, sqlite_file: Path) -> bool:
+        """
+        Attempt Python-based shard repair.
+        
+        Args:
+            shard_id: Shard ID to repair
+            sqlite_file: Path to SQLite file
+            
+        Returns:
+            True if repair was successful, False otherwise
+        """
+        try:
+            # Try to read what we can from the corrupted database
+            conn = sqlite3.connect(str(sqlite_file))
+            cursor = conn.cursor()
+            
+            # Try to get table schema
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table'")
+            schemas = cursor.fetchall()
+            
+            if not schemas:
+                logger.error(f"No table schemas found in shard {shard_id}")
+                conn.close()
+                return False
+            
+            # Create new database
+            recovered_file = sqlite_file.parent / f"{sqlite_file.stem}_recovered.sqlite"
+            new_conn = sqlite3.connect(str(recovered_file))
+            new_cursor = new_conn.cursor()
+            
+            # Recreate tables
+            for schema in schemas:
+                new_cursor.execute(schema[0])
+            
+            # Try to copy data
+            try:
+                cursor.execute("SELECT * FROM records")
+                records = cursor.fetchall()
+                
+                # Get column names
+                cursor.execute("PRAGMA table_info(records)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                # Insert records into new database
+                placeholders = ", ".join(["?" for _ in columns])
+                insert_sql = f"INSERT INTO records ({', '.join(columns)}) VALUES ({placeholders})"
+                
+                for record in records:
+                    new_cursor.execute(insert_sql, record)
+                
+                new_conn.commit()
+                new_cursor.close()
+                new_conn.close()
+                conn.close()
+                
+                # Replace original file
+                sqlite_file.unlink()
+                recovered_file.rename(sqlite_file)
+                
+                logger.info(f"Successfully repaired shard {shard_id} using Python method")
+                return True
+                
+            except sqlite3.Error as e:
+                logger.error(f"Failed to copy data for shard {shard_id}: {str(e)}")
+                new_cursor.close()
+                new_conn.close()
+                conn.close()
+                return False
+                
+        except Exception as e:
+            logger.error(f"Python repair failed for shard {shard_id}: {str(e)}")
+            return False
+    
+    def log_health_status(self) -> None:
+        """
+        Log the current health status of all shards.
+        """
+        health_summary = self.get_health_summary()
+        
+        logger.info("=== PodEMemory Health Status ===")
+        logger.info(f"Overall Health: {health_summary['overall_health']}")
+        logger.info(f"Total Records: {health_summary['total_records']:,}")
+        logger.info(f"Total Size: {health_summary['total_size_mb']} MB")
+        logger.info(f"Status Counts: {health_summary['status_counts']}")
+        
+        if health_summary['corrupted_shards']:
+            logger.warning(f"Corrupted Shards: {health_summary['corrupted_shards']}")
+        if health_summary['missing_shards']:
+            logger.warning(f"Missing Shards: {health_summary['missing_shards']}")
+        if health_summary['error_shards']:
+            logger.error(f"Error Shards: {health_summary['error_shards']}")
+        
+        # Log detailed shard information
+        for shard_id, details in health_summary['shard_details'].items():
+            if details['status'] != 'healthy':
+                logger.warning(f"Shard {shard_id}: {details['status']} - {details['error_message']}")
     
     def close(self):
         """

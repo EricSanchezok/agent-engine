@@ -376,7 +376,7 @@ async def main():
     
     # Run today's pipeline
     print("Running today's pipeline...")
-    result = await scheduler.run_daily_pipeline(date(2025, 9, 15))
+    result = await scheduler.run_daily_pipeline(date(2025, 9, 16))
     
     print(f"Pipeline Result: {result['success']}")
     if result['success']:
