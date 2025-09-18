@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import sqlite3
 import json
 from datetime import datetime
+import uuid
 
 from ...agent_logger.agent_logger import AgentLogger
 from .models import Record
