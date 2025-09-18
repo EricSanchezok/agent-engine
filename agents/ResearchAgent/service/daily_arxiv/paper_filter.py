@@ -224,8 +224,11 @@ class DailyArxivPaperFilter:
     
     def _get_papers_for_date(self, target_date: date) -> List[Any]:
         """Get papers for the target date from ArxivDatabase."""
+        self.logger.info(f"Getting papers for {target_date}")
         target_datetime = datetime.combine(target_date, datetime.min.time())
+        self.logger.info(f"Target datetime: {target_datetime}")
         papers = self.arxiv_database.get_papers_by_date(target_datetime)
+        self.logger.info(f"{len(papers)} has been found")
         return papers
     
     def _get_vectors_for_papers(self, papers: List[Any]) -> List[Optional[List[float]]]:
