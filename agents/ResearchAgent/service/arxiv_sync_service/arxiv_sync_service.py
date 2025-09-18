@@ -303,9 +303,40 @@ class ArxivSyncService:
         self.logger.info(f"Filtered {len(papers)} papers down to {len(new_papers)} new papers to process.")
         return new_papers
     
+    async def _check_database_health_on_error(self, operation: str, day_str: str) -> bool:
+        """
+        Check database health only when errors occur.
+        
+        Args:
+            operation: Description of the operation that failed
+            day_str: Day identifier for logging
+            
+        Returns:
+            True if database is healthy, False if critical issues found
+        """
+        if not self.safe_db.health_monitor:
+            return True
+            
+        self.logger.warning(f"Error in {operation} for day {day_str}, performing health check...")
+        health_result = await self.safe_db.health_monitor.perform_health_check()
+        
+        if health_result.overall_health == "critical":
+            self.logger.error(f"ArxivDatabase health is critical after {operation} error")
+            # Save critical health report
+            report_path = self.safe_db.health_monitor.save_health_report()
+            self.logger.info(f"Critical health report saved to: {report_path}")
+            return False
+        elif health_result.overall_health == "degraded":
+            self.logger.warning(f"ArxivDatabase health is degraded after {operation} error")
+            # Save degraded health report
+            report_path = self.safe_db.health_monitor.save_health_report()
+            self.logger.info(f"Degraded health report saved to: {report_path}")
+        
+        return True
+
     async def _process_day(self, date: datetime) -> Dict[str, Any]:
         """
-        Process a single day of papers.
+        Process a single day of papers with enhanced error checking.
         
         Args:
             date: Date to process
@@ -318,11 +349,24 @@ class ArxivSyncService:
         
         self.logger.info(f"Processing day: {day_str}")
         
-        # Perform health check before processing
-        if self.safe_db.health_monitor:
-            health_result = await self.safe_db.health_monitor.perform_health_check()
-            if health_result.overall_health == "critical":
-                self.logger.error(f"ArxivDatabase health is critical, skipping day {day_str}")
+        try:
+            # Fetch papers for the day
+            papers = await self._fetch_papers_for_day(day_start, day_end)
+            
+            if not papers:
+                self.logger.info(f"No papers found for day {day_str}")
+                return {
+                    "date": day_str,
+                    "total_papers": 0,
+                    "new_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "saved_papers": 0
+                }
+            
+            # Checkpoint 1: Verify papers were fetched successfully
+            if len(papers) == 0:
+                self.logger.warning(f"Unexpected: 0 papers fetched for day {day_str}")
                 return {
                     "date": day_str,
                     "total_papers": 0,
@@ -330,56 +374,149 @@ class ArxivSyncService:
                     "successful_embeddings": 0,
                     "failed_embeddings": 0,
                     "saved_papers": 0,
-                    "health_status": "critical"
+                    "warning": "No papers fetched"
                 }
-            elif health_result.overall_health == "degraded":
-                self.logger.warning(f"ArxivDatabase health is degraded, proceeding with caution for day {day_str}")
-        
-        # Fetch papers for the day
-        papers = await self._fetch_papers_for_day(day_start, day_end)
-        
-        if not papers:
-            self.logger.info(f"No papers found for day {day_str}")
+            
+            # Filter out papers that already exist with vectors
+            try:
+                new_papers = self._filter_new_papers(papers)
+            except Exception as e:
+                self.logger.error(f"Error filtering papers for day {day_str}: {e}")
+                if not await self._check_database_health_on_error("paper filtering", day_str):
+                    return {
+                        "date": day_str,
+                        "total_papers": len(papers),
+                        "new_papers": 0,
+                        "successful_embeddings": 0,
+                        "failed_embeddings": 0,
+                        "saved_papers": 0,
+                        "error": "Database health critical after filtering error"
+                    }
+                # If health check passed, continue with empty list
+                new_papers = []
+            
+            if not new_papers:
+                self.logger.info(f"All papers for day {day_str} already exist with vectors")
+                return {
+                    "date": day_str,
+                    "total_papers": len(papers),
+                    "new_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "saved_papers": 0
+                }
+            
+            # Checkpoint 2: Verify new papers
+            if len(new_papers) == 0:
+                self.logger.warning(f"Unexpected: 0 new papers for day {day_str}")
+                return {
+                    "date": day_str,
+                    "total_papers": len(papers),
+                    "new_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "saved_papers": 0,
+                    "warning": "No new papers"
+                }
+            
+            # Generate embeddings concurrently
+            try:
+                successful_papers, failed_papers = await self._generate_embeddings_concurrent(new_papers)
+            except Exception as e:
+                self.logger.error(f"Error generating embeddings for day {day_str}: {e}")
+                if not await self._check_database_health_on_error("embedding generation", day_str):
+                    return {
+                        "date": day_str,
+                        "total_papers": len(papers),
+                        "new_papers": len(new_papers),
+                        "successful_embeddings": 0,
+                        "failed_embeddings": len(new_papers),
+                        "saved_papers": 0,
+                        "error": "Database health critical after embedding generation error"
+                    }
+                # If health check passed, continue with empty results
+                successful_papers = []
+                failed_papers = new_papers
+            
+            # Checkpoint 3: Verify embedding generation results
+            if len(successful_papers) == 0 and len(new_papers) > 0:
+                self.logger.warning(f"No embeddings were generated for day {day_str} despite {len(new_papers)} new papers")
+                if not await self._check_database_health_on_error("embedding verification", day_str):
+                    return {
+                        "date": day_str,
+                        "total_papers": len(papers),
+                        "new_papers": len(new_papers),
+                        "successful_embeddings": 0,
+                        "failed_embeddings": len(new_papers),
+                        "saved_papers": 0,
+                        "error": "Database health critical after embedding verification"
+                    }
+            
+            # Save successful papers to database
+            try:
+                saved_paper_ids = await self._save_papers_to_database(successful_papers)
+            except Exception as e:
+                self.logger.error(f"Error saving papers for day {day_str}: {e}")
+                if not await self._check_database_health_on_error("paper saving", day_str):
+                    return {
+                        "date": day_str,
+                        "total_papers": len(papers),
+                        "new_papers": len(new_papers),
+                        "successful_embeddings": len(successful_papers),
+                        "failed_embeddings": len(failed_papers),
+                        "saved_papers": 0,
+                        "error": "Database health critical after saving error"
+                    }
+                # If health check passed, continue with empty list
+                saved_paper_ids = []
+            
+            # Checkpoint 4: Verify save results
+            if len(saved_paper_ids) == 0 and len(successful_papers) > 0:
+                self.logger.warning(f"No papers were saved for day {day_str} despite {len(successful_papers)} successful embeddings")
+                if not await self._check_database_health_on_error("save verification", day_str):
+                    return {
+                        "date": day_str,
+                        "total_papers": len(papers),
+                        "new_papers": len(new_papers),
+                        "successful_embeddings": len(successful_papers),
+                        "failed_embeddings": len(failed_papers),
+                        "saved_papers": 0,
+                        "error": "Database health critical after save verification"
+                    }
+            
+            result = {
+                "date": day_str,
+                "total_papers": len(papers),
+                "new_papers": len(new_papers),
+                "successful_embeddings": len(successful_papers),
+                "failed_embeddings": len(failed_papers),
+                "saved_papers": len(saved_paper_ids)
+            }
+            
+            self.logger.info(f"Day {day_str} processed: {result}")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Unexpected error processing day {day_str}: {e}")
+            if not await self._check_database_health_on_error("day processing", day_str):
+                return {
+                    "date": day_str,
+                    "total_papers": 0,
+                    "new_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "saved_papers": 0,
+                    "error": f"Critical database health issue: {str(e)}"
+                }
             return {
                 "date": day_str,
                 "total_papers": 0,
                 "new_papers": 0,
                 "successful_embeddings": 0,
                 "failed_embeddings": 0,
-                "saved_papers": 0
+                "saved_papers": 0,
+                "error": str(e)
             }
-        
-        # Filter out papers that already exist with vectors
-        new_papers = self._filter_new_papers(papers)
-        
-        if not new_papers:
-            self.logger.info(f"All papers for day {day_str} already exist with vectors")
-            return {
-                "date": day_str,
-                "total_papers": len(papers),
-                "new_papers": 0,
-                "successful_embeddings": 0,
-                "failed_embeddings": 0,
-                "saved_papers": 0
-            }
-        
-        # Generate embeddings concurrently
-        successful_papers, failed_papers = await self._generate_embeddings_concurrent(new_papers)
-        
-        # Save successful papers to database
-        saved_paper_ids = await self._save_papers_to_database(successful_papers)
-        
-        result = {
-            "date": day_str,
-            "total_papers": len(papers),
-            "new_papers": len(new_papers),
-            "successful_embeddings": len(successful_papers),
-            "failed_embeddings": len(failed_papers),
-            "saved_papers": len(saved_paper_ids)
-        }
-        
-        self.logger.info(f"Day {day_str} processed: {result}")
-        return result
     
     async def _sync_rolling_week(self) -> Dict[str, Any]:
         """
@@ -496,31 +633,31 @@ class ArxivSyncService:
             while self.is_running:
                 self.logger.info("Starting sync cycle...")
                 
-                # Perform health check before sync cycle
-                if self.safe_db.health_monitor:
-                    health_result = await self.safe_db.health_monitor.perform_health_check()
-                    if health_result.overall_health == "critical":
-                        self.logger.error("ArxivDatabase health is critical, skipping sync cycle")
-                        self.logger.info("Attempting automatic repair...")
-                        await self.safe_db.health_monitor.repair_corrupted_shards(health_result)
-                        # Save health report after critical issue
-                        report_path = self.safe_db.health_monitor.save_health_report()
-                        self.logger.info(f"Critical health report saved to: {report_path}")
-                        # Wait shorter time before retry
-                        await asyncio.sleep(300)  # 5 minutes
-                        continue
-                    elif health_result.overall_health == "degraded":
-                        self.logger.warning("ArxivDatabase health is degraded, proceeding with caution")
-                        # Save health report for degraded status
-                        report_path = self.safe_db.health_monitor.save_health_report()
-                        self.logger.info(f"Degraded health report saved to: {report_path}")
-                
                 success = await self._sync_with_retry()
                 
                 if success:
                     self.logger.info("Sync cycle completed successfully")
                 else:
                     self.logger.error("Sync cycle failed")
+                    # Only perform health check after sync failure
+                    if self.safe_db.health_monitor:
+                        self.logger.warning("Sync cycle failed, performing health check...")
+                        health_result = await self.safe_db.health_monitor.perform_health_check()
+                        if health_result.overall_health == "critical":
+                            self.logger.error("ArxivDatabase health is critical after sync failure")
+                            self.logger.info("Attempting automatic repair...")
+                            await self.safe_db.health_monitor.repair_corrupted_shards(health_result)
+                            # Save health report after critical issue
+                            report_path = self.safe_db.health_monitor.save_health_report()
+                            self.logger.info(f"Critical health report saved to: {report_path}")
+                            # Wait shorter time before retry
+                            await asyncio.sleep(300)  # 5 minutes
+                            continue
+                        elif health_result.overall_health == "degraded":
+                            self.logger.warning("ArxivDatabase health is degraded after sync failure")
+                            # Save health report for degraded status
+                            report_path = self.safe_db.health_monitor.save_health_report()
+                            self.logger.info(f"Degraded health report saved to: {report_path}")
                 
                 # Save daily health report (once per day)
                 current_date = datetime.now().date()

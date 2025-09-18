@@ -224,9 +224,40 @@ class ArxivMetadataFetcher:
         except Exception as e:
             self.logger.error(f"Failed to save failed IDs to {filepath}: {e}")
     
+    async def _check_database_health_on_error(self, operation: str, day_name: str) -> bool:
+        """
+        Check database health only when errors occur.
+        
+        Args:
+            operation: Description of the operation that failed
+            day_name: Day identifier for logging
+            
+        Returns:
+            True if database is healthy, False if critical issues found
+        """
+        if not self.safe_db.health_monitor:
+            return True
+            
+        self.logger.warning(f"Error in {operation} for day {day_name}, performing health check...")
+        health_result = await self.safe_db.health_monitor.perform_health_check()
+        
+        if health_result.overall_health == "critical":
+            self.logger.error(f"ArxivDatabase health is critical after {operation} error")
+            # Save critical health report
+            report_path = self.safe_db.health_monitor.save_health_report()
+            self.logger.info(f"Critical health report saved to: {report_path}")
+            return False
+        elif health_result.overall_health == "degraded":
+            self.logger.warning(f"ArxivDatabase health is degraded after {operation} error")
+            # Save degraded health report
+            report_path = self.safe_db.health_monitor.save_health_report()
+            self.logger.info(f"Degraded health report saved to: {report_path}")
+        
+        return True
+
     async def _process_day(self, start_date: datetime, end_date: datetime) -> dict:
         """
-        Process a single day of papers.
+        Process a single day of papers with enhanced error checking.
         
         Args:
             start_date: Day start date
@@ -239,72 +270,147 @@ class ArxivMetadataFetcher:
         
         self.logger.info(f"Processing day: {day_name}")
         
-        # Perform health check before processing
-        if self.safe_db.health_monitor:
-            health_result = await self.safe_db.health_monitor.perform_health_check()
-            if health_result.overall_health == "critical":
-                self.logger.error(f"ArxivDatabase health is critical, skipping day {day_name}")
+        try:
+            # Fetch papers for the day
+            papers = await self._fetch_papers_for_day(start_date, end_date)
+            
+            if not papers:
+                self.logger.info(f"No papers found for day {day_name}")
+                return {
+                    "day": day_name,
+                    "total_papers": 0,
+                    "filtered_papers": 0,
+                    "saved_papers": 0,
+                    "failed_papers": 0
+                }
+            
+            # Checkpoint 1: Verify papers were fetched successfully
+            if len(papers) == 0:
+                self.logger.warning(f"Unexpected: 0 papers fetched for day {day_name}")
                 return {
                     "day": day_name,
                     "total_papers": 0,
                     "filtered_papers": 0,
                     "saved_papers": 0,
                     "failed_papers": 0,
-                    "health_status": "critical"
+                    "warning": "No papers fetched"
                 }
-            elif health_result.overall_health == "degraded":
-                self.logger.warning(f"ArxivDatabase health is degraded, proceeding with caution for day {day_name}")
-        
-        # Fetch papers for the day
-        papers = await self._fetch_papers_for_day(start_date, end_date)
-        
-        if not papers:
-            self.logger.info(f"No papers found for day {day_name}")
+            
+            # Filter out papers that already exist
+            try:
+                papers_to_save = self._filter_new_papers(papers)
+                filtered_count = len(papers) - len(papers_to_save)
+            except Exception as e:
+                self.logger.error(f"Error filtering papers for day {day_name}: {e}")
+                if not await self._check_database_health_on_error("paper filtering", day_name):
+                    return {
+                        "day": day_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": 0,
+                        "saved_papers": 0,
+                        "failed_papers": len(papers),
+                        "error": "Database health critical after filtering error"
+                    }
+                # If health check passed, continue with empty list
+                papers_to_save = []
+                filtered_count = len(papers)
+            
+            if not papers_to_save:
+                self.logger.info(f"All papers for day {day_name} already exist in database")
+                return {
+                    "day": day_name,
+                    "total_papers": len(papers),
+                    "filtered_papers": filtered_count,
+                    "saved_papers": 0,
+                    "failed_papers": 0
+                }
+            
+            # Checkpoint 2: Verify papers to save
+            if len(papers_to_save) == 0:
+                self.logger.warning(f"Unexpected: 0 papers to save for day {day_name}")
+                return {
+                    "day": day_name,
+                    "total_papers": len(papers),
+                    "filtered_papers": filtered_count,
+                    "saved_papers": 0,
+                    "failed_papers": 0,
+                    "warning": "No papers to save"
+                }
+            
+            # Save paper metadata to database
+            try:
+                saved_paper_ids = await self._save_papers_metadata(papers_to_save)
+            except Exception as e:
+                self.logger.error(f"Error saving papers for day {day_name}: {e}")
+                if not await self._check_database_health_on_error("paper saving", day_name):
+                    return {
+                        "day": day_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": filtered_count,
+                        "saved_papers": 0,
+                        "failed_papers": len(papers_to_save),
+                        "error": "Database health critical after saving error"
+                    }
+                # If health check passed, continue with empty list
+                saved_paper_ids = []
+            
+            # Checkpoint 3: Verify save results
+            if len(saved_paper_ids) == 0 and len(papers_to_save) > 0:
+                self.logger.warning(f"No papers were saved for day {day_name} despite {len(papers_to_save)} papers to save")
+                if not await self._check_database_health_on_error("paper save verification", day_name):
+                    return {
+                        "day": day_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": filtered_count,
+                        "saved_papers": 0,
+                        "failed_papers": len(papers_to_save),
+                        "error": "Database health critical after save verification"
+                    }
+            
+            # Calculate failed papers (papers that couldn't be saved)
+            failed_papers = []
+            if len(saved_paper_ids) < len(papers_to_save):
+                saved_ids_set = set(saved_paper_ids)
+                failed_papers = [paper for paper in papers_to_save if paper.full_id not in saved_ids_set]
+                self.logger.warning(f"{len(failed_papers)} papers failed to save for day {day_name}")
+            
+            # Save failed IDs to file
+            if failed_papers:
+                try:
+                    self._save_failed_ids(failed_papers, day_name)
+                except Exception as e:
+                    self.logger.error(f"Error saving failed IDs for day {day_name}: {e}")
+            
+            result = {
+                "day": day_name,
+                "total_papers": len(papers),
+                "filtered_papers": filtered_count,
+                "saved_papers": len(saved_paper_ids),
+                "failed_papers": len(failed_papers)
+            }
+            
+            self.logger.info(f"Day {day_name} processed: {result}")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Unexpected error processing day {day_name}: {e}")
+            if not await self._check_database_health_on_error("day processing", day_name):
+                return {
+                    "day": day_name,
+                    "total_papers": 0,
+                    "filtered_papers": 0,
+                    "saved_papers": 0,
+                    "failed_papers": 0,
+                    "error": f"Critical database health issue: {str(e)}"
+                }
             return {
                 "day": day_name,
                 "total_papers": 0,
                 "filtered_papers": 0,
                 "saved_papers": 0,
-                "failed_papers": 0
+                "failed_papers": 0,
+                "error": str(e)
             }
-        
-        # Filter out papers that already exist
-        papers_to_save = self._filter_new_papers(papers)
-        filtered_count = len(papers) - len(papers_to_save)
-        
-        if not papers_to_save:
-            self.logger.info(f"All papers for day {day_name} already exist in database")
-            return {
-                "day": day_name,
-                "total_papers": len(papers),
-                "filtered_papers": filtered_count,
-                "saved_papers": 0,
-                "failed_papers": 0
-            }
-        
-        # Save paper metadata to database
-        saved_paper_ids = await self._save_papers_metadata(papers_to_save)
-        
-        # Calculate failed papers (papers that couldn't be saved)
-        failed_papers = []
-        if len(saved_paper_ids) < len(papers_to_save):
-            saved_ids_set = set(saved_paper_ids)
-            failed_papers = [paper for paper in papers_to_save if paper.full_id not in saved_ids_set]
-        
-        # Save failed IDs to file
-        if failed_papers:
-            self._save_failed_ids(failed_papers, day_name)
-        
-        result = {
-            "day": day_name,
-            "total_papers": len(papers),
-            "filtered_papers": filtered_count,
-            "saved_papers": len(saved_paper_ids),
-            "failed_papers": len(failed_papers)
-        }
-        
-        self.logger.info(f"Day {day_name} processed: {result}")
-        return result
     
     async def fetch_days(self, num_days: int = 10) -> List[dict]:
         """

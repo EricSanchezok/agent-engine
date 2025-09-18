@@ -37,6 +37,8 @@ logger = AgentLogger(__name__)
 class ShardHealthStatus(Enum):
     """Shard health status enumeration"""
     HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    CRITICAL = "critical"
     CORRUPTED = "corrupted"
     MISSING = "missing"
     ERROR = "error"
@@ -1175,9 +1177,15 @@ class PodEMemory:
             
             if integrity_result[0] != "ok":
                 conn.close()
+                # Determine severity based on integrity check result
+                if "malformed" in integrity_result[0].lower() or "corrupt" in integrity_result[0].lower():
+                    status = ShardHealthStatus.CRITICAL
+                else:
+                    status = ShardHealthStatus.DEGRADED
+                
                 return ShardHealthInfo(
                     shard_id=shard_id,
-                    status=ShardHealthStatus.CORRUPTED,
+                    status=status,
                     error_message=f"Database integrity check failed: {integrity_result[0]}",
                     file_size=file_size,
                     last_modified=last_modified
@@ -1198,9 +1206,18 @@ class PodEMemory:
             )
             
         except sqlite3.Error as e:
+            # Determine severity based on SQLite error type
+            error_str = str(e).lower()
+            if "malformed" in error_str or "corrupt" in error_str or "disk image" in error_str:
+                status = ShardHealthStatus.CRITICAL
+            elif "locked" in error_str or "busy" in error_str:
+                status = ShardHealthStatus.DEGRADED
+            else:
+                status = ShardHealthStatus.ERROR
+            
             return ShardHealthInfo(
                 shard_id=shard_id,
-                status=ShardHealthStatus.ERROR,
+                status=status,
                 error_message=f"SQLite error: {str(e)}",
                 file_size=file_size,
                 last_modified=last_modified
@@ -1300,10 +1317,10 @@ class PodEMemory:
         
         logger.info(f"Attempting to repair corrupted shard {shard_id}")
         
-        # Check if shard is actually corrupted
+        # Check if shard needs repair (corrupted, critical, or error)
         health_info = self.check_shard_health(shard_id)
-        if health_info.status != ShardHealthStatus.CORRUPTED:
-            logger.warning(f"Shard {shard_id} is not corrupted, status: {health_info.status.value}")
+        if health_info.status not in [ShardHealthStatus.CORRUPTED, ShardHealthStatus.CRITICAL, ShardHealthStatus.ERROR]:
+            logger.warning(f"Shard {shard_id} does not need repair, status: {health_info.status.value}")
             return False
         
         try:
@@ -1324,12 +1341,12 @@ class PodEMemory:
                 restore_cmd = ["sqlite3", str(recovered_file)]
                 
                 # Run dump command
-                dump_result = subprocess.run(dump_cmd, capture_output=True, text=True, timeout=300)
+                dump_result = subprocess.run(dump_cmd, capture_output=True, text=True, timeout=300, cwd=str(shard.persist_dir))
                 
                 if dump_result.returncode == 0:
                     # Run restore command
                     restore_result = subprocess.run(restore_cmd, input=dump_result.stdout, 
-                                                   capture_output=True, text=True, timeout=300)
+                                                   capture_output=True, text=True, timeout=300, cwd=str(shard.persist_dir))
                     
                     if restore_result.returncode == 0:
                         # Replace original file with recovered file
@@ -1356,6 +1373,12 @@ class PodEMemory:
                 return False
             except FileNotFoundError:
                 logger.warning("sqlite3 command line tool not available, trying Python recovery")
+                
+                # Fallback: try Python-based recovery
+                return self._repair_shard_python(shard_id, sqlite_file)
+            except Exception as e:
+                logger.error(f"Unexpected error during sqlite3 recovery: {e}")
+                logger.warning("Falling back to Python-based recovery")
                 
                 # Fallback: try Python-based recovery
                 return self._repair_shard_python(shard_id, sqlite_file)

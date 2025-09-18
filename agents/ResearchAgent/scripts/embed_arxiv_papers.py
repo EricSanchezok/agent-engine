@@ -331,9 +331,40 @@ class ArxivEmbeddingGenerator:
         except Exception as e:
             self.logger.error(f"Failed to save failed IDs to {filepath}: {e}")
     
+    async def _check_database_health_on_error(self, operation: str, batch_name: str) -> bool:
+        """
+        Check database health only when errors occur.
+        
+        Args:
+            operation: Description of the operation that failed
+            batch_name: Batch identifier for logging
+            
+        Returns:
+            True if database is healthy, False if critical issues found
+        """
+        if not self.safe_db.health_monitor:
+            return True
+            
+        self.logger.warning(f"Error in {operation} for batch {batch_name}, performing health check...")
+        health_result = await self.safe_db.health_monitor.perform_health_check()
+        
+        if health_result.overall_health == "critical":
+            self.logger.error(f"ArxivDatabase health is critical after {operation} error")
+            # Save critical health report
+            report_path = self.safe_db.health_monitor.save_health_report()
+            self.logger.info(f"Critical health report saved to: {report_path}")
+            return False
+        elif health_result.overall_health == "degraded":
+            self.logger.warning(f"ArxivDatabase health is degraded after {operation} error")
+            # Save degraded health report
+            report_path = self.safe_db.health_monitor.save_health_report()
+            self.logger.info(f"Degraded health report saved to: {report_path}")
+        
+        return True
+
     async def _process_batch(self, papers: List[ArxivPaper], batch_name: str) -> dict:
         """
-        Process a batch of papers for embedding generation.
+        Process a batch of papers for embedding generation with enhanced error checking.
         
         Args:
             papers: List of ArxivPaper objects
@@ -344,11 +375,161 @@ class ArxivEmbeddingGenerator:
         """
         self.logger.info(f"Processing batch: {batch_name} with {len(papers)} papers")
         
-        # Perform health check before processing batch
-        if self.safe_db.health_monitor:
-            health_result = await self.safe_db.health_monitor.perform_health_check()
-            if health_result.overall_health == "critical":
-                self.logger.error(f"ArxivDatabase health is critical, skipping batch {batch_name}")
+        try:
+            if not papers:
+                return {
+                    "batch": batch_name,
+                    "total_papers": 0,
+                    "filtered_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "updated_papers": 0
+                }
+            
+            # Checkpoint 1: Verify papers input
+            if len(papers) == 0:
+                self.logger.warning(f"Unexpected: 0 papers provided for batch {batch_name}")
+                return {
+                    "batch": batch_name,
+                    "total_papers": 0,
+                    "filtered_papers": 0,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "updated_papers": 0,
+                    "warning": "No papers provided"
+                }
+            
+            # Filter papers that don't have embeddings yet
+            try:
+                papers_needing_embeddings = self._filter_papers_without_embeddings(papers)
+                filtered_count = len(papers) - len(papers_needing_embeddings)
+            except Exception as e:
+                self.logger.error(f"Error filtering papers for batch {batch_name}: {e}")
+                if not await self._check_database_health_on_error("paper filtering", batch_name):
+                    return {
+                        "batch": batch_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": 0,
+                        "successful_embeddings": 0,
+                        "failed_embeddings": 0,
+                        "updated_papers": 0,
+                        "error": "Database health critical after filtering error"
+                    }
+                # If health check passed, continue with empty list
+                papers_needing_embeddings = []
+                filtered_count = len(papers)
+            
+            if not papers_needing_embeddings:
+                self.logger.info(f"All papers in batch {batch_name} already have embeddings")
+                return {
+                    "batch": batch_name,
+                    "total_papers": len(papers),
+                    "filtered_papers": filtered_count,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "updated_papers": 0
+                }
+            
+            # Checkpoint 2: Verify papers needing embeddings
+            if len(papers_needing_embeddings) == 0:
+                self.logger.warning(f"Unexpected: 0 papers need embeddings for batch {batch_name}")
+                return {
+                    "batch": batch_name,
+                    "total_papers": len(papers),
+                    "filtered_papers": filtered_count,
+                    "successful_embeddings": 0,
+                    "failed_embeddings": 0,
+                    "updated_papers": 0,
+                    "warning": "No papers need embeddings"
+                }
+            
+            # Generate embeddings concurrently for papers that need them
+            try:
+                successful_papers, failed_papers = await self._generate_embeddings_concurrent(papers_needing_embeddings)
+            except Exception as e:
+                self.logger.error(f"Error generating embeddings for batch {batch_name}: {e}")
+                if not await self._check_database_health_on_error("embedding generation", batch_name):
+                    return {
+                        "batch": batch_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": filtered_count,
+                        "successful_embeddings": 0,
+                        "failed_embeddings": len(papers_needing_embeddings),
+                        "updated_papers": 0,
+                        "error": "Database health critical after embedding generation error"
+                    }
+                # If health check passed, continue with empty results
+                successful_papers = []
+                failed_papers = papers_needing_embeddings
+            
+            # Checkpoint 3: Verify embedding generation results
+            if len(successful_papers) == 0 and len(papers_needing_embeddings) > 0:
+                self.logger.warning(f"No embeddings were generated for batch {batch_name} despite {len(papers_needing_embeddings)} papers needing them")
+                if not await self._check_database_health_on_error("embedding verification", batch_name):
+                    return {
+                        "batch": batch_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": filtered_count,
+                        "successful_embeddings": 0,
+                        "failed_embeddings": len(papers_needing_embeddings),
+                        "updated_papers": 0,
+                        "error": "Database health critical after embedding verification"
+                    }
+            
+            # Update papers with embeddings in database
+            try:
+                updated_paper_ids = await self._update_papers_embeddings(successful_papers)
+            except Exception as e:
+                self.logger.error(f"Error updating papers with embeddings for batch {batch_name}: {e}")
+                if not await self._check_database_health_on_error("paper update", batch_name):
+                    return {
+                        "batch": batch_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": filtered_count,
+                        "successful_embeddings": len(successful_papers),
+                        "failed_embeddings": len(failed_papers),
+                        "updated_papers": 0,
+                        "error": "Database health critical after update error"
+                    }
+                # If health check passed, continue with empty list
+                updated_paper_ids = []
+            
+            # Checkpoint 4: Verify update results
+            if len(updated_paper_ids) == 0 and len(successful_papers) > 0:
+                self.logger.warning(f"No papers were updated for batch {batch_name} despite {len(successful_papers)} successful embeddings")
+                if not await self._check_database_health_on_error("update verification", batch_name):
+                    return {
+                        "batch": batch_name,
+                        "total_papers": len(papers),
+                        "filtered_papers": filtered_count,
+                        "successful_embeddings": len(successful_papers),
+                        "failed_embeddings": len(failed_papers),
+                        "updated_papers": 0,
+                        "error": "Database health critical after update verification"
+                    }
+            
+            # Save failed IDs to file
+            if failed_papers:
+                try:
+                    self._save_failed_ids(failed_papers, batch_name)
+                except Exception as e:
+                    self.logger.error(f"Error saving failed IDs for batch {batch_name}: {e}")
+            
+            result = {
+                "batch": batch_name,
+                "total_papers": len(papers),
+                "filtered_papers": filtered_count,
+                "successful_embeddings": len(successful_papers),
+                "failed_embeddings": len(failed_papers),
+                "updated_papers": len(updated_paper_ids)
+            }
+            
+            self.logger.info(f"Batch {batch_name} processed: {result}")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Unexpected error processing batch {batch_name}: {e}")
+            if not await self._check_database_health_on_error("batch processing", batch_name):
                 return {
                     "batch": batch_name,
                     "total_papers": len(papers),
@@ -356,57 +537,17 @@ class ArxivEmbeddingGenerator:
                     "successful_embeddings": 0,
                     "failed_embeddings": 0,
                     "updated_papers": 0,
-                    "health_status": "critical"
+                    "error": f"Critical database health issue: {str(e)}"
                 }
-            elif health_result.overall_health == "degraded":
-                self.logger.warning(f"ArxivDatabase health is degraded, proceeding with caution for batch {batch_name}")
-        
-        if not papers:
-            return {
-                "batch": batch_name,
-                "total_papers": 0,
-                "filtered_papers": 0,
-                "successful_embeddings": 0,
-                "failed_embeddings": 0,
-                "updated_papers": 0
-            }
-        
-        # Filter papers that don't have embeddings yet
-        papers_needing_embeddings = self._filter_papers_without_embeddings(papers)
-        filtered_count = len(papers) - len(papers_needing_embeddings)
-        
-        if not papers_needing_embeddings:
-            self.logger.info(f"All papers in batch {batch_name} already have embeddings")
             return {
                 "batch": batch_name,
                 "total_papers": len(papers),
-                "filtered_papers": filtered_count,
+                "filtered_papers": 0,
                 "successful_embeddings": 0,
                 "failed_embeddings": 0,
-                "updated_papers": 0
+                "updated_papers": 0,
+                "error": str(e)
             }
-        
-        # Generate embeddings concurrently for papers that need them
-        successful_papers, failed_papers = await self._generate_embeddings_concurrent(papers_needing_embeddings)
-        
-        # Update papers with embeddings in database
-        updated_paper_ids = await self._update_papers_embeddings(successful_papers)
-        
-        # Save failed IDs to file
-        if failed_papers:
-            self._save_failed_ids(failed_papers, batch_name)
-        
-        result = {
-            "batch": batch_name,
-            "total_papers": len(papers),
-            "filtered_papers": filtered_count,
-            "successful_embeddings": len(successful_papers),
-            "failed_embeddings": len(failed_papers),
-            "updated_papers": len(updated_paper_ids)
-        }
-        
-        self.logger.info(f"Batch {batch_name} processed: {result}")
-        return result
     
     async def embed_days(self, num_days: int = 10) -> List[dict]:
         """
