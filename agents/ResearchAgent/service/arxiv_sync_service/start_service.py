@@ -39,21 +39,46 @@ from arxiv_sync_service import ArxivSyncService
 
 
 async def main():
-    """Main execution function."""
+    """Main execution function with automatic restart capability."""
     print("Starting Arxiv Sync Service...")
     print(f"Logs will be saved to: {log_dir}")
     
-    service = ArxivSyncService()
+    restart_count = 0
+    max_restarts = 5
     
-    try:
-        await service.start()
-    except KeyboardInterrupt:
-        print("\nService interrupted by user")
-        await service.stop()
-    except Exception as e:
-        print(f"Service failed: {e}")
-        await service.stop()
-        sys.exit(1)
+    while restart_count < max_restarts:
+        service = None
+        try:
+            print(f"Starting service (attempt {restart_count + 1}/{max_restarts})...")
+            service = ArxivSyncService()
+            await service.start()
+            # If we reach here, the service stopped normally
+            break
+            
+        except KeyboardInterrupt:
+            print("\nService interrupted by user")
+            if service:
+                await service.stop()
+            break
+            
+        except Exception as e:
+            restart_count += 1
+            print(f"Service failed (attempt {restart_count}): {e}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            
+            if service:
+                try:
+                    await service.stop()
+                except:
+                    pass
+            
+            if restart_count < max_restarts:
+                print(f"Restarting service in 30 seconds... (attempt {restart_count + 1}/{max_restarts})")
+                await asyncio.sleep(30)
+            else:
+                print(f"Maximum restart attempts ({max_restarts}) reached. Service will not restart.")
+                break
 
 
 if __name__ == "__main__":
