@@ -60,25 +60,6 @@ async def main():
             if service:
                 await service.stop()
             break
-            
-        except Exception as e:
-            restart_count += 1
-            print(f"Service failed (attempt {restart_count}): {e}")
-            import traceback
-            print(f"Traceback: {traceback.format_exc()}")
-            
-            if service:
-                try:
-                    await service.stop()
-                except:
-                    pass
-            
-            if restart_count < max_restarts:
-                print(f"Restarting service in 30 seconds... (attempt {restart_count + 1}/{max_restarts})")
-                await asyncio.sleep(30)
-            else:
-                print(f"Maximum restart attempts ({max_restarts}) reached. Service will not restart.")
-                break
 
 
 if __name__ == "__main__":
