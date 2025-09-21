@@ -123,8 +123,6 @@ class DeepResearchPlanner:
         except Exception as e:
             self.logger.error(f"Error exploring: {e}")
             return {}
-        
-
 
     async def search_by_tavily(self, query_list: List[str]) -> str:
         semaphore = asyncio.Semaphore(8)
